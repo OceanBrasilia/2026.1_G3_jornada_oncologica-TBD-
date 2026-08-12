@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
 from app.config import settings
 
 # Cria a engine de conexão do SQLAlchemy

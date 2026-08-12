@@ -1,0 +1,33 @@
+[tool.ruff]
+# Versão do Python utilizada no projeto
+target-version = "py311"
+
+# Comprimento máximo da linha (padrão moderno de 120 caracteres)
+line-length = 120
+
+# Pastas a ignorar na verificação
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# Regras selecionadas:
+# E/W: pycodestyle (estilo de código)
+# F: Pyflakes (erros de sintaxe)
+# I: isort (ordenação de imports)
+# B: flake8-bugbear (lógica/erros comuns)
+# C90: mccabe (complexidade de código)
+select = ["E", "F", "I", "B", "C90"]
+
+# Regras a ignorar:
+# B008: Ignorar chamada de função Depends() na assinatura das rotas do FastAPI (padrão correto no framework)
+ignore = ["B008"]
+
+[tool.ruff.lint.mccabe]
+# Limite máximo de complexidade ciclomática
+max-complexity = 10

@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Jornada Oncológica API"
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/jornada_db"

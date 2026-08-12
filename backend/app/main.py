@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 from typing import List
 
-from app.database import engine, Base, get_db
-from app.config import settings
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from app import models, schemas
+from app.config import settings
+from app.database import Base, engine, get_db
 
 # Cria as tabelas no banco de dados se não existirem
 try:
