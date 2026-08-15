@@ -1,17 +1,9 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
-# Evita que o Python escreva arquivos .pyc no container
 ENV PYTHONDONTWRITEBYTECODE=1
-
-# Evita o buffer do stdout e stderr do Python para logs imediatos
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
-
-# Instala dependências do sistema necessárias para compilação caso precisemos
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copia e instala as dependências do Python
 COPY requirements.txt .
