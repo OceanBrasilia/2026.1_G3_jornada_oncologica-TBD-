@@ -1,6 +1,9 @@
 import datetime
 from decimal import Decimal
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+
 from app.models import (
     AreaAtendimento,
     CampoFormulario,
@@ -189,3 +192,43 @@ def test_preenchimento_and_respostas(db_session):
     assert resp1.preenchimento == preenchimento
     assert resp1.campo_formulario == campo_txt
     assert set(preenchimento.respostas) == {resp1, resp2, resp3, resp4}
+
+
+def test_resposta_duplicate_constraint(db_session):
+    user, etapa = _setup_stage_and_user(db_session)
+    form = Formulario(nome="Form Unico")
+    db_session.add(form)
+    db_session.commit()
+    versao = FormularioVersao(formulario_id=form.id, criado_por_id=user.id, versao=1)
+    db_session.add(versao)
+    db_session.commit()
+
+    campo = CampoFormulario(formulario_versao_id=versao.id, nome="Pergunta Unica", tipo="TEXTO", ordem_exibicao=1)
+    db_session.add(campo)
+    db_session.commit()
+
+    preenchimento = PreenchimentoFormulario(
+        etapa_jornada_id=etapa.id,
+        formulario_versao_id=versao.id,
+        profissional_id=user.id
+    )
+    db_session.add(preenchimento)
+    db_session.commit()
+
+    # Create two responses for the same question/filling
+    resp1 = Resposta(
+        preenchimento_id=preenchimento.id,
+        campo_formulario_id=campo.id,
+        valor_texto="Primeira resposta"
+    )
+    resp2 = Resposta(
+        preenchimento_id=preenchimento.id,
+        campo_formulario_id=campo.id,
+        valor_texto="Segunda resposta"
+    )
+    
+    db_session.add_all([resp1, resp2])
+    
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()

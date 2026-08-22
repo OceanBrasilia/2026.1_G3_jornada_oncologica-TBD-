@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -79,6 +81,17 @@ def test_create_usuario(db_session):
 def test_usuario_missing_perfil(db_session):
     # Test that creating a user without a profile raises IntegrityError
     usuario = Usuario(nome="Sem Perfil")
+    db_session.add(usuario)
+    
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_usuario_invalid_perfil_uuid(db_session):
+    # Test that creating a user with a non-existent profile UUID raises IntegrityError
+    # (requires foreign key constraints to be active)
+    usuario = Usuario(nome="Perfil Invalido", perfil_id=uuid.uuid4())
     db_session.add(usuario)
     
     with pytest.raises(IntegrityError):

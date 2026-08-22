@@ -1,6 +1,7 @@
 import datetime
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.models import (
@@ -274,3 +275,46 @@ def test_etapa_jornada_unique_constraint(db_session):
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
+
+
+def test_patient_db_cascade_delete_raw_sql(db_session):
+    user = _setup_user(db_session)
+    patient = Patient(
+        codigo_publico="PAC-DB-CASCADE",
+        nome_completo="Paciente Teste SQL",
+        data_nascimento=datetime.date(1985, 12, 1),
+        cpf="99988877766"
+    )
+    db_session.add(patient)
+    db_session.commit()
+
+    contato = ContatoPaciente(
+        paciente_id=patient.id,
+        nome="Contato Teste SQL",
+        relacao="Outro"
+    )
+    jornada = Jornada(
+        paciente_id=patient.id,
+        criado_por_id=user.id,
+        codigo="JORN-DB-CASCADE",
+        data_acolhimento=datetime.date(2026, 8, 21)
+    )
+    db_session.add_all([contato, jornada])
+    db_session.commit()
+
+    contato_id = contato.id
+    jornada_id = jornada.id
+    patient_id = patient.id
+
+    # Verify rows exist
+    assert db_session.query(ContatoPaciente).filter_by(id=contato_id).first() is not None
+    assert db_session.query(Jornada).filter_by(id=jornada_id).first() is not None
+
+    # Delete Patient using raw SQL DELETE to bypass SQLAlchemy's in-memory cascades
+    db_session.execute(text("DELETE FROM patients WHERE id = :id"), {"id": patient_id.hex})
+    db_session.commit()
+
+    # Verify that the dependent rows were cascade-deleted at the database level
+    db_session.expire_all()
+    assert db_session.query(ContatoPaciente).filter_by(id=contato_id).first() is None
+    assert db_session.query(Jornada).filter_by(id=jornada_id).first() is None

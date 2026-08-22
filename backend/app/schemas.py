@@ -46,10 +46,11 @@ class UsuarioBase(BaseModel):
     nome: str
     perfil_id: UUID
     area_atendimento_id: Optional[UUID] = None
+    email: Optional[str] = None
 
 
 class UsuarioCreate(UsuarioBase):
-    pass
+    senha: Optional[str] = None
 
 
 class UsuarioResponse(UsuarioBase):
@@ -125,11 +126,6 @@ class JornadaBase(BaseModel):
     criado_por_id: UUID
     codigo: str
     data_acolhimento: date
-    status: Optional[str] = "AGUARDANDO"
-    chegada_em: Optional[datetime] = None
-    iniciada_em: Optional[datetime] = None
-    finalizada_em: Optional[datetime] = None
-    saida_em: Optional[datetime] = None
     diagnostico_principal: Optional[str] = None
     fase_tratamento: Optional[str] = None
     origem: Optional[str] = None
@@ -142,6 +138,11 @@ class JornadaCreate(JornadaBase):
 
 class JornadaResponse(JornadaBase):
     id: UUID
+    status: str
+    chegada_em: Optional[datetime] = None
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+    saida_em: Optional[datetime] = None
     criado_em: datetime
     atualizado_em: datetime
 
@@ -153,11 +154,8 @@ class EtapaJornadaBase(BaseModel):
     jornada_id: UUID
     area_atendimento_id: UUID
     profissional_responsavel_id: Optional[UUID] = None
-    status: Optional[str] = "PENDENTE"
     ordem: int
     prioridade: int
-    iniciada_em: Optional[datetime] = None
-    finalizada_em: Optional[datetime] = None
     motivo_nao_aplicavel: Optional[str] = None
     observacao: Optional[str] = None
 
@@ -168,6 +166,9 @@ class EtapaJornadaCreate(EtapaJornadaBase):
 
 class EtapaJornadaResponse(EtapaJornadaBase):
     id: UUID
+    status: str
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

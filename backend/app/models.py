@@ -51,6 +51,8 @@ class Usuario(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nome = Column(String, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=True)
+    senha_hash = Column(String, nullable=True)
     perfil_id = Column(UUID(as_uuid=True), ForeignKey("perfil.id"), nullable=False)
     area_atendimento_id = Column(UUID(as_uuid=True), ForeignKey("area_atendimento.id"), nullable=True)
 
@@ -95,7 +97,7 @@ class ContatoPaciente(Base):
     __tablename__ = "contato_paciente"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     nome = Column(String, nullable=False)
     relacao = Column(String, nullable=True)
     telefone = Column(String, nullable=True)
@@ -113,7 +115,7 @@ class Jornada(Base):
     __tablename__ = "jornada"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     criado_por_id = Column(UUID(as_uuid=True), ForeignKey("usuario.id"), nullable=False)
     codigo = Column(String, unique=True, index=True, nullable=False)
     data_acolhimento = Column(Date, nullable=False)
@@ -253,6 +255,9 @@ class PreenchimentoFormulario(Base):
 
 class Resposta(Base):
     __tablename__ = "resposta"
+    __table_args__ = (
+        UniqueConstraint("preenchimento_id", "campo_formulario_id", name="uq_preenchimento_campo"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     preenchimento_id = Column(UUID(as_uuid=True), ForeignKey("preenchimento_formulario.id"), nullable=False)
@@ -283,7 +288,7 @@ class DadoCompartilhado(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     definicao_id = Column(UUID(as_uuid=True), ForeignKey("dado_compartilhado_def.id"), nullable=False)
-    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     jornada_id = Column(UUID(as_uuid=True), ForeignKey("jornada.id"), nullable=True)
     registrado_por_id = Column(UUID(as_uuid=True), ForeignKey("usuario.id"), nullable=False)
     resposta_origem_id = Column(UUID(as_uuid=True), ForeignKey("resposta.id"), nullable=True)
@@ -360,7 +365,7 @@ class Anexo(Base):
     __tablename__ = "anexo"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id"), nullable=False)
+    paciente_id = Column(UUID(as_uuid=True), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     jornada_id = Column(UUID(as_uuid=True), ForeignKey("jornada.id"), nullable=True)
     etapa_jornada_id = Column(UUID(as_uuid=True), ForeignKey("etapa_jornada.id"), nullable=True)
     nome = Column(String, nullable=False)
