@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.exc import IntegrityError
-from app.models import Perfil, AreaAtendimento, Usuario
+
+from app.models import AreaAtendimento, Perfil, Usuario
 
 
 def test_create_perfil(db_session):

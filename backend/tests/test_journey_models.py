@@ -1,15 +1,17 @@
 import datetime
+
 import pytest
 from sqlalchemy.exc import IntegrityError
+
 from app.models import (
-    Perfil,
-    Usuario,
-    Patient,
+    AreaAtendimento,
     ContatoPaciente,
+    EtapaJornada,
     Jornada,
     JornadaAcompanhante,
-    AreaAtendimento,
-    EtapaJornada
+    Patient,
+    Perfil,
+    Usuario,
 )
 
 

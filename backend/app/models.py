@@ -1,17 +1,18 @@
 import uuid
 from datetime import datetime
+
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    SmallInteger,
     Boolean,
-    DateTime,
+    Column,
     Date,
-    Numeric,
-    Text,
+    DateTime,
     ForeignKey,
-    UniqueConstraint
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -103,7 +104,9 @@ class ContatoPaciente(Base):
     ativo = Column(Boolean, default=True, nullable=False)
 
     patient = relationship("Patient", back_populates="contacts")
-    acompanhamentos = relationship("JornadaAcompanhante", back_populates="contato_paciente", cascade="all, delete-orphan")
+    acompanhamentos = relationship(
+        "JornadaAcompanhante", back_populates="contato_paciente", cascade="all, delete-orphan"
+    )
 
 
 class Jornada(Base):
@@ -114,7 +117,8 @@ class Jornada(Base):
     criado_por_id = Column(UUID(as_uuid=True), ForeignKey("usuario.id"), nullable=False)
     codigo = Column(String, unique=True, index=True, nullable=False)
     data_acolhimento = Column(Date, nullable=False)
-    status = Column(String, default="AGUARDANDO", nullable=False)  # AGUARDANDO, EM_ATENDIMENTO, PENDENTE, FINALIZADA, CANCELADA
+    # AGUARDANDO, EM_ATENDIMENTO, PENDENTE, FINALIZADA, CANCELADA
+    status = Column(String, default="AGUARDANDO", nullable=False)
     chegada_em = Column(DateTime, nullable=True)
     iniciada_em = Column(DateTime, nullable=True)
     finalizada_em = Column(DateTime, nullable=True)
@@ -210,7 +214,8 @@ class CampoFormulario(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     formulario_versao_id = Column(UUID(as_uuid=True), ForeignKey("formulario_versao.id"), nullable=False)
     nome = Column(String, nullable=False)
-    tipo = Column(String, nullable=False)  # DATA, DATA_HORA, SELECAO_UNICA, SELECAO_MULTIPLA, ESCALA, TEXTO, NUMERO, BOOLEANO
+    # DATA, DATA_HORA, SELECAO_UNICA, SELECAO_MULTIPLA, ESCALA, TEXTO, NUMERO, BOOLEANO
+    tipo = Column(String, nullable=False)
     ordem_exibicao = Column(SmallInteger, nullable=False)
     ativo_versao = Column(Boolean, default=True, nullable=False)
 

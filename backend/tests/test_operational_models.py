@@ -1,20 +1,20 @@
 import datetime
-from decimal import Decimal
+
 from app.models import (
-    Perfil,
-    Usuario,
-    Patient,
-    Jornada,
-    AreaAtendimento,
-    EtapaJornada,
-    DadoCompartilhadoDef,
-    DadoCompartilhado,
-    Pendencia,
-    Encaminhamento,
-    RegistroProfissional,
     Anexo,
+    AreaAtendimento,
+    DadoCompartilhado,
+    DadoCompartilhadoDef,
+    Encaminhamento,
+    EtapaJornada,
     FichaConsolidada,
-    RegistroAuditoria
+    Jornada,
+    Patient,
+    Pendencia,
+    Perfil,
+    RegistroAuditoria,
+    RegistroProfissional,
+    Usuario,
 )
 
 

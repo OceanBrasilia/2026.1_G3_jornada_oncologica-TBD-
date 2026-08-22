@@ -1,18 +1,19 @@
 import datetime
 from decimal import Decimal
+
 from app.models import (
-    Perfil,
-    Usuario,
-    Patient,
-    Jornada,
     AreaAtendimento,
+    CampoFormulario,
+    CampoOpcao,
     EtapaJornada,
     Formulario,
     FormularioVersao,
-    CampoFormulario,
-    CampoOpcao,
+    Jornada,
+    Patient,
+    Perfil,
     PreenchimentoFormulario,
-    Resposta
+    Resposta,
+    Usuario,
 )
 
 
@@ -164,10 +165,18 @@ def test_preenchimento_and_respostas(db_session):
     assert preenchimento.profissional == user
 
     # Create Respostas
-    resp1 = Resposta(preenchimento_id=preenchimento.id, campo_formulario_id=campo_txt.id, valor_texto="Dor de cabeça constante")
+    resp1 = Resposta(
+        preenchimento_id=preenchimento.id,
+        campo_formulario_id=campo_txt.id,
+        valor_texto="Dor de cabeça constante"
+    )
     resp2 = Resposta(preenchimento_id=preenchimento.id, campo_formulario_id=campo_num.id, valor_numero=Decimal("45.5"))
     resp3 = Resposta(preenchimento_id=preenchimento.id, campo_formulario_id=campo_bool.id, valor_booleano=True)
-    resp4 = Resposta(preenchimento_id=preenchimento.id, campo_formulario_id=campo_date.id, valor_data=datetime.date(2026, 8, 1))
+    resp4 = Resposta(
+        preenchimento_id=preenchimento.id,
+        campo_formulario_id=campo_date.id,
+        valor_data=datetime.date(2026, 8, 1)
+    )
     db_session.add_all([resp1, resp2, resp3, resp4])
     db_session.commit()
 
