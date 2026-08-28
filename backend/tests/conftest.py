@@ -5,12 +5,13 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Add backend directory to sys.path to allow importing app module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import app.models  # noqa: F401
 from app.database import Base
-from app.models import *
 
 
 @event.listens_for(Engine, "connect")
@@ -19,8 +20,6 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
-
-from sqlalchemy.pool import StaticPool
 
 @pytest.fixture(scope="function")
 def db_engine():

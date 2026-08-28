@@ -1,7 +1,6 @@
 from typing import List
 from uuid import UUID
 
-
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -9,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.config import settings
-from app.database import Base, engine, get_db
+from app.database import get_db
 
 # O banco de dados agora é gerenciado pelo Alembic.
 # A criação dinâmica de tabelas foi removida para evitar conflitos de migração.

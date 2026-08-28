@@ -1,13 +1,28 @@
 import uuid
-from datetime import datetime, date, time
+from datetime import date, datetime, time
+
 from sqlalchemy.orm import Session
-from app.database import SessionLocal, engine
+
+from app.database import SessionLocal
 from app.models import (
-    Base, Perfil, AreaAtendimento, Usuario, Patient, ContatoPaciente,
-    Jornada, JornadaAcompanhante, EtapaJornada, Formulario, FormularioVersao,
-    CampoFormulario, CampoOpcao, PreenchimentoFormulario, Resposta,
-    DadoCompartilhadoDef, DadoCompartilhado
+    AreaAtendimento,
+    CampoFormulario,
+    CampoOpcao,
+    ContatoPaciente,
+    DadoCompartilhado,
+    DadoCompartilhadoDef,
+    EtapaJornada,
+    Formulario,
+    FormularioVersao,
+    Jornada,
+    JornadaAcompanhante,
+    Patient,
+    Perfil,
+    PreenchimentoFormulario,
+    Resposta,
+    Usuario,
 )
+
 
 def clean_database(db: Session):
     print("Limpando dados existentes no banco de dados...")
@@ -31,7 +46,7 @@ def clean_database(db: Session):
     db.commit()
     print("Banco de dados limpo com sucesso.")
 
-def seed_data():
+def seed_data():  # noqa: C901
     db = SessionLocal()
     try:
         clean_database(db)
@@ -354,7 +369,7 @@ def seed_data():
             {"nome": "Necessidade de tratamento", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None)]},
             {"nome": "Observações", "tipo": "TEXTO"}
         ]
-        f_odontologia = create_form("Formulário de Odontologia", odontologia_fields)
+        create_form("Formulário de Odontologia", odontologia_fields)
 
         print("Semeando Formulário de Fonoaudiologia...")
         fonoaudiologia_fields = [
@@ -362,7 +377,7 @@ def seed_data():
             {"nome": "Comunicação", "tipo": "SELECAO_UNICA", "opcoes": [("Adequada", None), ("Alterada", None)]},
             {"nome": "Observações", "tipo": "TEXTO"}
         ]
-        f_fonoaudiologia = create_form("Formulário de Fonoaudiologia", fonoaudiologia_fields)
+        create_form("Formulário de Fonoaudiologia", fonoaudiologia_fields)
 
         print("Semeando Formulário de Terapia Ocupacional...")
         terapia_ocupacional_fields = [
