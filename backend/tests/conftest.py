@@ -10,6 +10,7 @@ from sqlalchemy.orm import sessionmaker
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.database import Base
+from app.models import *
 
 
 @event.listens_for(Engine, "connect")
@@ -19,10 +20,17 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 
 
+from sqlalchemy.pool import StaticPool
+
 @pytest.fixture(scope="function")
 def db_engine():
     # Use SQLite in-memory, recreated for each test for perfect isolation and no transaction warnings
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
+    print("TABLES IN Base.metadata:", list(Base.metadata.tables.keys()))
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)

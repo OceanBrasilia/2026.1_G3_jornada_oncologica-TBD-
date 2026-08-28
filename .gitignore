@@ -45,6 +45,10 @@ venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
 
 # Logs e arquivos do sistema
 *.log
