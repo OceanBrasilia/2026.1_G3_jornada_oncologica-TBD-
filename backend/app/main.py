@@ -124,14 +124,22 @@ def get_journey(id: uuid.UUID, db: Session = Depends(get_db)):
     return journey
 
 @app.patch("/journeys/{id}/steps/{step_id}", response_model=schemas.EtapaJornadaResponse)
-def update_journey_step(id: uuid.UUID, step_id: uuid.UUID, req: schemas.JourneyStepUpdate, db: Session = Depends(get_db)):
+def update_journey_step(
+    id: uuid.UUID,
+    step_id: uuid.UUID,
+    req: schemas.JourneyStepUpdate,
+    db: Session = Depends(get_db)
+):
     # Buscar jornada
     journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
     if not journey:
         raise HTTPException(status_code=404, detail="Jornada não encontrada.")
     
     # Buscar etapa
-    step = db.query(models.EtapaJornada).filter(models.EtapaJornada.id == step_id, models.EtapaJornada.jornada_id == id).first()
+    step = db.query(models.EtapaJornada).filter(
+        models.EtapaJornada.id == step_id,
+        models.EtapaJornada.jornada_id == id
+    ).first()
     if not step:
         raise HTTPException(status_code=404, detail="Etapa não encontrada nesta jornada.")
     

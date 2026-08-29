@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 from app.main import app
+
 
 # Fixture para configurar o TestClient com injeção do db_session em memória do pytest
 @pytest.fixture(scope="function")
