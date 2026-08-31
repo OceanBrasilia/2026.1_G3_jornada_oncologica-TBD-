@@ -2,7 +2,6 @@ import uuid
 from datetime import date
 
 import bcrypt
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
