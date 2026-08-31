@@ -2000,15 +2000,28 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                     { key: "Hábitos (tabagismo, etilismo)", label: "Hábitos", fallback: "Ex-tabagista", source: "Enfermagem às 09:25" }
                   ].map(info => {
                     // Check conflicts
-                    const vals = new Set<string>();
+                    const vals = new Map<string, { val: string, time: string }>(); // specName -> {val, time}
+                    let lastSpec = "";
+                    let lastTime = "";
                     if (patient.formAnswers) {
-                      Object.values(patient.formAnswers).forEach(answers => {
+                      Object.entries(patient.formAnswers).forEach(([specKey, answers]) => {
                         const v = answers[info.key];
-                        if (v && v !== "—") vals.add(v);
+                        if (v && v !== "—" && info.key !== "_updatedAt") {
+                          const specObj = patient.specialties.find(s => s.id === specKey);
+                          const specName = specObj?.name || specKey;
+                          const t = answers._updatedAt || specObj?.completedTime || "recente";
+                          vals.set(specName, { val: v, time: t });
+                          lastSpec = specName;
+                          lastTime = t;
+                        }
                       });
                     }
-                    const hasConflict = vals.size > 1;
-                    const value = patient.formAnswers?.enfermagem?.[info.key] ?? info.fallback;
+                    const distinctVals = new Set(Array.from(vals.values()).map(x => x.val));
+                    const hasConflict = distinctVals.size > 1;
+                    const value = hasConflict 
+                      ? Array.from(vals.entries()).map(([s, obj]) => `${obj.val} (${s} às ${obj.time})`).join(" vs ") 
+                      : (Array.from(vals.values())[0]?.val ?? patient.formAnswers?.enfermagem?.[info.key] ?? info.fallback);
+                    const dynamicSource = vals.size > 0 ? `${lastSpec} às ${lastTime}` : info.source;
                     
                     return (
                       <div key={info.label} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${hasConflict ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
@@ -2019,7 +2032,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                           </div>
                           <p className={`text-sm font-semibold mb-2 leading-tight ${hasConflict ? "text-amber-900" : "text-[#1A2332]"}`}>{value}</p>
                         </div>
-                        <span className={`text-[10px] font-semibold mt-auto ${hasConflict ? "text-amber-600" : "text-[#2DB5A3]"}`}>↩ {info.source}</span>
+                        <span className={`text-[10px] font-semibold mt-auto ${hasConflict ? "text-amber-600" : "text-[#2DB5A3]"}`}>↩ {dynamicSource}</span>
                       </div>
                     );
                   })}
@@ -2179,34 +2192,46 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
+const SharedField = ({ label, value, from, onChange }: { label: string; value?: string; from?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div>
+    <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
+    {from
+      ? <div className="relative">
+          <input type="text" value={value ?? ""} onChange={onChange}
+            className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition" />
+          <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2">↩ {from}</span>
+        </div>
+      : <input type="text" value={value ?? ""} onChange={onChange}
+          className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 transition" />}
+  </div>
+);
+
+function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
   onBack: () => void;
+  onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
   const isEdit = mode === "edit";
   const spec = patient.specialties.find(s => s.id === specId);
-  const [obs, setObs] = useState("");
-  const [weight, setWeight] = useState(patient.weight ?? "");
-  const [height, setHeight] = useState(patient.height ?? "");
-  const imc = weight && height
-    ? (parseFloat(weight) / Math.pow(parseFloat(height.replace(",", ".")), 2)).toFixed(1)
-    : "—";
+  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.Observações ?? "");
+  const [weight, setWeight] = useState(patient.formAnswers?.[specId]?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? patient.weight ?? "");
+  const [height, setHeight] = useState(patient.formAnswers?.[specId]?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? patient.height ?? "");
+  const [comorbidities, setComorbidities] = useState(patient.formAnswers?.[specId]?.Comorbidades ?? patient.formAnswers?.enfermagem?.Comorbidades ?? "");
+  const [habits, setHabits] = useState(patient.formAnswers?.[specId]?.["Hábitos (tabagismo, etilismo)"] ?? patient.formAnswers?.enfermagem?.["Hábitos (tabagismo, etilismo)"] ?? "");
+  const [alergias, setAlergias] = useState(patient.formAnswers?.[specId]?.Alergias ?? patient.formAnswers?.enfermagem?.Alergias ?? "");
+  const [queixas, setQueixas] = useState(patient.formAnswers?.[specId]?.["Queixas principais"] ?? patient.formAnswers?.enfermagem?.["Queixas principais"] ?? "");
+  const [diag, setDiag] = useState(patient.formAnswers?.[specId]?.["Diagnóstico oncológico"] ?? "");
+  const [estad, setEstad] = useState(patient.formAnswers?.[specId]?.Estadiamento ?? "");
+  const [conduta, setConduta] = useState(patient.formAnswers?.[specId]?.["Conduta proposta"] ?? "");
 
-  const SharedField = ({ label, defaultValue, from, onChange }: { label: string; defaultValue: string; from?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      {from
-        ? <div className="relative">
-            <input type="text" defaultValue={defaultValue} onChange={onChange}
-              className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition" />
-            <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2">↩ {from}</span>
-          </div>
-        : <input type="text" defaultValue={defaultValue} onChange={onChange}
-            className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 transition" />}
-    </div>
-  );
+  const getAnswers = () => ({
+    Peso: weight, Altura: height, Comorbidades: comorbidities, "Hábitos (tabagismo, etilismo)": habits, Alergias: alergias, "Queixas principais": queixas, 
+    "Diagnóstico oncológico": diag, Estadiamento: estad, "Conduta proposta": conduta, Observações: obs
+  });
+
+  const imc = weight && height
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -2242,7 +2267,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
             <div>
               <SharedField 
                 label="Peso (kg)" 
-                defaultValue={patient.formAnswers?.nutricao?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? weight} 
+                value={weight} 
                 from={patient.formAnswers?.enfermagem?.Peso ? "Enfermagem" : undefined}
                 onChange={e => setWeight(e.target.value)} 
               />
@@ -2250,7 +2275,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
             <div>
               <SharedField 
                 label="Altura (m)" 
-                defaultValue={patient.formAnswers?.nutricao?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? height} 
+                value={height} 
                 from={patient.formAnswers?.enfermagem?.Altura ? "Enfermagem" : undefined}
                 onChange={e => setHeight(e.target.value)} 
               />
@@ -2337,21 +2362,24 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-[#1A2332] mb-1">Comorbidades</label>
-              <input type="text" placeholder="Ex.: Hipertensão, Diabetes" defaultValue={patient.formAnswers?.enfermagem?.Comorbidades ?? ""}
+              <input type="text" placeholder="Ex.: Hipertensão, Diabetes" value={comorbidities} onChange={e => setComorbidities(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
             </div>
             <div>
               <label className="block text-xs font-bold text-[#1A2332] mb-1">Hábitos (tabagismo, etilismo)</label>
-              <input type="text" placeholder="Ex.: Ex-tabagista, etilismo social" defaultValue={patient.formAnswers?.enfermagem?.["Hábitos (tabagismo, etilismo)"] ?? ""}
+              <input type="text" placeholder="Ex.: Ex-tabagista, etilismo social" value={habits} onChange={e => setHabits(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
             </div>
-            {["Alergias","Queixas principais"].map(f => (
-              <div key={f}>
-                <label className="block text-xs font-bold text-[#1A2332] mb-1">{f}</label>
-                <input type="text" defaultValue={patient.formAnswers?.enfermagem?.[f] ?? ""}
-                  className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-              </div>
-            ))}
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Alergias</label>
+              <input type="text" value={alergias} onChange={e => setAlergias(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Queixas principais</label>
+              <input type="text" value={queixas} onChange={e => setQueixas(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
           </div>
         </div>
       )}
@@ -2361,10 +2389,10 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
           <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
             <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Dados Compartilhados (Enfermagem)</h3>
             <div className="grid sm:grid-cols-2 gap-3">
-              <SharedField label="Peso" defaultValue={patient.formAnswers?.medicina?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? patient.weight ?? "—"} from="Enfermagem" />
-              <SharedField label="Altura" defaultValue={patient.formAnswers?.medicina?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? patient.height ?? "—"} from="Enfermagem" />
-              <SharedField label="Comorbidades" defaultValue={patient.formAnswers?.medicina?.Comorbidades ?? patient.formAnswers?.enfermagem?.Comorbidades ?? "—"} from="Enfermagem" />
-              <SharedField label="Hábitos" defaultValue={patient.formAnswers?.medicina?.["Hábitos (tabagismo, etilismo)"] ?? patient.formAnswers?.enfermagem?.["Hábitos (tabagismo, etilismo)"] ?? "—"} from="Enfermagem" />
+              <SharedField label="Peso" value={weight} onChange={e => setWeight(e.target.value)} from="Enfermagem" />
+              <SharedField label="Altura" value={height} onChange={e => setHeight(e.target.value)} from="Enfermagem" />
+              <SharedField label="Comorbidades" value={comorbidities} onChange={e => setComorbidities(e.target.value)} from="Enfermagem" />
+              <SharedField label="Hábitos" value={habits} onChange={e => setHabits(e.target.value)} from="Enfermagem" />
             </div>
           </div>
 
@@ -2372,13 +2400,13 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
             <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Médica</h3>
             <div className="space-y-3">
               {[
-                { label: "Diagnóstico oncológico", val: patient.formAnswers?.medicina?.["Diagnóstico oncológico"] },
-                { label: "Estadiamento", val: patient.formAnswers?.medicina?.["Estadiamento"] },
-                { label: "Conduta proposta", val: patient.formAnswers?.medicina?.["Conduta proposta"] }
+                { label: "Diagnóstico oncológico", val: diag, setter: setDiag },
+                { label: "Estadiamento", val: estad, setter: setEstad },
+                { label: "Conduta proposta", val: conduta, setter: setConduta }
               ].map(f => (
                 <div key={f.label}>
                   <label className="block text-xs font-bold text-[#1A2332] mb-1">{f.label}</label>
-                  <input type="text" defaultValue={f.val ?? ""}
+                  <input type="text" value={f.val} onChange={e => f.setter(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
                 </div>
               ))}
@@ -2417,13 +2445,16 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
           className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
           <ArrowLeft size={15} /> Voltar
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+        <button onClick={() => onSave(specId, getAnswers(), "em-atendimento")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
           <Save size={15} /> Salvar rascunho
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
+        <button onClick={() => onSave(specId, getAnswers(), "nao-se-aplica")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
           <X size={15} /> Não se aplica
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
+        <button onClick={() => onSave(specId, getAnswers(), "atendido")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
           <CheckCircle size={15} /> Finalizar atendimento
         </button>
       </div>
@@ -3153,15 +3184,16 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [patientsList, setPatientsList] = useState<Patient[]>(PATIENTS);
   const [screen, setScreen] = useState<Screen>("login");
   const [role, setRole] = useState<Role | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<Patient>(PATIENTS[0]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient>(patientsList[0]);
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
 
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
-  const baseNotifications = buildNotifications(PATIENTS);
+  const baseNotifications = buildNotifications(patientsList);
   const notifications: AppNotification[] = baseNotifications.map(n => ({ ...n, read: readNotifIds.has(n.id) }));
   function markAllRead() { setReadNotifIds(new Set(baseNotifications.map(n => n.id))); }
 
@@ -3186,6 +3218,49 @@ export default function App() {
     setSelectedSpec(specId);
     setSpecMode(mode);
     setScreen("specialty-form");
+  }
+
+  function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+    
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
+      if (pIndex === -1) return prev;
+      
+      const p = prev[pIndex];
+      const newSpecialties = p.specialties.map(s => {
+        if (s.id !== specId) return s;
+        return {
+          ...s,
+          status,
+          completedTime: status === "atendido" ? time : s.completedTime,
+          professional: status === "atendido" || status === "em-atendimento" ? userName : s.professional
+        };
+      });
+
+      const newFormAnswers = {
+        ...(p.formAnswers || {}),
+        [specId]: {
+          ...(p.formAnswers?.[specId] || {}),
+          ...answers,
+          _updatedAt: time
+        }
+      };
+
+      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers };
+      if (answers.Peso) updatedPatient.weight = answers.Peso;
+      if (answers.Altura) updatedPatient.height = answers.Altura;
+      
+      setSelectedPatient(updatedPatient);
+      // mutate global PATIENTS as well so other components reading it pick it up if they aren't fully migrated
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+      
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      return newList;
+    });
+    setScreen("patient-record");
   }
 
   const getScreenTitle = () => {
@@ -3246,7 +3321,7 @@ export default function App() {
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
       {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} />}
-      {screen === "specialty-form" && <SpecialtyFormScreen patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} />}
+      {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} />}
     </AppLayout>
   );
