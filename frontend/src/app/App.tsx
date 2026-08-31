@@ -2215,7 +2215,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 }) {
   const isEdit = mode === "edit";
   const spec = patient.specialties.find(s => s.id === specId);
-  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.Observações ?? "");
+  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
   const [weight, setWeight] = useState(patient.formAnswers?.[specId]?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? patient.weight ?? "");
   const [height, setHeight] = useState(patient.formAnswers?.[specId]?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? patient.height ?? "");
   const [comorbidities, setComorbidities] = useState(patient.formAnswers?.[specId]?.Comorbidades ?? patient.formAnswers?.enfermagem?.Comorbidades ?? "");
@@ -2228,7 +2228,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 
   const getAnswers = () => ({
     Peso: weight, Altura: height, Comorbidades: comorbidities, "Hábitos (tabagismo, etilismo)": habits, Alergias: alergias, "Queixas principais": queixas, 
-    "Diagnóstico oncológico": diag, Estadiamento: estad, "Conduta proposta": conduta, Observações: obs
+    "Diagnóstico oncológico": diag, Estadiamento: estad, "Conduta proposta": conduta, "Observações": obs
   });
 
   const imc = weight && height
@@ -2615,7 +2615,7 @@ function ProfessionalsManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Professional | null>(null);
 
-  const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as const };
+  const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as "ativo" | "inativo" };
   const [form, setForm] = useState(emptyForm);
 
   const filtered = professionals.filter(p => {
