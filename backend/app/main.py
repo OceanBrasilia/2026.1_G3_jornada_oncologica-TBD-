@@ -1,9 +1,9 @@
 import uuid
-import shortuuid
-import bcrypt
 from datetime import datetime, timezone
 from typing import List
 
+import bcrypt
+import shortuuid
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -57,7 +57,7 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     except ValueError:
         # Fallback caso a senha no banco não seja um hash bcrypt válido durante testes ou legados
         if req.password != usuario.senha_hash:
-            raise HTTPException(status_code=401, detail="Credenciais inválidas")
+            raise HTTPException(status_code=401, detail="Credenciais inválidas") from None
     
     # Mocking token generation for now
     mock_token = str(uuid.uuid4())

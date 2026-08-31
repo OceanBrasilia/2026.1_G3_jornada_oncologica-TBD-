@@ -1,6 +1,7 @@
 import uuid
-import bcrypt
 from datetime import date
+
+import bcrypt
 
 import pytest
 from fastapi.testclient import TestClient
