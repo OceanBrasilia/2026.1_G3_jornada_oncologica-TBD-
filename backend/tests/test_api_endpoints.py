@@ -1,4 +1,5 @@
 import uuid
+import bcrypt
 from datetime import date
 
 import pytest
@@ -50,7 +51,7 @@ def usuario_seed(db_session: Session, perfil_seed, area_seed):
     usuario = models.Usuario(
         nome="Dr. Teste",
         email="drteste@example.com",
-        senha_hash="hashfalso",  # A API de login (para MVP) só checa se existe o e-mail no banco
+        senha_hash=bcrypt.hashpw(b"any", bcrypt.gensalt()).decode("utf-8"),
         perfil_id=perfil_seed.id,
         area_atendimento_id=area_seed.id
     )
@@ -108,6 +109,12 @@ def test_login_success(client: TestClient, usuario_seed):
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+
+
+def test_login_wrong_password(client: TestClient, usuario_seed):
+    response = client.post("/login", json={"email": "drteste@example.com", "password": "wrong"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciais inválidas"
 
 
 def test_login_failure(client: TestClient):
@@ -227,6 +234,34 @@ def test_update_journey_step(client: TestClient, jornada_seed, usuario_seed):
     assert data["iniciada_em"] is not None
     assert data["observacao"] == "Iniciando atendimento de teste"
     assert data["profissional_responsavel_id"] == str(usuario_seed.id)
+
+
+def test_update_journey_step_invalid_status(client: TestClient, jornada_seed):
+    jornada, etapa = jornada_seed
+    payload = {"status": "INVALIDO"}
+    response = client.patch(f"/journeys/{jornada.id}/steps/{etapa.id}", json=payload)
+    assert response.status_code == 422  # Erro do pydantic
+
+
+def test_update_journey_step_state_reversal(client: TestClient, jornada_seed, usuario_seed):
+    jornada, etapa = jornada_seed
+    
+    # Avança para EM_ATENDIMENTO
+    client.patch(
+        f"/journeys/{jornada.id}/steps/{etapa.id}", 
+        json={"status": "EM_ATENDIMENTO"}
+    )
+    
+    # Retorna para PENDENTE
+    response = client.patch(
+        f"/journeys/{jornada.id}/steps/{etapa.id}", 
+        json={"status": "PENDENTE"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "PENDENTE"
+    assert data["iniciada_em"] is None
+    assert data["finalizada_em"] is None
 
 
 # --- Teste aprofundado direto no Banco de Dados: Chaves Estrangeiras ---

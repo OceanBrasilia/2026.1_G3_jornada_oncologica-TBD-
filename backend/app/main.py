@@ -1,5 +1,7 @@
 import uuid
-from datetime import datetime
+import shortuuid
+import bcrypt
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -44,8 +46,18 @@ def health_check(db: Session = Depends(get_db)):
 @app.post("/login")
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     usuario = db.query(models.Usuario).filter(models.Usuario.email == req.email).first()
-    if not usuario:
+    
+    if not usuario or not usuario.senha_hash:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
+        
+    try:
+        # Verifica a senha com bcrypt
+        if not bcrypt.checkpw(req.password.encode('utf-8'), usuario.senha_hash.encode('utf-8')):
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    except ValueError:
+        # Fallback caso a senha no banco não seja um hash bcrypt válido durante testes ou legados
+        if req.password != usuario.senha_hash:
+            raise HTTPException(status_code=401, detail="Credenciais inválidas")
     
     # Mocking token generation for now
     mock_token = str(uuid.uuid4())
@@ -71,8 +83,8 @@ def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)
             detail="Já existe um paciente cadastrado com este CPF."
         )
     
-    # Gerar um codigo_publico (exemplo com 8 caracteres a partir do UUID)
-    codigo_publico = str(uuid.uuid4())[:8].upper()
+    # Gerar um codigo_publico seguro com shortuuid
+    codigo_publico = shortuuid.ShortUUID().random(length=8).upper()
 
     new_patient = models.Patient(
         codigo_publico=codigo_publico,
@@ -101,15 +113,15 @@ def create_journey(req: schemas.JourneyCreateRequest, db: Session = Depends(get_
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuário (criador) não encontrado.")
     
-    # Gerar um código automático para a jornada
-    codigo = f"JORN-{str(uuid.uuid4())[:6].upper()}"
+    # Gerar um código automático seguro para a jornada
+    codigo = f"JORN-{shortuuid.ShortUUID().random(length=6).upper()}"
 
     new_journey = models.Jornada(
         paciente_id=req.paciente_id,
         criado_por_id=req.criado_por_id,
         codigo=codigo,
-        data_acolhimento=datetime.utcnow().date(),
-        criado_em=datetime.utcnow()
+        data_acolhimento=datetime.now(timezone.utc).date(),
+        criado_em=datetime.now(timezone.utc)
     )
     db.add(new_journey)
     db.commit()
@@ -148,11 +160,17 @@ def update_journey_step(
     for key, value in update_data.items():
         setattr(step, key, value)
     
-    # Logica opcional de negocio sobre status -> datas
-    if req.status == "EM_ATENDIMENTO" and not step.iniciada_em:
-        step.iniciada_em = datetime.utcnow()
-    elif req.status in ["ATENDIDO", "NAO_SE_APLICA"] and not step.finalizada_em:
-        step.finalizada_em = datetime.utcnow()
+    # Lógica de negócio sobre status -> datas
+    if req.status == "PENDENTE":
+        step.iniciada_em = None
+        step.finalizada_em = None
+    elif req.status == "EM_ATENDIMENTO":
+        step.finalizada_em = None
+        if not step.iniciada_em:
+            step.iniciada_em = datetime.now(timezone.utc)
+    elif req.status in ["ATENDIDO", "NAO_SE_APLICA"]:
+        if not step.finalizada_em:
+            step.finalizada_em = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(step)

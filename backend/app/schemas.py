@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -468,7 +468,7 @@ class JourneyCreateRequest(BaseModel):
 
 
 class JourneyStepUpdate(BaseModel):
-    status: Optional[str] = None
+    status: Optional[Literal["PENDENTE", "EM_ATENDIMENTO", "ATENDIDO", "NAO_SE_APLICA"]] = None
     profissional_responsavel_id: Optional[UUID] = None
     observacao: Optional[str] = None
     prioridade: Optional[int] = None
