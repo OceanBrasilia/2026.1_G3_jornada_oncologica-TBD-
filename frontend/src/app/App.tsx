@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
@@ -2009,7 +2009,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                         if (v && v !== "—" && info.key !== "_updatedAt") {
                           const specObj = patient.specialties.find(s => s.id === specKey);
                           const specName = specObj?.name || specKey;
-                          const t = answers._updatedAt || specObj?.completedTime || "recente";
+                          const t = answers["_updatedAt"] || specObj?.completedTime || "recente";
                           vals.set(specName, { val: v, time: t });
                           lastSpec = specName;
                           lastTime = t;
