@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
@@ -103,15 +103,19 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Peso": "68 kg",
     "Altura": "1,63 m",
     "Alergias": "Dipirona",
+    "Comorbidades": "Hipertensão controlada",
+    "Hábitos (tabagismo, etilismo)": "Ex-tabagista (parou há 5 anos), etilismo social",
     "Queixas principais": "Dor moderada no local da cirurgia. Relata cansaço frequente.",
   },
   medicina: {
+    "Diagnóstico oncológico": "Câncer de Mama",
     "Estadiamento": "IIA",
     "Tipo histológico": "Carcinoma ductal invasivo",
     "Metástase": "Não identificada",
     "Conduta proposta": "Quimioterapia neoadjuvante",
     "Encaminhamentos": "Oncologia clínica, Radioterapia",
     "Observações": "Paciente orientada sobre plano terapêutico. Exames complementares solicitados.",
+    "Peso": "70 kg"
   },
   nutricao: {
     "Peso": "68 kg",
@@ -1944,38 +1948,94 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
         <div className="p-5">
           {activeTab === "resumo" ? (
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Dados do paciente</h4>
-                <dl className="space-y-2">
-                  {[
-                    ["CPF", patient.cpf],
-                    ["CNS", patient.cns ?? "—"],
-                    ["Telefone", patient.phone],
-                    ["Estado civil", patient.maritalStatus ?? "—"],
-                    ["Cor/raça", patient.raceColor ?? "—"],
-                    ["Religião", patient.religion ?? "—"],
-                    ["Endereço", patient.address],
-                    ["Emergência", patient.emergencyContact],
-                    ...(patient.weight ? [["Peso", patient.weight], ["Altura", patient.height ?? "—"]] : []),
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex gap-2 text-sm">
-                      <dt className="text-[#9AAABB] font-medium min-w-[90px] shrink-0">{k}</dt>
-                      <dd className="text-[#1A2332] font-medium">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
+            <div className="space-y-6">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Dados do paciente</h4>
+                  <dl className="space-y-2">
+                    {[
+                      ["CPF", patient.cpf],
+                      ["CNS", patient.cns ?? "—"],
+                      ["Telefone", patient.phone],
+                      ["Estado civil", patient.maritalStatus ?? "—"],
+                      ["Cor/raça", patient.raceColor ?? "—"],
+                      ["Religião", patient.religion ?? "—"],
+                      ["Endereço", patient.address],
+                      ["Emergência", patient.emergencyContact],
+                    ].map(([k, v]) => (
+                      <div key={k} className="flex gap-2 text-sm">
+                        <dt className="text-[#9AAABB] font-medium min-w-[90px] shrink-0">{k}</dt>
+                        <dd className="text-[#1A2332] font-medium">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+                <div>
+                  <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Status por especialidade</h4>
+                  <div className="space-y-1.5">
+                    {patient.specialties.map(sp => (
+                      <button key={sp.id} onClick={() => setActiveTab(sp.id)}
+                        className="w-full flex items-center justify-between py-2 px-3 rounded-xl hover:bg-[#F4F7FB] transition-colors border border-transparent hover:border-[#EEF2F7]">
+                        <span className="text-sm font-medium text-[#1A2332]">{sp.name}</span>
+                        <StatusBadge status={sp.status} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              {/* Informações Compartilhadas */}
               <div>
-                <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Status por especialidade</h4>
-                <div className="space-y-1.5">
-                  {patient.specialties.map(sp => (
-                    <button key={sp.id} onClick={() => setActiveTab(sp.id)}
-                      className="w-full flex items-center justify-between py-2 px-3 rounded-xl hover:bg-[#F4F7FB] transition-colors border border-transparent hover:border-[#EEF2F7]">
-                      <span className="text-sm font-medium text-[#1A2332]">{sp.name}</span>
-                      <StatusBadge status={sp.status} />
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-[#2DB5A3]" />
+                  <h4 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Informações Compartilhadas</h4>
+                  <span className="text-[10px] text-[#2DB5A3] font-bold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20">Histórico unificado</span>
+                </div>
+                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { key: "Peso", label: "Peso", fallback: patient.weight ?? "—", source: "Enfermagem às 09:25" },
+                    { key: "Altura", label: "Altura", fallback: patient.height ?? "—", source: "Enfermagem às 09:25" },
+                    { key: "Alergias", label: "Alergias", fallback: "Dipirona", source: "Enfermagem às 09:25" },
+                    { key: "Comorbidades", label: "Comorbidades", fallback: "Hipertensão controlada", source: "Enfermagem às 09:25" },
+                    { key: "Hábitos (tabagismo, etilismo)", label: "Hábitos", fallback: "Ex-tabagista", source: "Enfermagem às 09:25" }
+                  ].map(info => {
+                    // Check conflicts
+                    const vals = new Map<string, { val: string, time: string }>(); // specName -> {val, time}
+                    let lastSpec = "";
+                    let lastTime = "";
+                    if (patient.formAnswers) {
+                      Object.entries(patient.formAnswers).forEach(([specKey, answers]) => {
+                        const v = answers[info.key];
+                        if (v && v !== "—" && info.key !== "_updatedAt") {
+                          const specObj = patient.specialties.find(s => s.id === specKey);
+                          const specName = specObj?.name || specKey;
+                          const t = answers["_updatedAt"] || specObj?.completedTime || "recente";
+                          vals.set(specName, { val: v, time: t });
+                          lastSpec = specName;
+                          lastTime = t;
+                        }
+                      });
+                    }
+                    const distinctVals = new Set(Array.from(vals.values()).map(x => x.val));
+                    const hasConflict = distinctVals.size > 1;
+                    const value = hasConflict 
+                      ? Array.from(vals.entries()).map(([s, obj]) => `${obj.val} (${s} às ${obj.time})`).join(" vs ") 
+                      : (Array.from(vals.values())[0]?.val ?? patient.formAnswers?.enfermagem?.[info.key] ?? info.fallback);
+                    const dynamicSource = vals.size > 0 ? `${lastSpec} às ${lastTime}` : info.source;
+                    
+                    return (
+                      <div key={info.label} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${hasConflict ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
+                        <div>
+                          <div className="flex items-start justify-between gap-1 mb-0.5">
+                            <p className={`text-xs font-bold ${hasConflict ? "text-amber-700" : "text-[#6B7A8D]"}`}>{info.label}</p>
+                            {hasConflict && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-bold" title="Dados divergentes registrados por outras especialidades"><AlertCircle size={10}/> divergência</span>}
+                          </div>
+                          <p className={`text-sm font-semibold mb-2 leading-tight ${hasConflict ? "text-amber-900" : "text-[#1A2332]"}`}>{value}</p>
+                        </div>
+                        <span className={`text-[10px] font-semibold mt-auto ${hasConflict ? "text-amber-600" : "text-[#2DB5A3]"}`}>↩ {dynamicSource}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -2132,33 +2192,46 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
+const SharedField = ({ label, value, from, onChange }: { label: string; value?: string; from?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
+  <div>
+    <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
+    {from
+      ? <div className="relative">
+          <input type="text" value={value ?? ""} onChange={onChange}
+            className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition" />
+          <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2">↩ {from}</span>
+        </div>
+      : <input type="text" value={value ?? ""} onChange={onChange}
+          className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 transition" />}
+  </div>
+);
+
+function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
   onBack: () => void;
+  onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
   const isEdit = mode === "edit";
   const spec = patient.specialties.find(s => s.id === specId);
-  const [obs, setObs] = useState("");
-  const [weight, setWeight] = useState(patient.weight ?? "");
-  const [height, setHeight] = useState(patient.height ?? "");
-  const imc = weight && height
-    ? (parseFloat(weight) / Math.pow(parseFloat(height.replace(",", ".")), 2)).toFixed(1)
-    : "—";
+  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
+  const [weight, setWeight] = useState(patient.formAnswers?.[specId]?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? patient.weight ?? "");
+  const [height, setHeight] = useState(patient.formAnswers?.[specId]?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? patient.height ?? "");
+  const [comorbidities, setComorbidities] = useState(patient.formAnswers?.[specId]?.Comorbidades ?? patient.formAnswers?.enfermagem?.Comorbidades ?? "");
+  const [habits, setHabits] = useState(patient.formAnswers?.[specId]?.["Hábitos (tabagismo, etilismo)"] ?? patient.formAnswers?.enfermagem?.["Hábitos (tabagismo, etilismo)"] ?? "");
+  const [alergias, setAlergias] = useState(patient.formAnswers?.[specId]?.Alergias ?? patient.formAnswers?.enfermagem?.Alergias ?? "");
+  const [queixas, setQueixas] = useState(patient.formAnswers?.[specId]?.["Queixas principais"] ?? patient.formAnswers?.enfermagem?.["Queixas principais"] ?? "");
+  const [diag, setDiag] = useState(patient.formAnswers?.[specId]?.["Diagnóstico oncológico"] ?? "");
+  const [estad, setEstad] = useState(patient.formAnswers?.[specId]?.Estadiamento ?? "");
+  const [conduta, setConduta] = useState(patient.formAnswers?.[specId]?.["Conduta proposta"] ?? "");
 
-  const SharedField = ({ label, value, from }: { label: string; value: string; from?: string }) => (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      {from
-        ? <div className="px-3 py-2.5 rounded-xl bg-[#F0FBF9] border border-[#2DB5A3]/30 text-sm text-[#1A2332] flex items-center justify-between">
-            <span>{value}</span>
-            <span className="text-[10px] text-[#2DB5A3] font-semibold">↩ {from}</span>
-          </div>
-        : <input type="text" value={value} readOnly
-            className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332]" />}
-    </div>
-  );
+  const getAnswers = () => ({
+    Peso: weight, Altura: height, Comorbidades: comorbidities, "Hábitos (tabagismo, etilismo)": habits, Alergias: alergias, "Queixas principais": queixas, 
+    "Diagnóstico oncológico": diag, Estadiamento: estad, "Conduta proposta": conduta, "Observações": obs
+  });
+
+  const imc = weight && height
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -2192,16 +2265,20 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
           <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Nutricional</h3>
           <div className="grid sm:grid-cols-3 gap-3 mb-4">
             <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Peso (kg)</label>
-              <input type="text" value={weight} onChange={e => setWeight(e.target.value)}
-                placeholder="Ex.: 68"
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+              <SharedField 
+                label="Peso (kg)" 
+                value={weight} 
+                from={patient.formAnswers?.enfermagem?.Peso ? "Enfermagem" : undefined}
+                onChange={e => setWeight(e.target.value)} 
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Altura (m)</label>
-              <input type="text" value={height} onChange={e => setHeight(e.target.value)}
-                placeholder="Ex.: 1,63"
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+              <SharedField 
+                label="Altura (m)" 
+                value={height} 
+                from={patient.formAnswers?.enfermagem?.Altura ? "Enfermagem" : undefined}
+                onChange={e => setHeight(e.target.value)} 
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-[#1A2332] mb-1">IMC</label>
@@ -2265,7 +2342,80 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
         </div>
       )}
 
-      {(specId !== "nutricao" && specId !== "fisioterapia" && specId !== "terapia-ocupacional") && (
+      {specId === "enfermagem" && (
+        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
+          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação de Enfermagem</h3>
+          <div className="grid sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Peso (kg)</label>
+              <input type="text" value={weight} onChange={e => setWeight(e.target.value)}
+                placeholder="Ex.: 68"
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Altura (m)</label>
+              <input type="text" value={height} onChange={e => setHeight(e.target.value)}
+                placeholder="Ex.: 1,63"
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Comorbidades</label>
+              <input type="text" placeholder="Ex.: Hipertensão, Diabetes" value={comorbidities} onChange={e => setComorbidities(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Hábitos (tabagismo, etilismo)</label>
+              <input type="text" placeholder="Ex.: Ex-tabagista, etilismo social" value={habits} onChange={e => setHabits(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Alergias</label>
+              <input type="text" value={alergias} onChange={e => setAlergias(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-[#1A2332] mb-1">Queixas principais</label>
+              <input type="text" value={queixas} onChange={e => setQueixas(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {specId === "medicina" && (
+        <div className="space-y-5">
+          <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
+            <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Dados Compartilhados (Enfermagem)</h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <SharedField label="Peso" value={weight} onChange={e => setWeight(e.target.value)} from="Enfermagem" />
+              <SharedField label="Altura" value={height} onChange={e => setHeight(e.target.value)} from="Enfermagem" />
+              <SharedField label="Comorbidades" value={comorbidities} onChange={e => setComorbidities(e.target.value)} from="Enfermagem" />
+              <SharedField label="Hábitos" value={habits} onChange={e => setHabits(e.target.value)} from="Enfermagem" />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
+            <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Médica</h3>
+            <div className="space-y-3">
+              {[
+                { label: "Diagnóstico oncológico", val: diag, setter: setDiag },
+                { label: "Estadiamento", val: estad, setter: setEstad },
+                { label: "Conduta proposta", val: conduta, setter: setConduta }
+              ].map(f => (
+                <div key={f.label}>
+                  <label className="block text-xs font-bold text-[#1A2332] mb-1">{f.label}</label>
+                  <input type="text" value={f.val} onChange={e => f.setter(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(specId !== "nutricao" && specId !== "fisioterapia" && specId !== "terapia-ocupacional" && specId !== "enfermagem" && specId !== "medicina") && (
         <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
           <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Campos específicos – {spec?.name}</h3>
           <div className="space-y-3">
@@ -2295,13 +2445,16 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack }: {
           className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
           <ArrowLeft size={15} /> Voltar
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+        <button onClick={() => onSave(specId, getAnswers(), "em-atendimento")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
           <Save size={15} /> Salvar rascunho
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
+        <button onClick={() => onSave(specId, getAnswers(), "nao-se-aplica")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
           <X size={15} /> Não se aplica
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
+        <button onClick={() => onSave(specId, getAnswers(), "atendido")}
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
           <CheckCircle size={15} /> Finalizar atendimento
         </button>
       </div>
@@ -2462,7 +2615,7 @@ function ProfessionalsManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Professional | null>(null);
 
-  const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as const };
+  const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as "ativo" | "inativo" };
   const [form, setForm] = useState(emptyForm);
 
   const filtered = professionals.filter(p => {
@@ -3031,15 +3184,16 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [patientsList, setPatientsList] = useState<Patient[]>(PATIENTS);
   const [screen, setScreen] = useState<Screen>("login");
   const [role, setRole] = useState<Role | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<Patient>(PATIENTS[0]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient>(patientsList[0]);
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
 
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
-  const baseNotifications = buildNotifications(PATIENTS);
+  const baseNotifications = buildNotifications(patientsList);
   const notifications: AppNotification[] = baseNotifications.map(n => ({ ...n, read: readNotifIds.has(n.id) }));
   function markAllRead() { setReadNotifIds(new Set(baseNotifications.map(n => n.id))); }
 
@@ -3064,6 +3218,49 @@ export default function App() {
     setSelectedSpec(specId);
     setSpecMode(mode);
     setScreen("specialty-form");
+  }
+
+  function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+    
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
+      if (pIndex === -1) return prev;
+      
+      const p = prev[pIndex];
+      const newSpecialties = p.specialties.map(s => {
+        if (s.id !== specId) return s;
+        return {
+          ...s,
+          status,
+          completedTime: status === "atendido" ? time : s.completedTime,
+          professional: status === "atendido" || status === "em-atendimento" ? userName : s.professional
+        };
+      });
+
+      const newFormAnswers = {
+        ...(p.formAnswers || {}),
+        [specId]: {
+          ...(p.formAnswers?.[specId] || {}),
+          ...answers,
+          _updatedAt: time
+        }
+      };
+
+      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers };
+      if (answers.Peso) updatedPatient.weight = answers.Peso;
+      if (answers.Altura) updatedPatient.height = answers.Altura;
+      
+      setSelectedPatient(updatedPatient);
+      // mutate global PATIENTS as well so other components reading it pick it up if they aren't fully migrated
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+      
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      return newList;
+    });
+    setScreen("patient-record");
   }
 
   const getScreenTitle = () => {
@@ -3124,7 +3321,7 @@ export default function App() {
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
       {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} />}
-      {screen === "specialty-form" && <SpecialtyFormScreen patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} />}
+      {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} />}
     </AppLayout>
   );
