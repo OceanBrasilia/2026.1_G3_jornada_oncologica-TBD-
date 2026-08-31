@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -73,8 +73,15 @@ class PatientBase(BaseModel):
     treatment_stage: Optional[str] = "Diagnóstico"
 
 
-class PatientCreate(PatientBase):
-    pass
+class PatientCreate(BaseModel):
+    nome_completo: str
+    data_nascimento: date
+    cpf: str
+    # Suporte legado
+    name: Optional[str] = None
+    email: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_stage: Optional[str] = "Diagnóstico"
 
 
 class PatientResponse(PatientBase):
@@ -446,3 +453,25 @@ class RegistroAuditoriaResponse(RegistroAuditoriaBase):
     criado_em: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Novas Request Schemas
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class JourneyCreateRequest(BaseModel):
+    paciente_id: UUID
+    criado_por_id: UUID
+
+
+class JourneyStepUpdate(BaseModel):
+    status: Optional[Literal["PENDENTE", "EM_ATENDIMENTO", "ATENDIDO", "NAO_SE_APLICA"]] = None
+    profissional_responsavel_id: Optional[UUID] = None
+    observacao: Optional[str] = None
+    prioridade: Optional[int] = None
+    motivo_nao_aplicavel: Optional[str] = None
+    ordem: Optional[int] = None
+    area_atendimento_id: Optional[UUID] = None

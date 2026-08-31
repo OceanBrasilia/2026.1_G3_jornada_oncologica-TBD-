@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Add backend directory to sys.path to allow importing app module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -22,7 +23,11 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 @pytest.fixture(scope="function")
 def db_engine():
     # Use SQLite in-memory, recreated for each test for perfect isolation and no transaction warnings
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool
+    )
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
