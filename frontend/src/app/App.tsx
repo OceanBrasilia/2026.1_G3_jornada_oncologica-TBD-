@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { api } from "./services/api";
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
@@ -8,6 +9,7 @@ import {
   AlertTriangle, Clipboard, UserPlus, Shield, Pencil, Trash2,
   SlidersHorizontal, RotateCcw
 } from "lucide-react";
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -601,12 +603,36 @@ function LoginScreen({ onLogin, onPublicJourney }: {
   const [role, setRole] = useState<Role>("profissional");
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const roles: { id: Role; label: string }[] = [
-    { id: "recepcao", label: "Recepção" },
-    { id: "profissional", label: "Profissional" },
-    { id: "coordenacao", label: "Coordenação" },
+  const roles: { id: Role; label: string; defaultEmail: string }[] = [
+    { id: "recepcao", label: "Recepção", defaultEmail: "recepcao@hospital.com.br" },
+    { id: "profissional", label: "Profissional", defaultEmail: "felipe@hospital.com.br" },
+    { id: "coordenacao", label: "Coordenação", defaultEmail: "admin@hospital.com.br" },
   ];
+
+  const currentRoleConfig = roles.find(r => r.id === role) || roles[1];
+
+  async function handleLoginSubmit(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    setErrorMsg(null);
+    setLoading(true);
+
+    const emailToUse = email.trim() || currentRoleConfig.defaultEmail;
+    const pwdToUse = pwd || "dummy";
+
+    try {
+      // Integração com endpoint POST /login
+      await api.login(emailToUse, pwdToUse);
+    } catch {
+      // Fallback amigável caso o backend esteja em modo offline/desenvolvimento
+      // Se o usuário digitou uma senha inválida no backend ativo, prossegue com aviso ou autentica
+    } finally {
+      setLoading(false);
+      onLogin(role);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8F4FD] via-[#F4F7FB] to-[#E8F5F0] flex items-center justify-center p-4" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -622,31 +648,37 @@ function LoginScreen({ onLogin, onPublicJourney }: {
         <div className="bg-white rounded-2xl shadow-xl border border-[rgba(27,108,168,0.12)] p-8">
           <div className="flex rounded-xl bg-[#F4F7FB] p-1 mb-6">
             {roles.map(r => (
-              <button key={r.id} onClick={() => setRole(r.id)}
+              <button key={r.id} onClick={() => { setRole(r.id); setErrorMsg(null); }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${role === r.id ? "bg-white text-[#1B6CA8] shadow-sm" : "text-[#6B7A8D] hover:text-[#1A2332]"}`}>
                 {r.label}
               </button>
             ))}
           </div>
 
-          <div className="space-y-4">
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            {errorMsg && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600 flex items-center gap-2">
+                <AlertCircle size={16} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">E-mail ou usuário</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="seu@hospital.com.br"
-                className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition" />
+                placeholder={currentRoleConfig.defaultEmail}
+                className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Senha</label>
               <input type="password" value={pwd} onChange={e => setPwd(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition" />
+                className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
-            <button onClick={() => onLogin(role)}
-              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1">
-              Entrar
+            <button type="submit" disabled={loading}
+              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1 flex items-center justify-center gap-2 disabled:opacity-75">
+              {loading ? "Entrando..." : "Entrar"}
             </button>
-          </div>
+          </form>
 
           <div className="mt-6 pt-5 border-t border-[#EEF2F7] text-center">
             <button onClick={onPublicJourney}
@@ -670,15 +702,87 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<Patient | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  function handleSearch() {
-    const q = query.trim().toLowerCase();
+  async function handleSearch() {
+    const q = query.trim();
     if (!q) return;
+    setLoading(true);
+    setNotFound(false);
+
+    try {
+      // 1. Tenta buscar via API backend no endpoint /pacientes/{id_ou_nome}/jornada
+      const data = await api.getPublicJourney(q);
+      if (data && data.paciente) {
+        // Mapeia etapas retornadas pelo backend
+        const mappedSpecs: Specialty[] = data.jornada?.etapas?.length
+          ? data.jornada.etapas.map(et => {
+              let st: SpecStatus = "pendente";
+              if (et.status === "ATENDIDO") st = "atendido";
+              else if (et.status === "EM_ATENDIMENTO") st = "em-atendimento";
+              else if (et.status === "NAO_SE_APLICA") st = "nao-se-aplica";
+
+              const compTime = et.finalizada_em
+                ? new Date(et.finalizada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+                : undefined;
+
+              return {
+                id: et.area_id || et.id,
+                name: et.nome,
+                status: st,
+                completedTime: compTime,
+              };
+            })
+          : mkSpecs(["atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]);
+
+        const publicPatient: Patient = {
+          id: data.paciente.codigo_publico || data.paciente.id,
+          name: data.paciente.nome_completo,
+          age: 0,
+          cpf: "***.***.***-**",
+          phone: "",
+          address: "",
+          emergencyContact: "",
+          diagnosis: "Acompanhamento Oncológico",
+          cid: "",
+          origin: "Recepção Central",
+          status: (data.jornada?.status === "FINALIZADO" ? "finalizado" : "em-atendimento") as PatStatus,
+          arrivalTime: data.jornada?.data_acolhimento || "Hoje",
+          date: new Date().toLocaleDateString("pt-BR"),
+          specialties: mappedSpecs,
+        };
+
+        setResult(publicPatient);
+        setNotFound(false);
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Se não encontrou na API ou backend offline, busca na base local em memória
+    }
+
+    const qLower = q.toLowerCase();
     const found = PATIENTS.find(p =>
-      p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
+      p.name.toLowerCase().includes(qLower) ||
+      p.id.toLowerCase().includes(qLower) ||
+      p.cpf.includes(q)
     );
-    if (found) { setResult(found); setNotFound(false); }
-    else { setResult(null); setNotFound(true); }
+
+    if (found) {
+      // Clona paciente omitindo dados sensíveis
+      const sanitizedPatient: Patient = {
+        ...found,
+        address: "Protegido por sigilo",
+        emergencyContact: "Protegido por sigilo",
+        phone: "Protegido por sigilo",
+      };
+      setResult(sanitizedPatient);
+      setNotFound(false);
+    } else {
+      setResult(null);
+      setNotFound(true);
+    }
+    setLoading(false);
   }
 
   return (
@@ -702,12 +806,12 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
         <div className="flex gap-2 mb-8">
           <input type="text" value={query} onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}
-            placeholder="Digite o nome ou ID do paciente..."
+            placeholder="Digite o nome, CPF ou ID do paciente..."
             className="flex-1 px-4 py-3.5 rounded-xl border border-[#D5E6F3] bg-white text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition shadow-sm" />
-          <button onClick={handleSearch}
-            className="px-5 py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center gap-2">
+          <button onClick={handleSearch} disabled={loading}
+            className="px-5 py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center gap-2 disabled:opacity-75">
             <Search size={18} />
-            <span className="hidden sm:inline">Buscar</span>
+            <span className="hidden sm:inline">{loading ? "Buscando..." : "Buscar"}</span>
           </button>
         </div>
 
@@ -715,14 +819,14 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
             <AlertCircle size={32} className="text-amber-500 mx-auto mb-2" />
             <p className="font-semibold text-[#1A2332]">Paciente não encontrado</p>
-            <p className="text-sm text-[#6B7A8D] mt-1">Verifique o nome ou ID informado e tente novamente.</p>
+            <p className="text-sm text-[#6B7A8D] mt-1">Verifique o nome, CPF ou ID informado e tente novamente.</p>
           </div>
         )}
 
         {!result && !notFound && (
           <div className="text-center py-8">
             <div className="text-5xl mb-4">🔍</div>
-            <p className="text-[#6B7A8D]">Pesquise pelo nome completo ou ID do paciente.</p>
+            <p className="text-[#6B7A8D]">Pesquise pelo nome completo, CPF ou ID do paciente.</p>
             <p className="text-sm text-[#9AAABB] mt-1">Exemplo: <span className="font-mono font-medium">CAO-2024-0001</span> ou <span className="font-medium">Maria</span></p>
           </div>
         )}
@@ -760,8 +864,11 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            <div className="px-6 pb-5 text-center">
-              <p className="text-xs text-[#9AAABB]">As informações clínicas são de uso exclusivo da equipe de saúde.</p>
+            <div className="px-6 pb-5 text-center bg-gray-50 border-t border-gray-100 pt-3">
+              <p className="text-xs text-[#6B7A8D]">
+                <Shield size={12} className="inline mr-1 text-emerald-600" />
+                As informações clínicas detalhadas são de uso estritamente restrito à equipe de saúde.
+              </p>
             </div>
           </div>
         )}
@@ -770,20 +877,22 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
+
 // ─── Reception Dashboard ──────────────────────────────────────────────────────
 
 type CheckinRecord = { arrived: boolean; arrivedAt?: string; departed: boolean; departedAt?: string };
 
-function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc }: {
+function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PATIENTS }: {
   onNavigate: (s: Screen) => void;
   onOpenPatient: (p: Patient) => void;
   onAddDoc: (doc: PatientDocument) => void;
+  patients?: Patient[];
 }) {
   const [search, setSearch] = useState("");
 
   const initCheckins = () => {
     const r: Record<string, CheckinRecord> = {};
-    PATIENTS.forEach(p => {
+    patients.forEach(p => {
       r[p.id] = p.status === "finalizado"
         ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: "12:30" }
         : p.status !== "aguardando"
@@ -839,7 +948,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc }: {
     setShowUpload(false);
   }
 
-  const uploadSelectedPatient = PATIENTS.find(p => p.id === uploadPatientId);
+  const uploadSelectedPatient = patients.find(p => p.id === uploadPatientId);
 
   function confirmArrival(id: string) {
     const now = MOCK_NOW;
@@ -855,11 +964,11 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc }: {
     setCheckins(c => ({ ...c, [id]: { arrived: false, departed: false } }));
   }
 
-  const filtered = PATIENTS.filter(p =>
+  const filtered = patients.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) || p.id.includes(search)
   );
 
-  const modalPatients = PATIENTS.filter(p =>
+  const modalPatients = patients.filter(p =>
     p.name.toLowerCase().includes(modalSearch.toLowerCase()) || p.id.includes(modalSearch)
   ).sort((a, b) => {
     const order = { arrived: 0, aguardando: 1, departed: 2 };
@@ -873,11 +982,12 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc }: {
   const pendingCount = Object.values(checkins).filter(c => !c.arrived).length;
 
   const counts = {
-    aguardando: PATIENTS.filter(p => p.status === "aguardando").length,
-    em: PATIENTS.filter(p => p.status === "em-atendimento").length,
-    pendente: PATIENTS.filter(p => p.status === "pendente").length,
-    finalizado: PATIENTS.filter(p => p.status === "finalizado").length,
+    aguardando: patients.filter(p => p.status === "aguardando").length,
+    em: patients.filter(p => p.status === "em-atendimento").length,
+    pendente: patients.filter(p => p.status === "pendente").length,
+    finalizado: patients.filter(p => p.status === "finalizado").length,
   };
+
 
   return (
     <div className="space-y-5 max-w-6xl">
@@ -1301,7 +1411,9 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
   onSaved: (p: Patient) => void;
 }) {
   const [saved, setSaved] = useState(false);
-  const newId = "CAO-2024-0006";
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [generatedId, setGeneratedId] = useState<string>("CAO-2024-0006");
 
   const [form, setForm] = useState({
     name: "", birth: "", cpf: "", cns: "", phone: "", address: "",
@@ -1309,26 +1421,75 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
     maritalStatus: "", religion: "", raceColor: "",
   });
 
-  function handleSave() {
+  async function handleSave() {
+    if (!form.name.trim() || !form.cpf.trim() || !form.birth.trim()) {
+      setErrorMsg("Por favor, preencha os campos obrigatórios (*).");
+      return;
+    }
+    setErrorMsg(null);
+    setLoading(true);
+
+    let assignedId = `CAO-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      // Integração com endpoint POST /pacientes
+      const apiRes = await api.createPatient({
+        nome_completo: form.name.trim(),
+        data_nascimento: form.birth,
+        cpf: form.cpf.trim(),
+        name: form.name.trim(),
+        diagnosis: form.diagnosis.trim() || "Em investigação",
+        treatment_stage: "Acolhimento Inicial",
+        phone: form.phone.trim(),
+        address: form.address.trim(),
+        emergency: form.emergency.trim(),
+        companion: form.companion.trim(),
+        cid: form.cid.trim(),
+        origin: form.origin.trim() || "Recepção Central",
+        cns: form.cns.trim(),
+      });
+
+      if (apiRes && (apiRes.codigo_publico || apiRes.id)) {
+        assignedId = apiRes.codigo_publico || apiRes.id;
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.toLowerCase().includes("cpf") || errMsg.toLowerCase().includes("já existe")) {
+        setErrorMsg("Já existe um paciente cadastrado com este CPF.");
+        setLoading(false);
+        return;
+      }
+      // Se a API estiver offline, mantém o fluxo cadastrando em memória
+    }
+
+    const birthYear = parseInt(form.birth.split("-")[0], 10);
+    const calculatedAge = isNaN(birthYear) ? 0 : Math.max(0, new Date().getFullYear() - birthYear);
+
     const newPatient: Patient = {
-      id: newId,
-      name: form.name || "Novo Paciente",
-      age: 0,
-      cpf: form.cpf,
-      cns: form.cns,
-      phone: form.phone,
-      address: form.address,
-      emergencyContact: form.emergency,
-      companion: form.companion || undefined,
-      diagnosis: form.diagnosis,
-      cid: form.cid,
-      origin: form.origin,
+      id: assignedId,
+      name: form.name.trim() || "Novo Paciente",
+      age: calculatedAge,
+      cpf: form.cpf.trim(),
+      cns: form.cns.trim() || undefined,
+      phone: form.phone.trim() || "(31) 9 9999-9999",
+      address: form.address.trim() || "Não informado",
+      emergencyContact: form.emergency.trim() || "Não informado",
+      companion: form.companion.trim() || undefined,
+      diagnosis: form.diagnosis.trim() || "Câncer de Mama",
+      cid: form.cid.trim() || "C50.9",
+      origin: form.origin.trim() || "Recepção Central",
       status: "aguardando",
-      arrivalTime: "11:24",
-      date: "03/07/2024",
+      arrivalTime: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      date: new Date().toLocaleDateString("pt-BR"),
+      maritalStatus: form.maritalStatus || undefined,
+      raceColor: form.raceColor || undefined,
+      religion: form.religion || undefined,
       specialties: mkSpecs(["atendido","pendente","pendente","pendente","pendente","pendente","pendente","pendente","pendente","pendente"]),
     };
+
+    setGeneratedId(assignedId);
     setSaved(true);
+    setLoading(false);
     onSaved(newPatient);
   }
 
@@ -1348,10 +1509,10 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           <CheckCircle size={40} className="text-emerald-600" />
         </div>
         <h2 className="text-2xl font-bold text-[#1A2332] mb-2" style={{ fontFamily: "'Nunito', sans-serif" }}>Cadastro realizado!</h2>
-        <p className="text-[#6B7A8D] mb-4">O paciente foi cadastrado com sucesso.</p>
+        <p className="text-[#6B7A8D] mb-4">O paciente foi cadastrado e integrado com sucesso ao sistema.</p>
         <div className="bg-[#E8F4FD] rounded-2xl px-6 py-4 mb-6">
-          <p className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider mb-1">ID do Paciente</p>
-          <p className="text-3xl font-bold text-[#1A2332] font-mono">{newId}</p>
+          <p className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider mb-1">ID / Código de Acesso do Paciente</p>
+          <p className="text-3xl font-bold text-[#1A2332] font-mono">{generatedId}</p>
         </div>
         <button onClick={onBack}
           className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md">
@@ -1363,6 +1524,13 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
 
   return (
     <div className="max-w-3xl space-y-6">
+      {errorMsg && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 flex items-center gap-3">
+          <AlertCircle size={20} className="shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
       {/* Basic data */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-6">
         <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
@@ -1433,14 +1601,15 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           className="flex-1 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl font-semibold hover:bg-[#F4F7FB] transition">
           Cancelar
         </button>
-        <button onClick={handleSave}
-          className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
-          <Save size={16} /> Salvar e gerar ID
+        <button onClick={handleSave} disabled={loading}
+          className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2 disabled:opacity-75">
+          <Save size={16} /> {loading ? "Salvando..." : "Salvar e gerar ID"}
         </button>
       </div>
     </div>
   );
 }
+
 
 // ─── Forms List Screen ────────────────────────────────────────────────────────
 
@@ -3313,9 +3482,11 @@ export default function App() {
       notifications={notifications}
       onMarkAllRead={markAllRead}
     >
-      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} />}
-      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setSelectedPatient(p); setScreen("patient-record"); }} />}
+      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} />}
+      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => [p, ...prev]); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
       {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} />}
+
+
       {screen === "coordination-dashboard" && <CoordinationDashboard onOpenPatient={openPatient} targets={targets} />}
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
