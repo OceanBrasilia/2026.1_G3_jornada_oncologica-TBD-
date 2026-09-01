@@ -45,6 +45,10 @@ venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
 
 # Logs e arquivos do sistema
 *.log
@@ -57,3 +61,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Diffs e arquivos temporários de análise
+*_diff*.txt
+diff_*.txt
+branches*.txt
+models_diff_utf8.txt
+app_diff_utf8.txt
+

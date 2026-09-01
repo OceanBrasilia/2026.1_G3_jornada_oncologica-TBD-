@@ -74,6 +74,7 @@ class PatientBase(BaseModel):
 
 
 class PatientCreate(BaseModel):
+    codigo_publico: Optional[str] = None
     nome_completo: str
     data_nascimento: date
     cpf: str
@@ -131,8 +132,8 @@ class JornadaAcompanhanteResponse(JornadaAcompanhanteBase):
 class JornadaBase(BaseModel):
     paciente_id: UUID
     criado_por_id: UUID
-    codigo: str
-    data_acolhimento: date
+    codigo: Optional[str] = None
+    data_acolhimento: Optional[date] = None
     diagnostico_principal: Optional[str] = None
     fase_tratamento: Optional[str] = None
     origem: Optional[str] = None
@@ -141,6 +142,7 @@ class JornadaBase(BaseModel):
 
 class JornadaCreate(JornadaBase):
     pass
+
 
 
 class JornadaResponse(JornadaBase):

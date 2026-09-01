@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 # Add backend directory to sys.path to allow importing app module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import app.models  # noqa: F401
 from app.database import Base
 
 

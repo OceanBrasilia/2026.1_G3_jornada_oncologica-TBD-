@@ -1,23 +1,21 @@
 import uuid
 from datetime import datetime, timezone
 from typing import List
+from uuid import UUID
 
 import bcrypt
 import shortuuid
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.config import settings
-from app.database import Base, engine, get_db
+from app.database import get_db
 
-# Cria as tabelas no banco de dados se não existirem
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Erro ao criar tabelas no banco de dados: {e}")
+# O banco de dados é gerenciado pelo Alembic.
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -52,7 +50,7 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
         
     try:
         # Verifica a senha com bcrypt
-        if not bcrypt.checkpw(req.password.encode('utf-8'), usuario.senha_hash.encode('utf-8')):
+        if not bcrypt.checkpw(req.password.encode("utf-8"), usuario.senha_hash.encode("utf-8")):
             raise HTTPException(status_code=401, detail="Credenciais inválidas")
     except ValueError:
         # Fallback caso a senha no banco não seja um hash bcrypt válido durante testes ou legados
@@ -64,14 +62,18 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     return {"access_token": mock_token, "token_type": "bearer"}
 
 @app.get("/patients", response_model=List[schemas.PatientResponse])
-def get_patients(db: Session = Depends(get_db)):
-    return db.query(models.Patient).all()
+def get_patients(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Patient).offset(skip).limit(limit).all()
 
 @app.get("/patients/{id}", response_model=schemas.PatientResponse)
-def get_patient(id: uuid.UUID, db: Session = Depends(get_db)):
+def get_patient(id: UUID, db: Session = Depends(get_db)):
     patient = db.query(models.Patient).filter(models.Patient.id == id).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Paciente não encontrado.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     return patient
 
 @app.post("/patients", response_model=schemas.PatientResponse, status_code=status.HTTP_201_CREATED)
@@ -83,69 +85,118 @@ def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)
             detail="Já existe um paciente cadastrado com este CPF."
         )
     
-    # Gerar um codigo_publico seguro com shortuuid
-    codigo_publico = shortuuid.ShortUUID().random(length=8).upper()
+    # Gerar um codigo_publico seguro com shortuuid caso não seja fornecido
+    codigo_publico = patient.codigo_publico or shortuuid.ShortUUID().random(length=8).upper()
 
     new_patient = models.Patient(
         codigo_publico=codigo_publico,
         nome_completo=patient.nome_completo,
         data_nascimento=patient.data_nascimento,
         cpf=patient.cpf,
-        name=patient.name,
+        name=patient.name or patient.nome_completo,
         email=patient.email,
         diagnosis=patient.diagnosis,
         treatment_stage=patient.treatment_stage
     )
-    db.add(new_patient)
-    db.commit()
-    db.refresh(new_patient)
-    return new_patient
+    try:
+        db.add(new_patient)
+        db.commit()
+        db.refresh(new_patient)
+        return new_patient
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Erro de integridade ao cadastrar paciente (CPF ou código público duplicado)."
+        ) from None
+
+@app.get("/patients/{patient_id}/journeys", response_model=List[schemas.JornadaResponse])
+def get_patient_journeys(
+    patient_id: UUID,
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
+    db_patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not db_patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paciente não encontrado."
+        )
+    return (
+        db.query(models.Jornada)
+        .filter(models.Jornada.paciente_id == patient_id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+@app.get("/journeys", response_model=List[schemas.JornadaResponse])
+def get_journeys(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Jornada).offset(skip).limit(limit).all()
+
+@app.get("/journeys/{id}", response_model=schemas.JornadaResponse)
+def get_journey(id: UUID, db: Session = Depends(get_db)):
+    journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
+    if not journey:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jornada não encontrada.")
+    return journey
 
 @app.post("/journeys", response_model=schemas.JornadaResponse, status_code=status.HTTP_201_CREATED)
-def create_journey(req: schemas.JourneyCreateRequest, db: Session = Depends(get_db)):
+def create_journey(req: schemas.JornadaCreate, db: Session = Depends(get_db)):
     # Validate paciente_id
     patient = db.query(models.Patient).filter(models.Patient.id == req.paciente_id).first()
     if not patient:
-        raise HTTPException(status_code=404, detail="Paciente não encontrado.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
     
     # Validate criado_por_id
     usuario = db.query(models.Usuario).filter(models.Usuario.id == req.criado_por_id).first()
     if not usuario:
-        raise HTTPException(status_code=404, detail="Usuário (criador) não encontrado.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário (criador) não encontrado.")
     
-    # Gerar um código automático seguro para a jornada
-    codigo = f"JORN-{shortuuid.ShortUUID().random(length=6).upper()}"
+    # Gerar um código automático caso não seja fornecido
+    codigo = req.codigo or f"JORN-{shortuuid.ShortUUID().random(length=6).upper()}"
+    data_acolhimento = req.data_acolhimento or datetime.now(timezone.utc).date()
 
     new_journey = models.Jornada(
         paciente_id=req.paciente_id,
         criado_por_id=req.criado_por_id,
         codigo=codigo,
-        data_acolhimento=datetime.now(timezone.utc).date(),
+        data_acolhimento=data_acolhimento,
+        status="AGUARDANDO",
+        diagnostico_principal=req.diagnostico_principal,
+        fase_tratamento=req.fase_tratamento,
+        origem=req.origem,
+        observacao_geral=req.observacao_geral,
         criado_em=datetime.now(timezone.utc)
     )
-    db.add(new_journey)
-    db.commit()
-    db.refresh(new_journey)
-    return new_journey
-
-@app.get("/journeys/{id}", response_model=schemas.JornadaResponse)
-def get_journey(id: uuid.UUID, db: Session = Depends(get_db)):
-    journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
-    if not journey:
-        raise HTTPException(status_code=404, detail="Jornada não encontrada.")
-    return journey
+    try:
+        db.add(new_journey)
+        db.commit()
+        db.refresh(new_journey)
+        return new_journey
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Já existe uma jornada com este código ou ocorreu erro de integridade referencial."
+        ) from None
 
 @app.patch("/journeys/{id}/steps/{step_id}", response_model=schemas.EtapaJornadaResponse)
 def update_journey_step(
-    id: uuid.UUID,
-    step_id: uuid.UUID,
+    id: UUID,
+    step_id: UUID,
     req: schemas.JourneyStepUpdate,
     db: Session = Depends(get_db)
 ):
     # Buscar jornada
     journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
     if not journey:
-        raise HTTPException(status_code=404, detail="Jornada não encontrada.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Jornada não encontrada.")
     
     # Buscar etapa
     step = db.query(models.EtapaJornada).filter(
@@ -153,7 +204,7 @@ def update_journey_step(
         models.EtapaJornada.jornada_id == id
     ).first()
     if not step:
-        raise HTTPException(status_code=404, detail="Etapa não encontrada nesta jornada.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Etapa não encontrada nesta jornada.")
     
     update_data = req.model_dump(exclude_unset=True)
     
@@ -175,4 +226,3 @@ def update_journey_step(
     db.commit()
     db.refresh(step)
     return step
-
