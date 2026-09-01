@@ -146,7 +146,7 @@ async def test_journeys_endpoints(client, db_session):
     invalid_journey = journey_data.copy()
     invalid_journey["paciente_id"] = str(uuid.uuid4())
     response = await client.post("/journeys", json=invalid_journey)
-    assert response.status_code == 400
+    assert response.status_code == 404
 
     # POST /journeys (código duplicado - teste de IntegrityError)
     dup_journey = journey_data.copy()

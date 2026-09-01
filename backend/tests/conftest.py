@@ -29,7 +29,6 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
-    print("TABLES IN Base.metadata:", list(Base.metadata.tables.keys()))
     Base.metadata.create_all(bind=engine)
     yield engine
     Base.metadata.drop_all(bind=engine)
