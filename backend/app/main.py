@@ -1,9 +1,10 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import models, schemas
@@ -38,8 +39,12 @@ def health_check(db: Session = Depends(get_db)):
         return {"status": "unhealthy", "database": str(e)}
 
 @app.get("/patients", response_model=List[schemas.PatientResponse])
-def get_patients(db: Session = Depends(get_db)):
-    return db.query(models.Patient).all()
+def get_patients(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Patient).offset(skip).limit(limit).all()
 
 @app.post("/patients", response_model=schemas.PatientResponse, status_code=status.HTTP_201_CREATED)
 def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)):
@@ -60,10 +65,17 @@ def create_patient(patient: schemas.PatientCreate, db: Session = Depends(get_db)
         diagnosis=patient.diagnosis,
         treatment_stage=patient.treatment_stage
     )
-    db.add(new_patient)
-    db.commit()
-    db.refresh(new_patient)
-    return new_patient
+    try:
+        db.add(new_patient)
+        db.commit()
+        db.refresh(new_patient)
+        return new_patient
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Erro de integridade ao cadastrar paciente (CPF ou código público duplicado)."
+        ) from None
 
 @app.get("/patients/{patient_id}", response_model=schemas.PatientResponse)
 def get_patient(patient_id: UUID, db: Session = Depends(get_db)):
@@ -76,8 +88,12 @@ def get_patient(patient_id: UUID, db: Session = Depends(get_db)):
     return db_patient
 
 @app.get("/journeys", response_model=List[schemas.JornadaResponse])
-def get_journeys(db: Session = Depends(get_db)):
-    return db.query(models.Jornada).all()
+def get_journeys(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
+    return db.query(models.Jornada).offset(skip).limit(limit).all()
 
 @app.get("/journeys/{journey_id}", response_model=schemas.JornadaResponse)
 def get_journey(journey_id: UUID, db: Session = Depends(get_db)):
@@ -116,18 +132,37 @@ def create_journey(journey: schemas.JornadaCreate, db: Session = Depends(get_db)
         origem=journey.origem,
         observacao_geral=journey.observacao_geral
     )
-    db.add(new_journey)
-    db.commit()
-    db.refresh(new_journey)
-    return new_journey
+    try:
+        db.add(new_journey)
+        db.commit()
+        db.refresh(new_journey)
+        return new_journey
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Já existe uma jornada com este código ou ocorreu erro de integridade referencial."
+        ) from None
 
 @app.get("/patients/{patient_id}/journeys", response_model=List[schemas.JornadaResponse])
-def get_patient_journeys(patient_id: UUID, db: Session = Depends(get_db)):
+def get_patient_journeys(
+    patient_id: UUID,
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db)
+):
     db_patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not db_patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Paciente não encontrado."
         )
-    return db.query(models.Jornada).filter(models.Jornada.paciente_id == patient_id).all()
+    return (
+        db.query(models.Jornada)
+        .filter(models.Jornada.paciente_id == patient_id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
 

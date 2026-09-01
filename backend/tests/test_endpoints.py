@@ -147,3 +147,42 @@ async def test_journeys_endpoints(client, db_session):
     invalid_journey["paciente_id"] = str(uuid.uuid4())
     response = await client.post("/journeys", json=invalid_journey)
     assert response.status_code == 400
+
+    # POST /journeys (código duplicado - teste de IntegrityError)
+    dup_journey = journey_data.copy()
+    response = await client.post("/journeys", json=dup_journey)
+    assert response.status_code == 400
+    assert "já existe" in response.json()["detail"].lower() or "integridade" in response.json()["detail"].lower()
+
+@pytest.mark.anyio
+async def test_pagination_endpoints(client, db_session):
+    # Criar múltiplos pacientes
+    for i in range(5):
+        patient = models.Patient(
+            id=uuid.uuid4(),
+            codigo_publico=f"CAO-PAGE-{i:04d}",
+            nome_completo=f"Paciente Paginado {i}",
+            data_nascimento=date(1990, 1, 1),
+            cpf=f"999.888.777-{i:02d}",
+            name=f"Paciente Paginado {i}",
+            email=f"page{i}@email.com",
+            diagnosis="Diagnóstico Paginado"
+        )
+        db_session.add(patient)
+    db_session.commit()
+
+    # Testar paginação skip=0, limit=2
+    response = await client.get("/patients?skip=0&limit=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    # Testar paginação skip=2, limit=2
+    response = await client.get("/patients?skip=2&limit=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 2
+
+    # Testar paginação skip=4, limit=2
+    response = await client.get("/patients?skip=4&limit=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+
