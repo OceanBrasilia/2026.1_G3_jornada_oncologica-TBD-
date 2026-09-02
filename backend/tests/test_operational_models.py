@@ -27,27 +27,19 @@ def _setup_base_env(db_session):
         codigo_publico="PAC-999",
         nome_completo="Sherlock Holmes",
         data_nascimento=datetime.date(1854, 1, 6),
-        cpf="12312312312"
+        cpf="12312312312",
     )
     area = AreaAtendimento(nome="Geral", tipo="OPERACIONAL", ordem_padrao=1)
     db_session.add_all([user, patient, area])
     db_session.commit()
 
     jornada = Jornada(
-        paciente_id=patient.id,
-        criado_por_id=user.id,
-        codigo="JORN-999",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        paciente_id=patient.id, criado_por_id=user.id, codigo="JORN-999", data_acolhimento=datetime.date(2026, 8, 21)
     )
     db_session.add(jornada)
     db_session.commit()
 
-    etapa = EtapaJornada(
-        jornada_id=jornada.id,
-        area_atendimento_id=area.id,
-        ordem=1,
-        prioridade=1
-    )
+    etapa = EtapaJornada(jornada_id=jornada.id, area_atendimento_id=area.id, ordem=1, prioridade=1)
     db_session.add(etapa)
     db_session.commit()
 
@@ -72,7 +64,7 @@ def test_dado_compartilhado(db_session):
         jornada_id=journey.id,
         registrado_por_id=user.id,
         valor_texto="Alergia a penicilina",
-        atual=True
+        atual=True,
     )
     db_session.add(data)
     db_session.commit()
@@ -95,7 +87,7 @@ def test_pendencia(db_session):
         area_destino_id=area.id,
         usuario_responsavel_id=user.id,
         descricao="Aguardando liberação de leito",
-        prioridade="ALTA"
+        prioridade="ALTA",
     )
     db_session.add(pendencia)
     db_session.commit()
@@ -117,7 +109,7 @@ def test_encaminhamento(db_session):
         etapa_origem_id=etapa.id,
         criado_por_id=user.id,
         area_destino_id=area.id,
-        status="PENDENTE"
+        status="PENDENTE",
     )
     db_session.add(encaminhamento)
     db_session.commit()
@@ -133,10 +125,7 @@ def test_registro_profissional(db_session):
     user, _, _, _, etapa = _setup_base_env(db_session)
 
     registro = RegistroProfissional(
-        etapa_jornada_id=etapa.id,
-        autor_id=user.id,
-        tipo="EVOLUCAO",
-        texto="Paciente estável, sem queixas."
+        etapa_jornada_id=etapa.id, autor_id=user.id, tipo="EVOLUCAO", texto="Paciente estável, sem queixas."
     )
     db_session.add(registro)
     db_session.commit()
@@ -157,7 +146,7 @@ def test_anexo(db_session):
         etapa_jornada_id=etapa.id,
         nome="exame.pdf",
         caminho="/uploads/exame.pdf",
-        hash="abc123hash"
+        hash="abc123hash",
     )
     db_session.add(anexo)
     db_session.commit()
@@ -179,7 +168,7 @@ def test_ficha_consolidada(db_session):
         gerada_por_id=user.id,
         versao=1,
         caminho_arquivo="/reports/ficha_consolidada_v1.pdf",
-        hash_arquivo="def456hash"
+        hash_arquivo="def456hash",
     )
     db_session.add(ficha)
     db_session.commit()
@@ -195,11 +184,7 @@ def test_ficha_consolidada(db_session):
 def test_registro_auditoria(db_session):
     user, _, _, _, _ = _setup_base_env(db_session)
 
-    auditoria = RegistroAuditoria(
-        usuario_id=user.id,
-        acao="CRIAR_PACIENTE",
-        detalhe="Criou o paciente Sherlock Holmes"
-    )
+    auditoria = RegistroAuditoria(usuario_id=user.id, acao="CRIAR_PACIENTE", detalhe="Criou o paciente Sherlock Holmes")
     db_session.add(auditoria)
     db_session.commit()
 
