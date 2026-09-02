@@ -186,3 +186,47 @@ async def test_pagination_endpoints(client, db_session):
     assert response.status_code == 200
     assert len(response.json()) == 1
 
+
+@pytest.mark.anyio
+async def test_portuguese_aliases_and_public_journey(client, db_session):
+    # Criar paciente via /pacientes
+    paciente_payload = {
+        "codigo_publico": "CAO-PUB-001",
+        "nome_completo": "Paciente Publico Teste",
+        "data_nascimento": "1985-10-20",
+        "cpf": "123.456.789-00",
+        "name": "Paciente Publico Teste",
+        "email": "publico@email.com",
+        "diagnosis": "Câncer de Teste",
+    }
+    res_post = await client.post("/pacientes", json=paciente_payload)
+    assert res_post.status_code == 201
+    paciente_id = res_post.json()["id"]
+
+    # Listar via /pacientes
+    res_list = await client.get("/pacientes")
+    assert res_list.status_code == 200
+    assert any(p["id"] == paciente_id for p in res_list.json())
+
+    # Obter via /pacientes/{id}
+    res_get = await client.get(f"/pacientes/{paciente_id}")
+    assert res_get.status_code == 200
+    assert res_get.json()["nome_completo"] == "Paciente Publico Teste"
+
+    # Consulta pública por código público
+    res_pub = await client.get("/pacientes/CAO-PUB-001/jornada")
+    assert res_pub.status_code == 200
+    pub_data = res_pub.json()
+    assert pub_data["paciente"]["nome_completo"] == "Paciente Publico Teste"
+    assert pub_data["paciente"]["codigo_publico"] == "CAO-PUB-001"
+
+    # Consulta pública por CPF
+    res_pub_cpf = await client.get("/pacientes/123.456.789-00/jornada")
+    assert res_pub_cpf.status_code == 200
+    assert res_pub_cpf.json()["paciente"]["id"] == paciente_id
+
+    # Consulta pública inexistente
+    res_pub_404 = await client.get("/pacientes/INEXISTENTE/jornada")
+    assert res_pub_404.status_code == 404
+
+

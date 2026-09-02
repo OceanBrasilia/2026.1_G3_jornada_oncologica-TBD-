@@ -226,3 +226,112 @@ def update_journey_step(
     db.commit()
     db.refresh(step)
     return step
+
+
+# ─── Aliases em português e Consulta Pública ──────────────────────────────────
+
+@app.get("/pacientes", response_model=List[schemas.PatientResponse])
+def get_pacientes(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db),
+):
+    return get_patients(skip=skip, limit=limit, db=db)
+
+
+@app.get("/pacientes/{id}", response_model=schemas.PatientResponse)
+def get_paciente(id: UUID, db: Session = Depends(get_db)):
+    return get_patient(id=id, db=db)
+
+
+@app.post("/pacientes", response_model=schemas.PatientResponse, status_code=status.HTTP_201_CREATED)
+def create_paciente(patient: schemas.PatientCreate, db: Session = Depends(get_db)):
+    return create_patient(patient=patient, db=db)
+
+
+@app.get("/pacientes/{id_ou_nome}/jornada")
+def get_paciente_jornada_publica(id_ou_nome: str, db: Session = Depends(get_db)):
+    # Busca paciente por UUID, código público, CPF ou nome
+    paciente = None
+    try:
+        val_uuid = UUID(id_ou_nome)
+        paciente = db.query(models.Patient).filter(models.Patient.id == val_uuid).first()
+    except (ValueError, AttributeError):
+        pass
+
+    if not paciente:
+        paciente = (
+            db.query(models.Patient)
+            .filter(
+                (models.Patient.codigo_publico.ilike(id_ou_nome.strip()))
+                | (models.Patient.cpf == id_ou_nome.strip())
+                | (models.Patient.nome_completo.ilike(f"%{id_ou_nome.strip()}%"))
+                | (models.Patient.name.ilike(f"%{id_ou_nome.strip()}%"))
+            )
+            .first()
+        )
+
+    if not paciente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paciente não encontrado para consulta pública de jornada.",
+        )
+
+    # Busca a jornada ativa/mais recente do paciente
+    jornada = (
+        db.query(models.Jornada)
+        .filter(models.Jornada.paciente_id == paciente.id)
+        .order_by(models.Jornada.criado_em.desc())
+        .first()
+    )
+
+    etapas_list = []
+    if jornada and jornada.etapas:
+        etapas_sorted = sorted(jornada.etapas, key=lambda e: e.ordem)
+        for etapa in etapas_sorted:
+            nome_area = etapa.area_atendimento.nome if etapa.area_atendimento else "Especialidade"
+            etapas_list.append({
+                "id": str(etapa.id),
+                "area_id": str(etapa.area_atendimento_id),
+                "nome": nome_area,
+                "status": etapa.status,
+                "ordem": etapa.ordem,
+                "iniciada_em": etapa.iniciada_em.isoformat() if etapa.iniciada_em else None,
+                "finalizada_em": etapa.finalizada_em.isoformat() if etapa.finalizada_em else None,
+            })
+
+    return {
+        "paciente": {
+            "id": str(paciente.id),
+            "codigo_publico": paciente.codigo_publico,
+            "nome_completo": paciente.nome_completo,
+            "data_nascimento": paciente.data_nascimento.isoformat() if paciente.data_nascimento else None,
+        },
+        "jornada": {
+            "id": str(jornada.id) if jornada else None,
+            "codigo": jornada.codigo if jornada else None,
+            "status": jornada.status if jornada else "AGUARDANDO",
+            "data_acolhimento": jornada.data_acolhimento.isoformat() if (jornada and jornada.data_acolhimento) else None,
+            "etapas": etapas_list,
+        } if jornada else None
+    }
+
+
+@app.get("/jornadas", response_model=List[schemas.JornadaResponse])
+def get_jornadas(
+    skip: int = Query(0, ge=0, description="Número de registros a pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Limite de registros retornados"),
+    db: Session = Depends(get_db),
+):
+    return get_journeys(skip=skip, limit=limit, db=db)
+
+
+@app.get("/jornadas/{id}", response_model=schemas.JornadaResponse)
+def get_jornada(id: UUID, db: Session = Depends(get_db)):
+    return get_journey(id=id, db=db)
+
+
+@app.post("/jornadas", response_model=schemas.JornadaResponse, status_code=status.HTTP_201_CREATED)
+def create_jornada(req: schemas.JornadaCreate, db: Session = Depends(get_db)):
+    return create_journey(req=req, db=db)
+
