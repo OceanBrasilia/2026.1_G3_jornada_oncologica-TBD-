@@ -144,7 +144,6 @@ class JornadaCreate(JornadaBase):
     pass
 
 
-
 class JornadaResponse(JornadaBase):
     id: UUID
     status: str
@@ -459,6 +458,7 @@ class RegistroAuditoriaResponse(RegistroAuditoriaBase):
 
 # Novas Request Schemas
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -477,3 +477,23 @@ class JourneyStepUpdate(BaseModel):
     motivo_nao_aplicavel: Optional[str] = None
     ordem: Optional[int] = None
     area_atendimento_id: Optional[UUID] = None
+
+
+# Schemas para Cálculos Clínicos (Issue 8)
+
+
+class IMCRequest(BaseModel):
+    peso_kg: float
+    altura_m: float
+
+
+class IRPORequest(BaseModel):
+    respostas: dict[int, int]
+
+
+class ASGPPPRequest(BaseModel):
+    bloco1_peso: int = 0
+    bloco2_ingestao: int = 0
+    bloco3_sintomas: int = 0
+    bloco4_capacidade: int = 0
+    adicionais_estresse: int = 0

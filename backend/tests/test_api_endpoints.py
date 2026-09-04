@@ -20,6 +20,7 @@ def client(db_session: Session):
             yield db_session
         finally:
             pass
+
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
     # Limpa as sobrescritas após o teste
@@ -27,6 +28,7 @@ def client(db_session: Session):
 
 
 # --- Fixtures para Seed de Banco de Dados ---
+
 
 @pytest.fixture
 def perfil_seed(db_session: Session):
@@ -53,7 +55,7 @@ def usuario_seed(db_session: Session, perfil_seed, area_seed):
         email="drteste@example.com",
         senha_hash=bcrypt.hashpw(b"any", bcrypt.gensalt()).decode("utf-8"),
         perfil_id=perfil_seed.id,
-        area_atendimento_id=area_seed.id
+        area_atendimento_id=area_seed.id,
     )
     db_session.add(usuario)
     db_session.commit()
@@ -64,10 +66,7 @@ def usuario_seed(db_session: Session, perfil_seed, area_seed):
 @pytest.fixture
 def paciente_seed(db_session: Session):
     paciente = models.Patient(
-        codigo_publico="PAC-123",
-        nome_completo="João Testador",
-        data_nascimento=date(1990, 1, 1),
-        cpf="12345678901"
+        codigo_publico="PAC-123", nome_completo="João Testador", data_nascimento=date(1990, 1, 1), cpf="12345678901"
     )
     db_session.add(paciente)
     db_session.commit()
@@ -88,11 +87,7 @@ def jornada_seed(db_session: Session, paciente_seed, usuario_seed, area_seed):
     db_session.refresh(jornada)
 
     etapa = models.EtapaJornada(
-        jornada_id=jornada.id,
-        area_atendimento_id=area_seed.id,
-        status="PENDENTE",
-        ordem=1,
-        prioridade=1
+        jornada_id=jornada.id, area_atendimento_id=area_seed.id, status="PENDENTE", ordem=1, prioridade=1
     )
     db_session.add(etapa)
     db_session.commit()
@@ -102,6 +97,7 @@ def jornada_seed(db_session: Session, paciente_seed, usuario_seed, area_seed):
 
 
 # --- Testes de Autenticação (/login) ---
+
 
 def test_login_success(client: TestClient, usuario_seed):
     response = client.post("/login", json={"email": "drteste@example.com", "password": "any"})
@@ -125,12 +121,9 @@ def test_login_failure(client: TestClient):
 
 # --- Testes CRUD Pacientes (/patients) ---
 
+
 def test_create_patient_success(client: TestClient):
-    payload = {
-        "nome_completo": "Maria Nova",
-        "data_nascimento": "1985-05-15",
-        "cpf": "09876543210"
-    }
+    payload = {"nome_completo": "Maria Nova", "data_nascimento": "1985-05-15", "cpf": "09876543210"}
     response = client.post("/patients", json=payload)
     assert response.status_code == 201
     data = response.json()
@@ -143,7 +136,7 @@ def test_create_patient_cpf_conflict(client: TestClient, paciente_seed):
     payload = {
         "nome_completo": "Outro João",
         "data_nascimento": "1990-01-01",
-        "cpf": paciente_seed.cpf  # Mesmo CPF do seed
+        "cpf": paciente_seed.cpf,  # Mesmo CPF do seed
     }
     response = client.post("/patients", json=payload)
     assert response.status_code == 400
@@ -172,11 +165,9 @@ def test_get_patient_not_found(client: TestClient):
 
 # --- Testes de Jornadas e Etapas (/journeys) ---
 
+
 def test_create_journey_success(client: TestClient, paciente_seed, usuario_seed):
-    payload = {
-        "paciente_id": str(paciente_seed.id),
-        "criado_por_id": str(usuario_seed.id)
-    }
+    payload = {"paciente_id": str(paciente_seed.id), "criado_por_id": str(usuario_seed.id)}
     response = client.post("/journeys", json=payload)
     assert response.status_code == 201
     data = response.json()
@@ -188,7 +179,7 @@ def test_create_journey_success(client: TestClient, paciente_seed, usuario_seed)
 def test_create_journey_invalid_patient_fk(client: TestClient, usuario_seed):
     payload = {
         "paciente_id": str(uuid.uuid4()),  # Inexistente
-        "criado_por_id": str(usuario_seed.id)
+        "criado_por_id": str(usuario_seed.id),
     }
     response = client.post("/journeys", json=payload)
     assert response.status_code == 404
@@ -198,7 +189,7 @@ def test_create_journey_invalid_patient_fk(client: TestClient, usuario_seed):
 def test_create_journey_invalid_user_fk(client: TestClient, paciente_seed):
     payload = {
         "paciente_id": str(paciente_seed.id),
-        "criado_por_id": str(uuid.uuid4())  # Inexistente
+        "criado_por_id": str(uuid.uuid4()),  # Inexistente
     }
     response = client.post("/journeys", json=payload)
     assert response.status_code == 404
@@ -214,7 +205,7 @@ def test_get_journey_by_id(client: TestClient, jornada_seed):
 
 def test_update_journey_step(client: TestClient, jornada_seed, usuario_seed):
     jornada, etapa = jornada_seed
-    
+
     # A etapa está como PENDENTE na seed
     assert etapa.status == "PENDENTE"
     assert etapa.iniciada_em is None
@@ -222,13 +213,13 @@ def test_update_journey_step(client: TestClient, jornada_seed, usuario_seed):
     payload = {
         "status": "EM_ATENDIMENTO",
         "profissional_responsavel_id": str(usuario_seed.id),
-        "observacao": "Iniciando atendimento de teste"
+        "observacao": "Iniciando atendimento de teste",
     }
 
     response = client.patch(f"/journeys/{jornada.id}/steps/{etapa.id}", json=payload)
     assert response.status_code == 200
     data = response.json()
-    
+
     # Checa retorno da API
     assert data["status"] == "EM_ATENDIMENTO"
     assert data["iniciada_em"] is not None
@@ -245,18 +236,12 @@ def test_update_journey_step_invalid_status(client: TestClient, jornada_seed):
 
 def test_update_journey_step_state_reversal(client: TestClient, jornada_seed, usuario_seed):
     jornada, etapa = jornada_seed
-    
+
     # Avança para EM_ATENDIMENTO
-    client.patch(
-        f"/journeys/{jornada.id}/steps/{etapa.id}", 
-        json={"status": "EM_ATENDIMENTO"}
-    )
-    
+    client.patch(f"/journeys/{jornada.id}/steps/{etapa.id}", json={"status": "EM_ATENDIMENTO"})
+
     # Retorna para PENDENTE
-    response = client.patch(
-        f"/journeys/{jornada.id}/steps/{etapa.id}", 
-        json={"status": "PENDENTE"}
-    )
+    response = client.patch(f"/journeys/{jornada.id}/steps/{etapa.id}", json={"status": "PENDENTE"})
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "PENDENTE"
@@ -266,26 +251,24 @@ def test_update_journey_step_state_reversal(client: TestClient, jornada_seed, us
 
 # --- Teste aprofundado direto no Banco de Dados: Chaves Estrangeiras ---
 
+
 def test_database_foreign_key_enforcement(db_session: Session, usuario_seed):
     """
-    Testa se o banco de dados de teste (com PRAGMA foreign_keys=ON) 
+    Testa se o banco de dados de teste (com PRAGMA foreign_keys=ON)
     realmente barra cadastros diretos (sem a proteção da API) que violam integridade relacional.
     """
     invalid_patient_id = uuid.uuid4()
-    
+
     # Tentando forçar uma jornada com UUID falso de paciente direto pelo SQLAlchemy
     invalid_journey = models.Jornada(
-        paciente_id=invalid_patient_id, 
-        criado_por_id=usuario_seed.id,
-        codigo="JORN-INV",
-        data_acolhimento=date.today()
+        paciente_id=invalid_patient_id, criado_por_id=usuario_seed.id, codigo="JORN-INV", data_acolhimento=date.today()
     )
-    
+
     db_session.add(invalid_journey)
-    
+
     with pytest.raises(IntegrityError):
         # O SQLite emite o erro relacional aqui devido ao PRAGMA que ativamos
         db_session.commit()
-    
+
     # Rollback para deixar a session limpa
     db_session.rollback()

@@ -33,7 +33,7 @@ def test_create_patient(db_session):
         nome_completo="José da Silva",
         data_nascimento=datetime.date(1980, 5, 20),
         cpf="12345678900",
-        treatment_stage="Tratamento Ativo"
+        treatment_stage="Tratamento Ativo",
     )
     db_session.add(patient)
     db_session.commit()
@@ -52,7 +52,7 @@ def test_create_contato_paciente(db_session):
         codigo_publico="PAC-002",
         nome_completo="Maria Silva",
         data_nascimento=datetime.date(1990, 8, 15),
-        cpf="98765432100"
+        cpf="98765432100",
     )
     db_session.add(patient)
     db_session.commit()
@@ -63,7 +63,7 @@ def test_create_contato_paciente(db_session):
         relacao="Filho",
         telefone="11999998888",
         contato_emergencia=True,
-        cuidador=True
+        cuidador=True,
     )
     db_session.add(contato)
     db_session.commit()
@@ -85,7 +85,7 @@ def test_create_jornada(db_session):
         codigo_publico="PAC-003",
         nome_completo="Carlos Souza",
         data_nascimento=datetime.date(1975, 10, 10),
-        cpf="11122233344"
+        cpf="11122233344",
     )
     db_session.add(patient)
     db_session.commit()
@@ -95,7 +95,7 @@ def test_create_jornada(db_session):
         criado_por_id=user.id,
         codigo="JORN-2026-001",
         data_acolhimento=datetime.date(2026, 8, 21),
-        diagnostico_principal="C50 - Neoplasia maligna da mama"
+        diagnostico_principal="C50 - Neoplasia maligna da mama",
     )
     db_session.add(jornada)
     db_session.commit()
@@ -119,21 +119,17 @@ def test_patient_cascade_delete(db_session):
         codigo_publico="PAC-004",
         nome_completo="Lucas Neto",
         data_nascimento=datetime.date(1985, 12, 1),
-        cpf="55566677788"
+        cpf="55566677788",
     )
     db_session.add(patient)
     db_session.commit()
 
-    contato = ContatoPaciente(
-        paciente_id=patient.id,
-        nome="Rita Neto",
-        relacao="Mãe"
-    )
+    contato = ContatoPaciente(paciente_id=patient.id, nome="Rita Neto", relacao="Mãe")
     jornada = Jornada(
         paciente_id=patient.id,
         criado_por_id=user.id,
         codigo="JORN-2026-002",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        data_acolhimento=datetime.date(2026, 8, 21),
     )
     db_session.add_all([contato, jornada])
     db_session.commit()
@@ -159,7 +155,7 @@ def test_jornada_acompanhante(db_session):
         codigo_publico="PAC-005",
         nome_completo="Beatriz Cruz",
         data_nascimento=datetime.date(1995, 3, 3),
-        cpf="22233344455"
+        cpf="22233344455",
     )
     db_session.add(patient)
     db_session.commit()
@@ -169,16 +165,14 @@ def test_jornada_acompanhante(db_session):
         paciente_id=patient.id,
         criado_por_id=user.id,
         codigo="JORN-2026-003",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        data_acolhimento=datetime.date(2026, 8, 21),
     )
     db_session.add_all([contato, jornada])
     db_session.commit()
 
     # Link companion to journey
     acompanhante = JornadaAcompanhante(
-        jornada_id=jornada.id,
-        contato_paciente_id=contato.id,
-        observacao="Precisa de auxílio de locomoção"
+        jornada_id=jornada.id, contato_paciente_id=contato.id, observacao="Precisa de auxílio de locomoção"
     )
     db_session.add(acompanhante)
     db_session.commit()
@@ -197,7 +191,7 @@ def test_etapa_jornada(db_session):
         codigo_publico="PAC-006",
         nome_completo="Marcos Silva",
         data_nascimento=datetime.date(1960, 1, 1),
-        cpf="44455566677"
+        cpf="44455566677",
     )
     area = AreaAtendimento(nome="Radioterapia", tipo="ASSISTENCIAL", ordem_padrao=3)
     db_session.add_all([patient, area])
@@ -207,17 +201,13 @@ def test_etapa_jornada(db_session):
         paciente_id=patient.id,
         criado_por_id=user.id,
         codigo="JORN-2026-004",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        data_acolhimento=datetime.date(2026, 8, 21),
     )
     db_session.add(jornada)
     db_session.commit()
 
     etapa = EtapaJornada(
-        jornada_id=jornada.id,
-        area_atendimento_id=area.id,
-        profissional_responsavel_id=user.id,
-        ordem=1,
-        prioridade=2
+        jornada_id=jornada.id, area_atendimento_id=area.id, profissional_responsavel_id=user.id, ordem=1, prioridade=2
     )
     db_session.add(etapa)
     db_session.commit()
@@ -239,7 +229,7 @@ def test_etapa_jornada_unique_constraint(db_session):
         codigo_publico="PAC-007",
         nome_completo="Julia Santos",
         data_nascimento=datetime.date(2000, 2, 2),
-        cpf="77788899900"
+        cpf="77788899900",
     )
     area = AreaAtendimento(nome="Psicologia", tipo="ASSISTENCIAL", ordem_padrao=4)
     db_session.add_all([patient, area])
@@ -249,29 +239,19 @@ def test_etapa_jornada_unique_constraint(db_session):
         paciente_id=patient.id,
         criado_por_id=user.id,
         codigo="JORN-2026-005",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        data_acolhimento=datetime.date(2026, 8, 21),
     )
     db_session.add(jornada)
     db_session.commit()
 
-    etapa1 = EtapaJornada(
-        jornada_id=jornada.id,
-        area_atendimento_id=area.id,
-        ordem=1,
-        prioridade=1
-    )
+    etapa1 = EtapaJornada(jornada_id=jornada.id, area_atendimento_id=area.id, ordem=1, prioridade=1)
     db_session.add(etapa1)
     db_session.commit()
 
     # Try creating duplicate stage (same journey, same area)
-    etapa2 = EtapaJornada(
-        jornada_id=jornada.id,
-        area_atendimento_id=area.id,
-        ordem=2,
-        prioridade=1
-    )
+    etapa2 = EtapaJornada(jornada_id=jornada.id, area_atendimento_id=area.id, ordem=2, prioridade=1)
     db_session.add(etapa2)
-    
+
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
@@ -283,21 +263,17 @@ def test_patient_db_cascade_delete_raw_sql(db_session):
         codigo_publico="PAC-DB-CASCADE",
         nome_completo="Paciente Teste SQL",
         data_nascimento=datetime.date(1985, 12, 1),
-        cpf="99988877766"
+        cpf="99988877766",
     )
     db_session.add(patient)
     db_session.commit()
 
-    contato = ContatoPaciente(
-        paciente_id=patient.id,
-        nome="Contato Teste SQL",
-        relacao="Outro"
-    )
+    contato = ContatoPaciente(paciente_id=patient.id, nome="Contato Teste SQL", relacao="Outro")
     jornada = Jornada(
         paciente_id=patient.id,
         criado_por_id=user.id,
         codigo="JORN-DB-CASCADE",
-        data_acolhimento=datetime.date(2026, 8, 21)
+        data_acolhimento=datetime.date(2026, 8, 21),
     )
     db_session.add_all([contato, jornada])
     db_session.commit()

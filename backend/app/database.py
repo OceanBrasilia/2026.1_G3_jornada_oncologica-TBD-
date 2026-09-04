@@ -12,6 +12,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base declarativa para criação de modelos
 Base = declarative_base()
 
+
 # Dependência do FastAPI para gerenciar a conexão por requisição
 def get_db():
     db = SessionLocal()
