@@ -420,6 +420,48 @@ def submit_form(
     db.commit()
     return {"message": "Formulário salvo com sucesso.", "preenchimento_id": str(preenchimento.id)}
 
+def _processar_respostas(respostas):  # noqa: C901
+    pontuacao_total = 0
+    peso = None
+    altura = None
+    resumo_respostas = []
+    
+    for resposta in respostas:
+        campo = resposta.campo_formulario
+        
+        valor_exibicao = ""
+        pontuacao_item = None
+        
+        if resposta.valor_texto is not None:
+            valor_exibicao = resposta.valor_texto
+            for opcao in campo.opcoes:
+                if opcao.valor == resposta.valor_texto:
+                    pontuacao_item = opcao.pontuacao
+                    break
+        elif resposta.valor_numero is not None:
+            valor_exibicao = str(resposta.valor_numero)
+        elif resposta.valor_booleano is not None:
+            valor_exibicao = "Sim" if resposta.valor_booleano else "Não"
+        elif resposta.valor_data is not None:
+            valor_exibicao = resposta.valor_data.strftime("%Y-%m-%d")
+            
+        if pontuacao_item is not None:
+            pontuacao_total += pontuacao_item
+            
+        nome_lower = campo.nome.lower()
+        if "peso" in nome_lower and resposta.valor_numero is not None:
+            peso = float(resposta.valor_numero)
+        if "altura" in nome_lower and resposta.valor_numero is not None:
+            altura = float(resposta.valor_numero)
+            
+        resumo_respostas.append(schemas.ResumoCampoResponse(
+            campo=campo.nome,
+            valor=valor_exibicao,
+            pontuacao=pontuacao_item
+        ))
+        
+    return pontuacao_total, peso, altura, resumo_respostas
+
 @app.get("/journeys/{id}/consolidated", response_model=schemas.ResumoConsolidadoResponse)
 def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
     journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
@@ -444,45 +486,7 @@ def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
         area_nome = p.etapa_jornada.area_atendimento.nome
         prof_nome = p.profissional.nome if p.profissional else None
         
-        pontuacao_total = 0
-        peso = None
-        altura = None
-        
-        resumo_respostas = []
-        
-        for resposta in p.respostas:
-            campo = resposta.campo_formulario
-            
-            valor_exibicao = ""
-            pontuacao_item = None
-            
-            if resposta.valor_texto is not None:
-                valor_exibicao = resposta.valor_texto
-                for opcao in campo.opcoes:
-                    if opcao.valor == resposta.valor_texto:
-                        pontuacao_item = opcao.pontuacao
-                        break
-            elif resposta.valor_numero is not None:
-                valor_exibicao = str(resposta.valor_numero)
-            elif resposta.valor_booleano is not None:
-                valor_exibicao = "Sim" if resposta.valor_booleano else "Não"
-            elif resposta.valor_data is not None:
-                valor_exibicao = resposta.valor_data.strftime("%Y-%m-%d")
-                
-            if pontuacao_item is not None:
-                pontuacao_total += pontuacao_item
-                
-            nome_lower = campo.nome.lower()
-            if "peso" in nome_lower and resposta.valor_numero is not None:
-                peso = float(resposta.valor_numero)
-            if "altura" in nome_lower and resposta.valor_numero is not None:
-                altura = float(resposta.valor_numero)
-                
-            resumo_respostas.append(schemas.ResumoCampoResponse(
-                campo=campo.nome,
-                valor=valor_exibicao,
-                pontuacao=pontuacao_item
-            ))
+        pontuacao_total, peso, altura, resumo_respostas = _processar_respostas(p.respostas)
             
         imc_calc = None
         if peso is not None and altura is not None and altura > 0:
