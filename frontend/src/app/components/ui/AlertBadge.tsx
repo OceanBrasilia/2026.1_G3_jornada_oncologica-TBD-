@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Stethoscope, 
-  Accessibility, 
-  Droplet, 
-  Users, 
-  AlertTriangle, 
+import {
+  Stethoscope,
+  Users,
+  AlertTriangle,
   Frown,
   X
 } from 'lucide-react';
+import { AccessibilityNetworkIcon, IvBagIcon } from './alertCategoryIcons';
 import { AlertCategory, PatientAlert } from '../../types/alerts';
 
 interface AlertBadgeProps {
@@ -24,12 +23,12 @@ const badgeConfig = {
   },
   [AlertCategory.ACCESSIBILITY]: {
     bgColor: 'bg-purple-300',
-    icon: Accessibility,
+    icon: AccessibilityNetworkIcon,
     tooltip: 'Acessibilidade/Comunicação'
   },
   [AlertCategory.DEVICE_USAGE]: {
     bgColor: 'bg-blue-400',
-    icon: Droplet,
+    icon: IvBagIcon,
     tooltip: 'Uso de Dispositivos'
   },
   [AlertCategory.PSYCHOSOCIAL_RISK]: {
