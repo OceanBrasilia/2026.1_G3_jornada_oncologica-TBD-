@@ -9,11 +9,21 @@ export type SpecStatusResumo = "atendido" | "pendente" | "em-atendimento" | "nao
  * Campos que, quando preenchidos por qualquer especialidade, são dados
  * compartilhados (RF-006/RF-009) — aparecem uma única vez no bloco
  * "Dados gerais" da Ficha Consolidada, em vez de repetidos em cada seção.
+ *
+ * Só entram aqui campos onde já confirmamos que TODAS as especialidades que
+ * os usam perguntam a mesma coisa, do mesmo jeito (mesmo tipo de campo —
+ * seleção/texto/múltipla escolha — e, quando é seleção, as mesmas opções).
+ * "Ocupação/Trabalho" foi removido daqui de propósito: apesar do nome igual,
+ * a Enfermagem pergunta a SITUAÇÃO profissional (Trabalhando/Aposentado/...,
+ * um RadioPills de opções fixas) enquanto Odontologia e Serviço Social
+ * perguntam a PROFISSÃO em si (texto livre) — são perguntas diferentes que
+ * só coincidem no nome do campo. [CONFIRMAR COM A EQUIPE] se isso deveria
+ * virar duas perguntas com nomes diferentes no formulário também.
  */
 export const CAMPOS_COMPARTILHADOS = [
   "peso", "altura", "Alergia", "Reação alergica", "Comorbidades", "Outras doenças",
   "tabagismo", "etilismo", "medicacoes", "Diagnóstico", "Escolaridade", "Estado civil",
-  "Sexo", "Ocupação/Trabalho",
+  "Sexo",
 ];
 
 /**
