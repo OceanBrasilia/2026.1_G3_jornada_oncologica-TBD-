@@ -23,6 +23,7 @@ export interface FormProps {
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills } from "./shared/InheritableFormComponents";
 import { ConditionalField } from "./shared/ConditionalField";
+import { ReferenceField } from "./shared/ReferenceField";
 
 
 
@@ -172,6 +173,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Atividade física" name="atividade_fisica" stacked={true} options={["Sim: intensidade leve, moderada - min 30min, 5x/semana ou intensidade vigorosa, min 20min, 3x/semana", "Não"]} data={data} onChange={onChange} />
           
+          <ReferenceField label="Renda familiar (registrada pelo Serviço Social)" value={data?.rendaFamiliar} source="Serviço Social" />
           <InheritableSelect inheritedData={inheritedData} origins={origins} label="Renda familiar" name="renda_familiar" options={["1 a 2 salários", "3 a 4 salários", "Mais de 4 salários"]} data={data} onChange={onChange} />
           
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Pessoas na habitação" name="pessoas_habitacao" placeholder="Ex.: 4" data={data} onChange={onChange} />
