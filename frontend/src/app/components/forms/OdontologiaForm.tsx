@@ -170,7 +170,7 @@ export function OdontologiaForm({ data, onChange, patient, inheritedData, origin
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Cidade - UF" name="Cidade - UF" data={data} onChange={onChange} />
           <InheritableInput inheritedData={inheritedData} origins={origins} label="CEP" name="CEP" data={data} onChange={onChange} />
         </div>
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Ocupação" name="Ocupação/Trabalho" data={data} onChange={onChange} />
+        <InheritableInput inheritedData={inheritedData} origins={origins} label="Ocupação" name="Profissão" data={data} onChange={onChange} />
       </SectionCard>
 
       {/* 2. Anamnese */}

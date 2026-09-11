@@ -112,21 +112,8 @@ export function EnfermagemForm({ data, onChange, patient, inheritedData, origins
         <InheritableSelect inheritedData={inheritedData} origins={origins} label="Forma de deslocamento até a clínica" name="Deslocamento" options={["Carro próprio / Carona", "Transporte por aplicativo / Táxi", "Ônibus / Metrô", "Ambulância / Transporte da Prefeitura", "Outro"]} data={data} onChange={onChange} />
         <InheritableSelect inheritedData={inheritedData} origins={origins} label="Apoio familiar" name="Apoio familiar" options={["Adequado", "Parcial", "Inexistente"]} data={data} onChange={onChange} />
         <InheritableSelect inheritedData={inheritedData} origins={origins} label="Limitação de atividade laboral" name="Limitação laboral" options={["Nenhuma", "Parcial", "Total"]} data={data} onChange={onChange} />
-        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Situação profissional atual" name="Ocupação/Trabalho" options={["Trabalhando", "Aposentado(a)", "Desempregado(a)", "Afastado(a)", "Do lar", "Estudante", "Outro"]} data={data} onChange={onChange} />
-        
-        <ConditionalField
-          data={data}
-          onChange={onChange}
-          showIf={{ OU: [
-            { campo: "Ocupação/Trabalho", igual: "Trabalhando" },
-            { campo: "Ocupação/Trabalho", igual: "Aposentado(a)" },
-            { campo: "Ocupação/Trabalho", igual: "Afastado(a)" },
-          ]}}
-          campos={["Trabalho exercido"]}
-          className="pl-4 border-l-2 border-[#D5E6F3] ml-2"
-        >
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Qual trabalho exerce/exercia?" name="Trabalho exercido" data={data} onChange={onChange} />
-        </ConditionalField>
+        {/* "Situação profissional atual" e "Qual trabalho exerce/exercia?" já vêm do bloco
+            compartilhado no topo do formulário (ReusedDataAccordion) — pergunta duplicada removida. */}
       </AccordionCard>
 
       {/* Card 3: Histórico de Doença Pregressa (HDP) */}

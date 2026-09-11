@@ -71,6 +71,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "Padrão de sono (Outro)": "Qual?",
   "Parentesco CA na família": "Parentesco",
   "PlanejamentoSuicida": "Apresenta planejamento?",
+  "Profissão": "Profissão / Ocupação",
   "Profissional Responsável": "Profissional responsável pela aplicação",
   "Quais cirurgias": "Quais?",
   "Quedas": "Quedas nos últimos 3 meses",

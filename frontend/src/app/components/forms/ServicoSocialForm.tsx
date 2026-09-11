@@ -120,11 +120,11 @@ export function ServicoSocialForm({ data, onChange, patient, inheritedData, orig
             onChange={onChange}
           />
 
-          <InheritableInput inheritedData={inheritedData} origins={origins} 
-            label="Profissão / Ocupação" 
-            name="Ocupação/Trabalho" 
-            data={data} 
-            onChange={onChange} 
+          <InheritableInput inheritedData={inheritedData} origins={origins}
+            label="Profissão / Ocupação"
+            name="Profissão"
+            data={data}
+            onChange={onChange}
           />
 
           <InheritableSelect inheritedData={inheritedData} origins={origins} 

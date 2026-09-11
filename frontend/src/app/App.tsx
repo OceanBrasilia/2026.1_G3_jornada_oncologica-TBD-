@@ -534,7 +534,7 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
   return (
     <div className="min-h-screen bg-[#F4F7FB] flex print:bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
+      <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
         {/* Top bar */}
         <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3 print:hidden">
           <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)}>

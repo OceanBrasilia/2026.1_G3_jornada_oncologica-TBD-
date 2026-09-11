@@ -13,17 +13,19 @@ export type SpecStatusResumo = "atendido" | "pendente" | "em-atendimento" | "nao
  * Só entram aqui campos onde já confirmamos que TODAS as especialidades que
  * os usam perguntam a mesma coisa, do mesmo jeito (mesmo tipo de campo —
  * seleção/texto/múltipla escolha — e, quando é seleção, as mesmas opções).
- * "Ocupação/Trabalho" foi removido daqui de propósito: apesar do nome igual,
- * a Enfermagem pergunta a SITUAÇÃO profissional (Trabalhando/Aposentado/...,
- * um RadioPills de opções fixas) enquanto Odontologia e Serviço Social
- * perguntam a PROFISSÃO em si (texto livre) — são perguntas diferentes que
- * só coincidem no nome do campo. [CONFIRMAR COM A EQUIPE] se isso deveria
- * virar duas perguntas com nomes diferentes no formulário também.
+ *
+ * "Ocupação/Trabalho" (situação profissional, vem do bloco compartilhado
+ * ReusedDataAccordion.tsx, presente em todos os formulários) e "Profissão"
+ * (a profissão em si, texto livre — Odontologia e Serviço Social) eram, até
+ * 2026-09-11, o MESMO campo por engano — a Enfermagem ainda tinha uma
+ * pergunta própria e redundante de situação profissional, e Odontologia/
+ * Serviço Social escreviam texto livre na mesma chave da situação
+ * profissional. Corrigido: agora são duas chaves diferentes.
  */
 export const CAMPOS_COMPARTILHADOS = [
   "peso", "altura", "Alergia", "Reação alergica", "Comorbidades", "Outras doenças",
   "tabagismo", "etilismo", "medicacoes", "Diagnóstico", "Escolaridade", "Estado civil",
-  "Sexo",
+  "Sexo", "Ocupação/Trabalho", "Profissão",
 ];
 
 /**
