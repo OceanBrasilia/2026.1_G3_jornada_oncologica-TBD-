@@ -41,7 +41,7 @@ const SectionCard = ({ title, children, defaultOpen = true }: any) => {
 
 export function FisioterapiaForm({ data, onChange, patient, inheritedData, origins }: FisioterapiaFormProps) {
 
-  const { getFieldStatus, ignoreConflict } = useClinicalConflicts();
+  const { getFieldStatus, dismissHint } = useClinicalConflicts();
 
   return (
     <div className="space-y-6">
@@ -222,7 +222,7 @@ export function FisioterapiaForm({ data, onChange, patient, inheritedData, origi
           onChange={onChange}
           conflictStatus={{
             ...getFieldStatus('escala_verbal_dor'),
-            onIgnore: () => ignoreConflict('escala_verbal_dor')
+            onDismiss: () => dismissHint('escala_verbal_dor')
           }}
         />
 

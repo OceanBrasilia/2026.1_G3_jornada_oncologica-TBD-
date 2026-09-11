@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 
 export interface InheritableProps {
   label: string;
@@ -8,13 +8,25 @@ export interface InheritableProps {
   onChange: (key: string, value: any) => void;
   inheritedData?: Record<string, any>;
   origins?: Record<string, string>;
+  /** Aviso não bloqueante: a pergunta pode não fazer sentido na situação do paciente, mas continua editável — nunca é desabilitada. */
   conflictStatus?: {
-    disabled: boolean;
-    placeholder?: string;
-    canIgnore?: boolean;
-    onIgnore?: () => void;
+    hint?: string;
+    onDismiss?: () => void;
   };
 }
+
+const ConflictHint = ({ hint, onDismiss }: { hint?: string; onDismiss?: () => void }) => {
+  if (!hint) return null;
+  return (
+    <div className="flex items-start gap-1.5 mb-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+      <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+      <span className="flex-1 leading-snug">{hint}</span>
+      {onDismiss && (
+        <button type="button" onClick={onDismiss} className="font-bold underline shrink-0 hover:text-amber-900">Dispensar</button>
+      )}
+    </div>
+  );
+};
 
 // Helpers
 const useInheritance = (name: string, data: Record<string, any>, inheritedData?: Record<string, any>, origins?: Record<string, string>, sourceName?: string) => {
@@ -68,34 +80,19 @@ export const InheritableInput = ({ label, name, placeholder = "", type = "text",
     );
   }
 
-  const actualPlaceholder = conflictStatus?.disabled ? conflictStatus.placeholder : placeholder;
-
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-        <label className={`block text-xs font-bold ${conflictStatus?.disabled ? 'text-[#8A9EB9]' : 'text-[#1A2332]'}`}>{label}</label>
-        {conflictStatus?.disabled && conflictStatus?.canIgnore && (
-          <button
-            type="button"
-            onClick={conflictStatus.onIgnore}
-            className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-2 py-0.5 rounded-full transition-colors"
-          >
-            Ignorar Aviso
-          </button>
-        )}
+        <label className="block text-xs font-bold text-[#1A2332]">{label}</label>
       </div>
+      <ConflictHint hint={conflictStatus?.hint} onDismiss={conflictStatus?.onDismiss} />
       <input
         type={type}
         name={name}
         value={data?.[name] ?? ""}
         onChange={(e) => onChange(name, e.target.value)}
-        placeholder={actualPlaceholder}
-        disabled={conflictStatus?.disabled}
-        className={`w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition ${
-          conflictStatus?.disabled 
-            ? 'bg-gray-100 text-gray-500 cursor-not-allowed placeholder:text-gray-500' 
-            : 'bg-[#F9FBFE] text-[#1A2332]'
-        }`}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition bg-[#F9FBFE] text-[#1A2332]"
       />
     </div>
   );
