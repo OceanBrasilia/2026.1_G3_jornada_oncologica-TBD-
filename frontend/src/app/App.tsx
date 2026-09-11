@@ -26,7 +26,10 @@ import { PendencyList } from "./components/ui/PendencyList";
 import { mockPatientAlerts } from "./mocks/patientAlertsMock";
 import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
 import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
-import { filterAlertsForRole } from "./alerts/visibleAlerts";
+import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts";
+import {
+  buildDadosGerais, buildDetalhesEspecialidade, buildResumoNutricao, buildResumoPsicologia, statusLabel,
+} from "./consolidado/buildConsolidatedView";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2514,8 +2517,12 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
 function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient; onBack: () => void; role: Role | null }) {
-  const now = "03/07/2024 às 11:24";
+  const agora = new Date();
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
   const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
+  const temAcessoConfidencial = podeVerConfidencial(role);
+  const dadosCompartilhados = buildDadosGerais(patient.formAnswers, patient.specialties);
   const blocks = [
     {
       title: "Dados gerais",
@@ -2551,9 +2558,6 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
   const handleExportPDF = () => {
     window.print();
   };
-
-  const atendidos = patient.specialties.filter(s => s.status === "atendido" || s.status === "em-atendimento");
-  const pendentes = patient.specialties.filter(s => s.status === "pendente");
 
   const sharedFieldsToCheck = ["peso", "altura", "Alergia", "Reação alergica", "Comorbidades", "tabagismo", "etilismo", "medicacoes", "Diagnóstico"];
   const divergencies: { field: string; answers: { specName: string; value: string }[] }[] = [];
@@ -2592,7 +2596,13 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
               </div>
             )}
           </div>
-          <p className="text-sm text-[#9AAABB] print:text-gray-600">Gerada em {now} · Paciente: {patient.name} ({patient.id})</p>
+          <p className="text-sm text-[#9AAABB] print:text-gray-600">Ficha gerada em {now}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6B7A8D] print:text-gray-700 mt-1">
+            <span><strong className="text-[#1A2332] print:text-black">{patient.name}</strong> ({patient.id})</span>
+            <span>{patient.age} anos</span>
+            <span>{patient.diagnosis} · CID {patient.cid}</span>
+            <span>Chegada: {patient.date} às {patient.arrivalTime}</span>
+          </div>
         </div>
         <button onClick={handleExportPDF} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md">
           <Download size={15} /> Exportar PDF
@@ -2614,6 +2624,23 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
           </dl>
         </div>
       ))}
+
+      {/* Dados compartilhados entre especialidades — cada campo aparece uma única vez, com quem preencheu (RF-006/RF-009) */}
+      {dadosCompartilhados.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 print:border-none print:shadow-none print:p-0 print:mb-6">
+          <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2 text-base print:text-lg print:mb-2 print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <span className="text-[#1B6CA8] print:hidden"><Layers size={14} /></span> Dados compartilhados entre especialidades
+          </h3>
+          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 print:grid-cols-2 print:gap-y-1">
+            {dadosCompartilhados.map(d => (
+              <div key={d.campo} className="flex gap-2 text-sm border-b border-[#F4F7FB] pb-2.5 last:border-0 print:border-b-0 print:pb-1">
+                <dt className="text-[#9AAABB] font-medium min-w-[150px] shrink-0 print:text-gray-700">{d.campo}</dt>
+                <dd className="text-[#1A2332] font-semibold print:text-black">{d.valor} <span className="text-[10px] text-[#8A9EB9] font-normal">({d.origem})</span></dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       {/* Divergencies Block */}
       {divergencies.length > 0 && (
@@ -2639,65 +2666,88 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
         </div>
       )}
 
-      {/* Specialty Summaries (Expandable / Cards) */}
+      {/* Specialty Summaries — uma seção por especialidade, com status (Preenchido/Pendente/Não aplicável) */}
       <div className="space-y-4 print:space-y-6">
         <h3 className="font-bold text-[#1A2332] flex items-center gap-2 text-base print:text-lg print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
           <span className="text-[#1B6CA8] print:hidden"><Layers size={16} /></span> Evolução e Conduta por Especialidade
         </h3>
 
-        {atendidos.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhuma especialidade com registro até o momento.</p>
-        ) : (
-          atendidos.map(sp => {
-            const answers = patient.formAnswers?.[sp.id];
+        {patient.specialties.map(sp => {
+          const preenchido = sp.status === "atendido" || sp.status === "em-atendimento";
 
+          if (!preenchido) {
+            const isPendente = sp.status === "pendente";
             return (
-              <div key={sp.id} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none print:break-inside-avoid">
-                <div className="p-4 bg-gray-50 border-b border-[rgba(27,108,168,0.1)] flex justify-between items-center print:bg-transparent print:p-0 print:border-b print:border-gray-300 print:mb-2">
-                  <h4 className="font-bold text-[#1A2332] text-sm print:text-base">{sp.name}</h4>
-                  <div className="text-xs text-[#6B7A8D] print:text-gray-600">
-                    {sp.professional && <span>{sp.professional}</span>}
-                    {sp.completedTime && <span> · {sp.completedTime}</span>}
-                  </div>
-                </div>
-                <div className="p-4 print:p-0 print:pt-2">
-                  {!answers || Object.keys(answers).length === 0 ? (
-                    <p className="text-sm text-gray-500 italic">Sem registros detalhados.</p>
-                  ) : (
-                    <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 print:grid-cols-1 print:gap-y-1">
-                      {Object.entries(answers).map(([q, a]) => {
-                        const label = q === "_updatedAt" ? "Horário do atendimento" : q;
-                        return (
-                          <div key={q} className="text-sm">
-                            <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{label}</dt>
-                            <dd className="text-[#1A2332] mt-0.5 print:mt-0">{Array.isArray(a) ? a.join(", ") : a}</dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
-                  )}
-                </div>
+              <div key={sp.id} className={`rounded-2xl border p-4 flex items-center justify-between print:break-inside-avoid ${isPendente ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+                <span className={`font-bold text-sm ${isPendente ? "text-amber-900" : "text-gray-600"}`}>{sp.name}</span>
+                <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${isPendente ? "bg-amber-100 text-amber-700" : "bg-gray-200 text-gray-600"}`}>
+                  {isPendente && <Clock size={12} />} {statusLabel(sp.status)}
+                </span>
               </div>
             );
-          })
-        )}
+          }
+
+          const answers = patient.formAnswers?.[sp.id];
+          const detalhes = buildDetalhesEspecialidade(sp.id, answers, temAcessoConfidencial);
+          const resumoNutricao = sp.id === "nutricao" ? buildResumoNutricao(answers) : null;
+          const resumoPsicologia = sp.id === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null;
+
+          return (
+            <div key={sp.id} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none print:break-inside-avoid">
+              <div className="p-4 bg-gray-50 border-b border-[rgba(27,108,168,0.1)] flex justify-between items-center print:bg-transparent print:p-0 print:border-b print:border-gray-300 print:mb-2">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-[#1A2332] text-sm print:text-base">{sp.name}</h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{statusLabel(sp.status)}</span>
+                </div>
+                <div className="text-xs text-[#6B7A8D] print:text-gray-600">
+                  {sp.professional && <span>{sp.professional}</span>}
+                  {sp.completedTime && <span> · {patient.date} às {sp.completedTime}</span>}
+                </div>
+              </div>
+              <div className="p-4 print:p-0 print:pt-2 space-y-4">
+                {resumoNutricao && (
+                  <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">IMC</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+                    </div>
+                    <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                  </div>
+                )}
+                {resumoPsicologia && (
+                  <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">IRPO — Índice Global de Risco</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoPsicologia.irpoTotal} pontos ({resumoPsicologia.respondidas}/27 questões)</span>
+                    </div>
+                    {resumoPsicologia.irpoRisk && (
+                      <p className="text-xs text-[#3A4354]">{resumoPsicologia.irpoRisk.level} — {resumoPsicologia.irpoRisk.indication}</p>
+                    )}
+                  </div>
+                )}
+                {detalhes.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">Sem registros detalhados.</p>
+                ) : (
+                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 print:grid-cols-1 print:gap-y-1">
+                    {detalhes.map(d => (
+                      <div key={d.campo} className="text-sm">
+                        <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{d.campo}</dt>
+                        <dd className="text-[#1A2332] mt-0.5 print:mt-0">{d.valor}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Pending */}
-      {pendentes.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 print:hidden mt-6">
-          <h3 className="font-bold text-amber-800 mb-3 flex items-center gap-2 text-sm">
-            <AlertTriangle size={14} /> Pendências e encaminhamentos
-          </h3>
-          <div className="space-y-1.5">
-            {pendentes.map(sp => (
-              <div key={sp.id} className="flex items-center gap-2 text-sm text-amber-700">
-                <Clock size={13} /> <span>{sp.name} – atendimento pendente</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PendencyList alerts={visibleAlerts} />
 
       <button onClick={onBack}
         className="print:hidden flex items-center gap-2 text-sm text-[#6B7A8D] hover:text-[#1A2332] transition font-medium mt-6">
