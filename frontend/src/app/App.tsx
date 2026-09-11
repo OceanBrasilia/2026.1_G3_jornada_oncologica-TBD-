@@ -21,8 +21,12 @@ import { OdontologiaForm } from "./components/forms/OdontologiaForm";
 import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
 import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
 import { AlertBadge } from "./components/ui/AlertBadge";
+import { Level2Banner } from "./components/ui/Level2Banner";
+import { PendencyList } from "./components/ui/PendencyList";
 import { mockPatientAlerts } from "./mocks/patientAlertsMock";
 import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
+import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
+import { filterAlertsForRole } from "./alerts/visibleAlerts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2008,15 +2012,18 @@ function AnswerCard({ answers, professional, completedTime, onEdit, onExport }: 
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
   docs: PatientDocument[];
   onDeleteDoc: (id: string) => void;
+  role: Role | null;
+  onAcknowledgeAlert: (alertId: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
+  const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
 
   // Password-protected delete state
   const [deleteTarget, setDeleteTarget] = useState<PatientDocument | null>(null);
@@ -2062,9 +2069,9 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">{patient.id}</p>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-2xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
-              {patient.alerts && patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+              {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
                 <div className="flex items-center gap-1">
-                  {patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                  {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
                     <AlertBadge key={alert.id} category={alert.category} alert={alert} />
                   ))}
                 </div>
@@ -2097,6 +2104,9 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
           <div><p className="text-blue-200">Acompanhante</p><p className="font-semibold">{patient.companion ?? "Não"}</p></div>
         </div>
       </div>
+
+      <Level2Banner alerts={visibleAlerts} onAcknowledge={onAcknowledgeAlert} />
+      <PendencyList alerts={visibleAlerts} />
 
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-4">
@@ -2503,8 +2513,9 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
 
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
-function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBack: () => void }) {
+function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient; onBack: () => void; role: Role | null }) {
   const now = "03/07/2024 às 11:24";
+  const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
   const blocks = [
     {
       title: "Dados gerais",
@@ -2573,9 +2584,9 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
-            {patient.alerts && patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+            {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
               <div className="flex items-center gap-1 print:hidden">
-                {patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
                   <AlertBadge key={alert.id} category={alert.category} alert={alert} />
                 ))}
               </div>
@@ -3373,80 +3384,19 @@ export default function App() {
         }
       };
 
-      const newAlerts = [...(p.alerts || [])];
-      
-      // Auto-generate Allergy Alert if reported
-      if (answers["Alergia"] === "Sim" && !newAlerts.some(a => a.category === AlertCategory.ALLERGY)) {
-        newAlerts.push({
-          id: `alert-allergy-${Date.now()}`,
-          category: AlertCategory.ALLERGY,
-          level: [AlertLevel.LEVEL_3],
-          title: "Alergia Reportada",
-          description: `Paciente possui alergia: ${answers["Reação alergica"] || "não especificada"}.`,
-          active: true,
-        });
-      } else if (answers["Alergia"] === "Nega") {
-        // Remove allergy alert if they changed it to "Nega"
-        const idx = newAlerts.findIndex(a => a.category === AlertCategory.ALLERGY);
-        if (idx !== -1) newAlerts.splice(idx, 1);
-      }
-
-      // Auto-generate Device Usage Alert
-      const activeDevices = [];
-      if (answers["via_alimentacao"] && answers["via_alimentacao"] !== "Oral") activeDevices.push(`${answers["via_alimentacao"]} (Alimentação)`);
-      if (answers["Diurese"] === "Uso de sonda (SVD)") activeDevices.push("SVD (Diurese)");
-      if (answers["Evacuação"] === "Uso de ostomia") activeDevices.push("Ostomia (Evacuação)");
-      if (Array.isArray(answers["Dispositivos invasivos"])) {
-        const inv = answers["Dispositivos invasivos"].filter(d => d !== "Nenhum" && d !== "Outro");
-        if (inv.length > 0) activeDevices.push(...inv);
-      }
-      
-      const hasDevice = activeDevices.length > 0;
-      
-      if (hasDevice && !newAlerts.some(a => a.category === AlertCategory.DEVICE_USAGE)) {
-        newAlerts.push({
-          id: `alert-device-${Date.now()}`,
-          category: AlertCategory.DEVICE_USAGE,
-          level: [AlertLevel.LEVEL_3],
-          title: "Uso de Dispositivo",
-          description: `Paciente em uso de: ${activeDevices.join(", ")}.`,
-          active: true,
-        });
-      } else if (!hasDevice && Object.keys(answers).some(k => ["via_alimentacao", "Diurese", "Evacuação", "Dispositivos invasivos"].includes(k))) {
-        // Here we could remove it, but we'll leave it as is for safety or implement removal later
-      }
-
-      // Auto-generate Clinical Risk Alert
-      const hasClinicalRisk = Array.isArray(answers["Comorbidades"]) && answers["Comorbidades"].length > 0;
-        
-      if (hasClinicalRisk && !newAlerts.some(a => a.category === AlertCategory.CLINICAL_RISK)) {
-        newAlerts.push({
-          id: `alert-clinical-${Date.now()}`,
-          category: AlertCategory.CLINICAL_RISK,
-          level: [AlertLevel.LEVEL_3],
-          title: "Risco Clínico",
-          description: `Comorbidade reportada: ${Array.isArray(answers["Comorbidades"]) ? answers["Comorbidades"].join(", ") : answers["Comorbidades"]}`,
-          active: true,
-        });
-      }
-
-      // Auto-generate Severe Symptoms (Pain) Alert
-      const painScore = Math.max(
-        parseInt(answers["Avaliação da dor"] || "0"),
-        parseInt(answers["escala_verbal_dor"] || "0"),
-        parseInt(answers["TO_Dor_Intensidade"] || "0")
-      );
-      
-      if (painScore >= 8 && !newAlerts.some(a => a.category === AlertCategory.SEVERE_SYMPTOMS)) {
-        newAlerts.push({
-          id: `alert-pain-${Date.now()}`,
-          category: AlertCategory.SEVERE_SYMPTOMS,
-          level: [AlertLevel.LEVEL_3],
-          title: "Dor Intensa",
-          description: `Paciente reportou dor intensa (nível ${painScore}).`,
-          active: true,
-        });
-      }
+      // Recalcula a lista inteira de alertas a partir das respostas de todas
+      // as especialidades (fonte única — ver frontend/src/app/alerts).
+      // Preserva o status ("ciente"/"resolvido") que o profissional já tiver
+      // registrado para um alerta que continua valendo.
+      const previousAlerts = p.alerts || [];
+      const freshAlerts = generatePatientAlerts(newFormAnswers, () => new Date().toLocaleString('pt-BR'));
+      const newAlerts = freshAlerts.map(fresh => {
+        const prev = previousAlerts.find(a => a.id === fresh.id);
+        if (prev?.status && prev.status !== 'aberto') {
+          return { ...fresh, status: prev.status, createdAt: prev.createdAt ?? fresh.createdAt };
+        }
+        return fresh;
+      });
 
       const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
@@ -3461,6 +3411,24 @@ export default function App() {
       return newList;
     });
     setScreen("patient-record");
+  }
+
+  function handleAcknowledgeAlert(alertId: string) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'ciente' as const } : a);
+      const updatedPatient = { ...p, alerts: newAlerts };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      return newList;
+    });
   }
 
   const getScreenTitle = () => {
@@ -3522,13 +3490,13 @@ export default function App() {
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
-      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} />}
+      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
       
       {/* Global Critical Alert */}
       {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (
-        <GlobalCriticalAlert alerts={selectedPatient.alerts || []} />
+        <GlobalCriticalAlert alerts={filterAlertsForRole(selectedPatient.alerts || [], role)} />
       )}
     </AppLayout>
   );

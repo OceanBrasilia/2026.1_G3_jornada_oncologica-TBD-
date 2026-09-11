@@ -290,11 +290,22 @@ export function ServicoSocialForm({ data, onChange, patient, inheritedData, orig
           onChange={onChange} 
         />
         
-        <InheritableInput inheritedData={inheritedData} origins={origins} 
-          label="Assistente Social entrevistador(a)" 
-          name="assistenteSocial" 
-          data={data} 
-          onChange={onChange} 
+        <InheritableInput inheritedData={inheritedData} origins={origins}
+          label="Assistente Social entrevistador(a)"
+          name="assistenteSocial"
+          data={data}
+          onChange={onChange}
+        />
+      </SectionCard>
+
+      <SectionCard title="VI – Sinalização para a equipe" className="!mt-3">
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins}
+          label="Sinalizar vulnerabilidade social para acompanhamento da equipe multiprofissional?"
+          subLabel="Gera um alerta confidencial (visível só para a equipe), registrado como sinalização do Serviço Social."
+          name="vulnerabilidadeSocialSinalizada"
+          options={["Sim", "Não"]}
+          data={data}
+          onChange={onChange}
         />
       </SectionCard>
     </div>

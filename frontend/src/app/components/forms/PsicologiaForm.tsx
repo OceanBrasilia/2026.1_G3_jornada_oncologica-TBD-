@@ -1,7 +1,9 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
+import { GlobalCriticalAlert } from "../ui/GlobalCriticalAlert";
+import { AlertCategory, AlertLevel, PatientAlert } from "../../types/alerts";
 
 export interface PsicologiaFormProps {
   data: Record<string, string>;
@@ -13,7 +15,7 @@ export interface PsicologiaFormProps {
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
 import { ConditionalField } from "./shared/ConditionalField";
-import { irpoQuestions, calculateIrpoTotal, classifyIrpoRisk, isIrpoCriticalRisk } from "../../calculos/irpo";
+import { irpoQuestions, calculateIrpoTotal, classifyIrpoRisk } from "../../calculos/irpo";
 
 const Card = ({ title, icon: Icon, children, className = "" }: any) => (
   <div className={`bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5 ${className}`}>
@@ -110,15 +112,22 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
 
   const hasSuicidalIdeation = data["IdeacaoSuicida"] === "Sim";
 
-  const isCriticalRisk = hasSuicidalIdeation || isIrpoCriticalRisk(irpoTotalScore);
-
-  const [alertAcknowledged, setAlertAcknowledged] = useState(false);
-
-  useEffect(() => {
-    if (isCriticalRisk) {
-      setAlertAcknowledged(false);
-    }
-  }, [isCriticalRisk]);
+  // Só ideação suicida ativa dispara o Modal Crítico (Nível 1). IGR alto
+  // sozinho (sem ideação) passa a ser Nível 2 — ver frontend/src/app/alerts
+  // e frontend/src/app/config/alertThresholds.ts.
+  const liveAlerts: PatientAlert[] = useMemo(() => {
+    if (!hasSuicidalIdeation) return [];
+    return [{
+      id: "alert-irpo-ideacao-live",
+      category: AlertCategory.PSYCHOSOCIAL_RISK,
+      level: [AlertLevel.LEVEL_1],
+      title: "Ideação suicida ativa",
+      description: "Paciente relatou ideação suicida no IRPO (questão 28).",
+      recommendedAction: "Avaliação psicológica/psiquiátrica prioritária e registro de conduta.",
+      active: true,
+      confidential: true,
+    }];
+  }, [hasSuicidalIdeation]);
 
   const answeredQuestionsCount = irpoQuestions.filter(q => data[`IRPO_${q.id}`]).length;
 
@@ -136,36 +145,7 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
         alerts={patient?.alerts}
       />
 
-      {isCriticalRisk && !alertAcknowledged && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200 border-t-8 border-red-600">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="bg-red-100 p-3 rounded-full shrink-0">
-                <AlertTriangle className="text-red-600 h-8 w-8" />
-              </div>
-              <h3 className="text-xl font-black text-red-700 leading-tight">ALERTA CRÍTICO DE RISCO</h3>
-            </div>
-            <div className="text-gray-700 mb-6 space-y-3">
-              {hasSuicidalIdeation && <p>• <strong>Risco identificado:</strong> Ideação suicida ativa relatada.</p>}
-              {irpoTotalScore >= 70 && <p>• <strong>Risco identificado:</strong> IGR ≥ 70 (Distress intenso e coping deficitário).</p>}
-              
-              <div className="mt-4 bg-red-50 p-3 rounded-lg border border-red-200 flex gap-2">
-                <AlertTriangle size={20} className="text-red-600 shrink-0" />
-                <p className="text-red-800 font-bold text-sm">
-                  Ação Necessária: Avaliação prioritária exigida.
-                </p>
-              </div>
-            </div>
-            <button 
-               type="button"
-              onClick={() => setAlertAcknowledged(true)}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition shadow-md hover:shadow-lg active:scale-[0.98]"
-            >
-              Ciente, continuar atendimento
-            </button>
-          </div>
-        </div>
-      )}
+      <GlobalCriticalAlert alerts={liveAlerts} />
 
       <ReusedDataAccordion
         title="Identificação (reaproveitada)"

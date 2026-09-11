@@ -101,6 +101,22 @@ export function calculateBoxDScore(subjectiveScore: number): number {
   return subjectiveScore;
 }
 
+/**
+ * Soma o escore total da ASG-PPP (A = Caixas 1-4, B, C, D) a partir do objeto
+ * de respostas do formulário de Nutrição. Mesma soma usada na tela, extraída
+ * aqui para poder ser reutilizada (ex.: geração de alertas).
+ */
+export function calculateAsgPppTotal(answers: Record<string, any>): number {
+  const box1 = calculateBox1Score(answers.peso || "", answers.peso_1m || "", answers.peso_6m || "", answers.peso_var_2sem || "");
+  const box2 = calculateBox2Score(answers.ingestao_mudanca || "", answers.ingestao_atual || "");
+  const box3 = calculateBox3Score(answers.sintomas || []);
+  const box4 = calculateBox4Score(answers.atividade || "");
+  const boxB = calculateBoxBScore(answers.doencas || []);
+  const boxC = calculateBoxCScore(parseInt(answers.febre || "0"), parseInt(answers.duracao_febre || "0"), parseInt(answers.corticoide || "0"));
+  const boxD = calculateBoxDScore(parseInt(answers.exame_fisico || "0"));
+  return box1 + box2 + box3 + box4 + boxB + boxC + boxD;
+}
+
 export function getTriageInfo(total: number) {
   if (total <= 1) return {
     text: "0-1: Não há necessidade de intervenção neste momento. Reavaliar de forma rotineira.",

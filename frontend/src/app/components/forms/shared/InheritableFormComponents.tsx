@@ -218,7 +218,7 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
   );
 };
 
-export const InheritableRadioPills = ({ label, name, options, data, onChange, inheritedData, origins, stacked = false, block = false }: InheritableProps & { options: string[], stacked?: boolean, block?: boolean }) => {
+export const InheritableRadioPills = ({ label, name, options, data, onChange, inheritedData, origins, stacked = false, block = false, subLabel }: InheritableProps & { options: string[], stacked?: boolean, block?: boolean, subLabel?: string }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
 
   const value = isInheritedActive ? inheritedValue : (data?.[name] || "");
@@ -236,6 +236,7 @@ export const InheritableRadioPills = ({ label, name, options, data, onChange, in
           )}
         </div>
       )}
+      {subLabel && <div className="text-[10px] text-[#8A9EB9] font-normal leading-tight mb-2 -mt-1">{subLabel}</div>}
       <div className={`flex ${stacked ? 'flex-col gap-2' : 'flex-wrap gap-2'}`}>
         {options.map((opt: string) => {
           const isSelected = value === opt;

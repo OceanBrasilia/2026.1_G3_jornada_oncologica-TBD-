@@ -274,7 +274,7 @@ export function EnfermagemForm({ data, onChange, patient, inheritedData, origins
           <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Descrever (localização, aspecto, curativo atual):" name="Localização lesão tumoral" data={data} onChange={onChange} />
         </ConditionalField>
 
-        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} label="Uso de dispositivos invasivos" name="Dispositivos invasivos" options={["Nenhum", "Acesso venoso periférico", "Port-a-cath", "PICC", "Cateter duplo lúmen", "Sonda nasoenteral (SNE)", "Ostomias", "Outro"]} data={data} onChange={onChange} />
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} label="Uso de dispositivos invasivos" name="Dispositivos invasivos" options={["Nenhum", "Acesso venoso periférico", "Port-a-cath", "PICC", "Cateter duplo lúmen", "Sonda nasoenteral (SNE)", "Ostomias", "Traqueostomia", "Outro"]} data={data} onChange={onChange} />
 
         <ConditionalField data={data} onChange={onChange} showIf={{ campo: "Dispositivos invasivos", "contém": "Outro" }} campos={["Dispositivos invasivos (Outro)"]} className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-2">
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Qual dispositivo?" name="Dispositivos invasivos (Outro)" data={data} onChange={onChange} />
