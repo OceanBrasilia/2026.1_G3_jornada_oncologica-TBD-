@@ -1,6 +1,7 @@
 import { calculateIMC, IMC_FORMULA } from "../calculos/imc";
 import { calculateAsgPppTotal, getTriageInfo } from "../calculos/asgPpp";
 import { calculateIrpoTotal, classifyIrpoRisk, irpoQuestions, type IrpoRisk } from "../calculos/irpo";
+import { formatarLabelCampo } from "./fieldLabels";
 
 export type SpecStatusResumo = "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica";
 
@@ -50,6 +51,7 @@ function formatarValor(valor: any): string {
 
 export interface DadoGeral {
   campo: string;
+  label: string;
   valor: string;
   origem: string;
 }
@@ -64,7 +66,7 @@ export function buildDadosGerais(
     for (const spec of specialties) {
       const valor = formAnswers?.[spec.id]?.[campo];
       if (!valorVazio(valor)) {
-        resultado.push({ campo, valor: formatarValor(valor), origem: spec.name });
+        resultado.push({ campo, label: formatarLabelCampo(campo), valor: formatarValor(valor), origem: spec.name });
         break;
       }
     }
@@ -72,8 +74,73 @@ export function buildDadosGerais(
   return resultado;
 }
 
+export interface DivergenciaCampo {
+  valor: string;
+  especialidades: string[];
+}
+
+export interface InfoCompartilhada {
+  campo: string;
+  label: string;
+  valor: string;
+  origem: string;
+  divergente: boolean;
+  outrasRespostas: DivergenciaCampo[];
+}
+
+/**
+ * Como buildDadosGerais, mas também aponta divergência: quando duas ou mais
+ * especialidades preenchem o mesmo campo compartilhado com valores
+ * diferentes, mostra o primeiro valor como principal e o resto como
+ * divergência — só para sinalizar, nunca decide qual está "certo"
+ * (cada especialidade mantém autonomia sobre o que registrou).
+ */
+export function buildInformacoesCompartilhadas(
+  formAnswers: Record<string, Record<string, any>> | undefined,
+  specialties: { id: string; name: string }[]
+): InfoCompartilhada[] {
+  const resultado: InfoCompartilhada[] = [];
+
+  for (const campo of CAMPOS_COMPARTILHADOS) {
+    const porValor = new Map<string, string[]>();
+    let primeiroValor: string | null = null;
+    let primeiraOrigem = "";
+
+    for (const spec of specialties) {
+      const valor = formAnswers?.[spec.id]?.[campo];
+      if (valorVazio(valor)) continue;
+      const valorFormatado = formatarValor(valor);
+      if (primeiroValor === null) {
+        primeiroValor = valorFormatado;
+        primeiraOrigem = spec.name;
+      }
+      const lista = porValor.get(valorFormatado) || [];
+      lista.push(spec.name);
+      porValor.set(valorFormatado, lista);
+    }
+
+    if (primeiroValor === null) continue;
+
+    const outrasRespostas: DivergenciaCampo[] = Array.from(porValor.entries())
+      .filter(([valor]) => valor !== primeiroValor)
+      .map(([valor, especialidades]) => ({ valor, especialidades }));
+
+    resultado.push({
+      campo,
+      label: formatarLabelCampo(campo),
+      valor: primeiroValor,
+      origem: primeiraOrigem,
+      divergente: outrasRespostas.length > 0,
+      outrasRespostas,
+    });
+  }
+
+  return resultado;
+}
+
 export interface LinhaDetalhe {
   campo: string;
+  label: string;
   valor: string;
 }
 
@@ -100,7 +167,7 @@ export function buildDetalhesEspecialidade(
     if (CAMPOS_COMPARTILHADOS.includes(campo)) continue;
     if (substituidos.includes(campo)) continue;
     if (confidenciais.includes(campo) && !podeVerConfidencial) continue;
-    linhas.push({ campo, valor: formatarValor(valor) });
+    linhas.push({ campo, label: formatarLabelCampo(campo), valor: formatarValor(valor) });
   }
   return linhas;
 }

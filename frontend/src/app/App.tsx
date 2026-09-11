@@ -28,7 +28,7 @@ import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
 import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
 import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts";
 import {
-  buildDadosGerais, buildDetalhesEspecialidade, buildResumoNutricao, buildResumoPsicologia, statusLabel,
+  buildDadosGerais, buildDetalhesEspecialidade, buildInformacoesCompartilhadas, buildResumoNutricao, buildResumoPsicologia, statusLabel,
 } from "./consolidado/buildConsolidatedView";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -1973,20 +1973,28 @@ function ProfessionalDashboard({ onOpenPatient }: { onOpenPatient: (p: Patient) 
 
 // ─── Patient Record ───────────────────────────────────────────────────────────
 
-function AnswerCard({ answers, professional, completedTime, onEdit, onExport }: {
-  answers: Record<string, string>;
+function AnswerCard({ answers, specId, role, professional, completedTime, onEdit, onExport }: {
+  answers: Record<string, any>;
+  specId: string;
   specName: string;
+  role: Role | null;
   professional?: string;
   completedTime?: string;
   onEdit: () => void;
   onExport: () => void;
 }) {
+  const temAcessoConfidencial = podeVerConfidencial(role);
+  const detalhes = buildDetalhesEspecialidade(specId, answers, temAcessoConfidencial);
+  const resumoNutricao = specId === "nutricao" ? buildResumoNutricao(answers) : null;
+  const resumoPsicologia = specId === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null;
+  const horario = answers["_updatedAt"];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-emerald-700 font-medium flex-1">
           <CheckCircle size={15} />
-          Concluído por <span className="font-bold">{professional}</span>{completedTime ? ` às ${completedTime}` : ""}
+          Concluído por <span className="font-bold">{professional}</span>{(horario || completedTime) ? ` às ${horario || completedTime}` : ""}
         </div>
         <div className="flex gap-2 shrink-0">
           <button onClick={onEdit}
@@ -2000,17 +2008,43 @@ function AnswerCard({ answers, professional, completedTime, onEdit, onExport }: 
         </div>
       </div>
 
-      <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-0 bg-[#F9FBFE] rounded-xl border border-[#EEF2F7] overflow-hidden">
-        {Object.entries(answers).map(([k, v], i) => {
-          const label = k === "_updatedAt" ? "Horário do atendimento" : k;
-          return (
-            <div key={k} className={`px-4 py-3 border-b border-[#EEF2F7] ${i % 2 === 1 ? "sm:border-l" : ""}`}>
-              <dt className="text-[10px] font-bold text-[#9AAABB] uppercase tracking-wider mb-0.5">{label}</dt>
-              <dd className="text-sm font-semibold text-[#1A2332]">{v}</dd>
+      {resumoNutricao && (
+        <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">IMC</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+          </div>
+          <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+        </div>
+      )}
+      {resumoPsicologia && (
+        <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-1">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">IRPO — Índice Global de Risco</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoPsicologia.irpoTotal} pontos ({resumoPsicologia.respondidas}/27 questões)</span>
+          </div>
+          {resumoPsicologia.irpoRisk && (
+            <p className="text-xs text-[#3A4354]">{resumoPsicologia.irpoRisk.level} — {resumoPsicologia.irpoRisk.indication}</p>
+          )}
+        </div>
+      )}
+
+      {detalhes.length === 0 ? (
+        <p className="text-sm text-gray-500 italic px-1">Sem registros detalhados.</p>
+      ) : (
+        <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-0 bg-[#F9FBFE] rounded-xl border border-[#EEF2F7] overflow-hidden">
+          {detalhes.map((d, i) => (
+            <div key={d.campo} className={`px-4 py-3 border-b border-[#EEF2F7] ${i % 2 === 1 ? "sm:border-l" : ""}`}>
+              <dt className="text-[10px] font-bold text-[#9AAABB] uppercase tracking-wider mb-0.5">{d.label}</dt>
+              <dd className="text-sm font-semibold text-[#1A2332]">{d.valor}</dd>
             </div>
-          );
-        })}
-      </dl>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }
@@ -2199,77 +2233,41 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   <h4 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Informações Compartilhadas</h4>
                   <span className="text-[10px] text-[#2DB5A3] font-bold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20">Histórico unificado</span>
                 </div>
-                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { key: "Peso", label: "Peso", fallback: patient.weight ?? "—", source: "Enfermagem às 09:25" },
-                    { key: "Altura", label: "Altura", fallback: patient.height ?? "—", source: "Enfermagem às 09:25" },
-                    { key: "Alergias", label: "Alergias", fallback: "Dipirona", source: "Enfermagem às 09:25" },
-                    { key: "Comorbidades", label: "Comorbidades", fallback: "Hipertensão controlada", source: "Enfermagem às 09:25" },
-                    { key: "Hábitos (tabagismo, etilismo)", label: "Hábitos", fallback: "Ex-tabagista", source: "Enfermagem às 09:25" }
-                  ].map(info => {
-                    let originVal = "";
-                    let originSpec = "";
-                    let originTime = "";
-                    const divergences = new Map<string, { specs: string[], time: string }>();
-
-                    if (patient.formAnswers) {
-                      patient.specialties.forEach(s => {
-                        const answers = patient.formAnswers![s.id];
-                        if (answers) {
-                          const v = answers[info.key];
-                          if (v && v !== "—" && info.key !== "_updatedAt") {
-                            const t = answers["_updatedAt"] || s.completedTime || "recente";
-                            if (!originVal) {
-                              originVal = v;
-                              originSpec = s.name;
-                              originTime = t;
-                            } else if (v !== originVal) {
-                              if (divergences.has(v)) {
-                                divergences.get(v)!.specs.push(s.name);
-                              } else {
-                                divergences.set(v, { specs: [s.name], time: t });
-                              }
-                            }
-                          }
-                        }
-                      });
-                    }
-
-                    if (!originVal) {
-                      originVal = info.fallback;
-                      originSpec = "Cadastro";
-                      originTime = "inicial";
-                    }
-
-                    const hasConflict = divergences.size > 0;
-
-                    return (
-                      <div key={info.label} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${hasConflict ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
-                        <div>
-                          <div className="flex items-start justify-between gap-1 mb-0.5">
-                            <p className={`text-xs font-bold ${hasConflict ? "text-amber-700" : "text-[#6B7A8D]"}`}>{info.label}</p>
-                            {hasConflict && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-bold" title="Dados divergentes registrados por outras especialidades"><AlertCircle size={10} /> divergência</span>}
-                          </div>
-                          {hasConflict ? (
-                            <div className="space-y-1.5 mt-2">
-                              <p className="text-xs text-amber-900 leading-tight">
-                                <span className="font-bold">Origem:</span> {originVal} <span className="opacity-75">({originSpec})</span>
-                              </p>
-                              {Array.from(divergences.entries()).map(([val, d], idx) => (
-                                <p key={idx} className="text-xs text-amber-900 leading-tight">
-                                  <span className="font-bold">Divergência:</span> {val} <span className="opacity-75">({d.specs.join(", ")})</span>
-                                </p>
-                              ))}
+                {(() => {
+                  const infos = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+                  if (infos.length === 0) {
+                    return <p className="text-sm text-gray-500">Nenhuma especialidade preencheu dados compartilhados ainda.</p>;
+                  }
+                  return (
+                    <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      {infos.map(info => (
+                        <div key={info.campo} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${info.divergente ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
+                          <div>
+                            <div className="flex items-start justify-between gap-1 mb-0.5">
+                              <p className={`text-xs font-bold ${info.divergente ? "text-amber-700" : "text-[#6B7A8D]"}`}>{info.label}</p>
+                              {info.divergente && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-bold" title="Dados divergentes registrados por outras especialidades"><AlertCircle size={10} /> divergência</span>}
                             </div>
-                          ) : (
-                            <p className="text-sm font-semibold mb-2 mt-1 leading-tight text-[#1A2332]">{originVal}</p>
-                          )}
+                            {info.divergente ? (
+                              <div className="space-y-1.5 mt-2">
+                                <p className="text-xs text-amber-900 leading-tight">
+                                  <span className="font-bold">Origem:</span> {info.valor} <span className="opacity-75">({info.origem})</span>
+                                </p>
+                                {info.outrasRespostas.map((d, idx) => (
+                                  <p key={idx} className="text-xs text-amber-900 leading-tight">
+                                    <span className="font-bold">Divergência:</span> {d.valor} <span className="opacity-75">({d.especialidades.join(", ")})</span>
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm font-semibold mb-2 mt-1 leading-tight text-[#1A2332]">{info.valor}</p>
+                            )}
+                          </div>
+                          {!info.divergente && <span className="text-[10px] font-semibold mt-auto text-[#2DB5A3]">↩ {info.origem}</span>}
                         </div>
-                        {!hasConflict && <span className="text-[10px] font-semibold mt-auto text-[#2DB5A3]">↩ {originSpec} às {originTime}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : activeTab === "documentos" ? (
@@ -2335,7 +2333,9 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                 return (
                   <AnswerCard
                     answers={answers ?? {}}
+                    specId={activeSpec.id}
                     specName={activeSpec.name}
+                    role={role}
                     professional={activeSpec.professional}
                     completedTime={activeSpec.completedTime}
                     onEdit={() => onOpenSpecialty(activeSpec.id, "edit")}
@@ -2634,7 +2634,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
           <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 print:grid-cols-2 print:gap-y-1">
             {dadosCompartilhados.map(d => (
               <div key={d.campo} className="flex gap-2 text-sm border-b border-[#F4F7FB] pb-2.5 last:border-0 print:border-b-0 print:pb-1">
-                <dt className="text-[#9AAABB] font-medium min-w-[150px] shrink-0 print:text-gray-700">{d.campo}</dt>
+                <dt className="text-[#9AAABB] font-medium min-w-[150px] shrink-0 print:text-gray-700">{d.label}</dt>
                 <dd className="text-[#1A2332] font-semibold print:text-black">{d.valor} <span className="text-[10px] text-[#8A9EB9] font-normal">({d.origem})</span></dd>
               </div>
             ))}
@@ -2735,7 +2735,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
                   <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 print:grid-cols-1 print:gap-y-1">
                     {detalhes.map(d => (
                       <div key={d.campo} className="text-sm">
-                        <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{d.campo}</dt>
+                        <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{d.label}</dt>
                         <dd className="text-[#1A2332] mt-0.5 print:mt-0">{d.valor}</dd>
                       </div>
                     ))}

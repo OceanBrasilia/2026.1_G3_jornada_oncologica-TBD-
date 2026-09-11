@@ -2,10 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   buildDadosGerais,
   buildDetalhesEspecialidade,
+  buildInformacoesCompartilhadas,
   buildResumoNutricao,
   buildResumoPsicologia,
   statusLabel,
 } from "./buildConsolidatedView";
+import { formatarLabelCampo } from "./fieldLabels";
 import { irpoQuestions } from "../calculos/irpo";
 
 const specialties = [
@@ -57,7 +59,7 @@ describe("buildDetalhesEspecialidade", () => {
       "algumTexto_append": "nada",
       "_updatedAt": "10:00",
     }, true);
-    expect(linhas).toEqual([{ campo: "Locomoção", valor: "Sem auxílio" }]);
+    expect(linhas).toEqual([{ campo: "Locomoção", label: "Locomoção", valor: "Sem auxílio" }]);
   });
 
   it("remove campos vazios", () => {
@@ -67,7 +69,7 @@ describe("buildDetalhesEspecialidade", () => {
 
   it("não repete campos que já aparecem em Dados gerais", () => {
     const linhas = buildDetalhesEspecialidade("enfermagem", { Alergia: "Sim", "Locomoção": "Sem auxílio" }, true);
-    expect(linhas).toEqual([{ campo: "Locomoção", valor: "Sem auxílio" }]);
+    expect(linhas).toEqual([{ campo: "Locomoção", label: "Locomoção", valor: "Sem auxílio" }]);
   });
 
   it("esconde os campos confidenciais de quem não pode ver", () => {
@@ -113,6 +115,57 @@ describe("buildResumoPsicologia", () => {
     const resumo = buildResumoPsicologia(answers);
     expect(resumo?.respondidas).toBe(27);
     expect(resumo?.irpoRisk).not.toBeNull();
+  });
+});
+
+describe("buildInformacoesCompartilhadas", () => {
+  it("mostra o primeiro valor como principal, sem divergência, quando todo mundo concorda", () => {
+    const formAnswers = {
+      enfermagem: { Alergia: "Sim" },
+      medicina: { Alergia: "Sim" },
+    };
+    const infos = buildInformacoesCompartilhadas(formAnswers, [
+      { id: "enfermagem", name: "Enfermagem" },
+      { id: "medicina", name: "Medicina" },
+    ]);
+    const alergia = infos.find(i => i.campo === "Alergia");
+    expect(alergia?.divergente).toBe(false);
+    expect(alergia?.outrasRespostas).toEqual([]);
+  });
+
+  it("sinaliza divergência sem decidir qual valor está certo", () => {
+    const formAnswers = {
+      enfermagem: { tabagismo: "Não" },
+      medicina: { tabagismo: "Sim" },
+    };
+    const infos = buildInformacoesCompartilhadas(formAnswers, [
+      { id: "enfermagem", name: "Enfermagem" },
+      { id: "medicina", name: "Medicina" },
+    ]);
+    const tabagismo = infos.find(i => i.campo === "tabagismo");
+    expect(tabagismo?.divergente).toBe(true);
+    expect(tabagismo?.valor).toBe("Não");
+    expect(tabagismo?.outrasRespostas).toEqual([{ valor: "Sim", especialidades: ["Medicina"] }]);
+  });
+
+  it("não inclui campos que ninguém preencheu", () => {
+    const infos = buildInformacoesCompartilhadas({}, [{ id: "enfermagem", name: "Enfermagem" }]);
+    expect(infos).toEqual([]);
+  });
+});
+
+describe("formatarLabelCampo", () => {
+  it("usa o dicionário de rótulos quando o campo é conhecido", () => {
+    expect(formatarLabelCampo("tabagismo_cigarros")).toBe("Cigarros/dia");
+  });
+
+  it("mantém como está um rótulo que já parece legível", () => {
+    expect(formatarLabelCampo("Ocupação/Trabalho")).toBe("Situação profissional atual");
+  });
+
+  it("arruma um campo desconhecido em snake_case ou camelCase, como último recurso", () => {
+    expect(formatarLabelCampo("IRPO_1")).toBe("IRPO 1");
+    expect(formatarLabelCampo("umCampoNovo")).toBe("Um Campo Novo");
   });
 });
 
