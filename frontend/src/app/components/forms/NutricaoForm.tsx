@@ -22,6 +22,7 @@ export interface FormProps {
 }
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills } from "./shared/InheritableFormComponents";
+import { ConditionalField } from "./shared/ConditionalField";
 
 
 
@@ -155,20 +156,16 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           
           <div>
             <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Suplementação" name="suplementacao" options={["Não", "Sim"]} data={data} onChange={onChange} />
-            {data.suplementacao === "Sim" && (
-              <div className="pl-4 border-l-2 border-[#FCD34D] mt-3">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Qual?" name="suplementacao_qual" data={data} onChange={onChange} />
-              </div>
-            )}
+            <ConditionalField data={data} onChange={onChange} showIf={{ campo: "suplementacao", igual: "Sim" }} campos={["suplementacao_qual"]} className="pl-4 border-l-2 border-[#FCD34D] mt-3">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Qual?" name="suplementacao_qual" data={data} onChange={onChange} />
+            </ConditionalField>
           </div>
-          
+
           <div>
             <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tratamento prévio" name="tratamento_previo" options={["Não", "Sim"]} data={data} onChange={onChange} />
-            {data.tratamento_previo === "Sim" && (
-              <div className="pl-4 border-l-2 border-[#FCD34D] mt-3">
-                <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Qual?" name="tratamento_previo_qual" options={["Cirurgia", "RT", "RQT", "QT"]} data={data} onChange={onChange} />
-              </div>
-            )}
+            <ConditionalField data={data} onChange={onChange} showIf={{ campo: "tratamento_previo", igual: "Sim" }} campos={["tratamento_previo_qual"]} className="pl-4 border-l-2 border-[#FCD34D] mt-3">
+              <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Qual?" name="tratamento_previo_qual" options={["Cirurgia", "RT", "RQT", "QT"]} data={data} onChange={onChange} />
+            </ConditionalField>
           </div>
           
           <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="escolaridade" options={["Ensino Médio", "Ensino Superior"]} data={data} onChange={onChange} />
@@ -181,43 +178,53 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           
           <div>
             <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tabagismo" name="tabagismo" options={["Não", "Sim", "Ex-tabagista"]} data={data} onChange={onChange} />
-            {(data.tabagismo === "Sim" || data.tabagismo === "Ex-tabagista") && (
-              <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
-                </div>
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
-                </div>
-                {data.tabagismo === "Ex-tabagista" && (
-                  <div className="flex-1">
-                    <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
-                  </div>
-                )}
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ OU: [
+                { campo: "tabagismo", igual: "Sim" },
+                { campo: "tabagismo", igual: "Ex-tabagista" },
+              ]}}
+              campos={["tabagismo_cigarros", "tabagismo_duracao", "tabagismo_parou"]}
+              className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+            >
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
               </div>
-            )}
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
+              </div>
+              <ConditionalField data={data} onChange={onChange} showIf={{ campo: "tabagismo", igual: "Ex-tabagista" }} campos={["tabagismo_parou"]} className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
+              </ConditionalField>
+            </ConditionalField>
           </div>
 
           <div>
             <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Etilismo" name="etilismo" options={["Não", "Sim", "Ex-etilista"]} data={data} onChange={onChange} />
-            {(data.etilismo === "Sim" || data.etilismo === "Ex-etilista") && (
-              <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Fermentados ml/sem" name="etilismo_fermentados" data={data} onChange={onChange} />
-                </div>
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Destilados ml/sem" name="etilismo_destilados" data={data} onChange={onChange} />
-                </div>
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
-                </div>
-                {data.etilismo === "Ex-etilista" && (
-                  <div className="flex-1">
-                    <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
-                  </div>
-                )}
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ OU: [
+                { campo: "etilismo", igual: "Sim" },
+                { campo: "etilismo", igual: "Ex-etilista" },
+              ]}}
+              campos={["etilismo_fermentados", "etilismo_destilados", "etilismo_duracao", "etilismo_parou"]}
+              className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+            >
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Fermentados ml/sem" name="etilismo_fermentados" data={data} onChange={onChange} />
               </div>
-            )}
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Destilados ml/sem" name="etilismo_destilados" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
+              </div>
+              <ConditionalField data={data} onChange={onChange} showIf={{ campo: "etilismo", igual: "Ex-etilista" }} campos={["etilismo_parou"]} className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
+              </ConditionalField>
+            </ConditionalField>
           </div>
         </div>
       </ReusedDataAccordion>
@@ -293,16 +300,12 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           selected={data.sintomas} 
           onChange={(v: string[]) => onChange("sintomas", v)} 
         />
-        {(data.sintomas || []).includes("Dor; onde? (3)") && (
-          <div className="pl-4 border-l-2 border-[#FCD34D] mb-4">
-            <InheritableInput inheritedData={inheritedData} origins={origins} label="Onde?" name="dor_onde" data={data} onChange={onChange} />
-          </div>
-        )}
-        {(data.sintomas || []).includes("Outros** (1)") && (
-          <div className="pl-4 border-l-2 border-[#FCD34D] mb-4">
-            <InheritableInput inheritedData={inheritedData} origins={origins} label="Quais outros problemas?" name="outros_sintomas" placeholder="Ex: depressão, problemas dentários ou financeiros" data={data} onChange={onChange} />
-          </div>
-        )}
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "sintomas", "contém": "Dor; onde? (3)" }} campos={["dor_onde"]} className="pl-4 border-l-2 border-[#FCD34D] mb-4">
+          <InheritableInput inheritedData={inheritedData} origins={origins} label="Onde?" name="dor_onde" data={data} onChange={onChange} />
+        </ConditionalField>
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "sintomas", "contém": "Outros** (1)" }} campos={["outros_sintomas"]} className="pl-4 border-l-2 border-[#FCD34D] mb-4">
+          <InheritableInput inheritedData={inheritedData} origins={origins} label="Quais outros problemas?" name="outros_sintomas" placeholder="Ex: depressão, problemas dentários ou financeiros" data={data} onChange={onChange} />
+        </ConditionalField>
         <SectionFooterScore label="Escore Caixa 3" score={box3Score} />
       </AccordionCard>
 
@@ -335,11 +338,9 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           data={data} 
           onChange={onChange} 
         />
-        {data.estadiamento_doenca === "Outro" && (
-          <div className="pl-4 border-l-2 border-[#FCD34D] mb-4">
-            <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique o outro estadiamento" name="estadiamento_outro" data={data} onChange={onChange} />
-          </div>
-        )}
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "estadiamento_doenca", igual: "Outro" }} campos={["estadiamento_outro"]} className="pl-4 border-l-2 border-[#FCD34D] mb-4">
+          <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique o outro estadiamento" name="estadiamento_outro" data={data} onChange={onChange} />
+        </ConditionalField>
         <CheckboxGroupList 
           label="Condições que pontuam (marque as aplicáveis):" 
           options={[
