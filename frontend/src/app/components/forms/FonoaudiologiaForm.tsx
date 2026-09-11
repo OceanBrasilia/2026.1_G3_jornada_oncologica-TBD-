@@ -12,6 +12,7 @@ export interface FonoaudiologiaFormProps {
 }
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup } from "./shared/InheritableFormComponents";
+import { ConditionalField } from "./shared/ConditionalField";
 
 const SectionCard = ({ title, children, defaultOpen = true }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -168,52 +169,66 @@ export function FonoaudiologiaForm({ data, onChange, patient, inheritedData, ori
 
         <div className="mb-4">
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tabagismo" name="tabagismo" options={["Não", "Sim", "Ex-tabagista"]} data={data} onChange={onChange} />
-          {(data?.tabagismo === "Sim" || data?.tabagismo === "Ex-tabagista") && (
-            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
-              </div>
-              {data?.tabagismo === "Ex-tabagista" && (
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
-                </div>
-              )}
+          <ConditionalField
+            data={data}
+            onChange={onChange}
+            showIf={{ OU: [
+              { campo: "tabagismo", igual: "Sim" },
+              { campo: "tabagismo", igual: "Ex-tabagista" },
+            ]}}
+            campos={["tabagismo_cigarros", "tabagismo_duracao", "tabagismo_parou"]}
+            className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+          >
+            <div className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
             </div>
-          )}
+            <div className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
+            </div>
+            <ConditionalField data={data} onChange={onChange} showIf={{ campo: "tabagismo", igual: "Ex-tabagista" }} campos={["tabagismo_parou"]} className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
+            </ConditionalField>
+          </ConditionalField>
         </div>
 
         <div className="mb-4">
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Etilismo" name="etilismo" options={["Não", "Sim", "Ex-etilista"]} data={data} onChange={onChange} />
-          {(data?.etilismo === "Sim" || data?.etilismo === "Ex-etilista") && (
-            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Quantidade" name="etilismo_quantidade" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Frequência" name="etilismo_frequencia" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
-              </div>
-              {data?.etilismo === "Ex-etilista" && (
-                <div className="flex-1">
-                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
-                </div>
-              )}
+          <ConditionalField
+            data={data}
+            onChange={onChange}
+            showIf={{ OU: [
+              { campo: "etilismo", igual: "Sim" },
+              { campo: "etilismo", igual: "Ex-etilista" },
+            ]}}
+            campos={["etilismo_quantidade", "etilismo_frequencia", "etilismo_duracao", "etilismo_parou"]}
+            className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+          >
+            <div className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Quantidade" name="etilismo_quantidade" data={data} onChange={onChange} />
             </div>
-          )}
+            <div className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Frequência" name="etilismo_frequencia" data={data} onChange={onChange} />
+            </div>
+            <div className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
+            </div>
+            <ConditionalField data={data} onChange={onChange} showIf={{ campo: "etilismo", igual: "Ex-etilista" }} campos={["etilismo_parou"]} className="flex-1">
+              <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
+            </ConditionalField>
+          </ConditionalField>
         </div>
         <div className="mb-4">
           <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} label="Comorbidades (Doenças prévias)" name="Comorbidades" options={["Diabetes Mellitus (DM)", "Hipertensão Arterial Sistêmica (HAS)", "Cardiopatia", "DPOC", "Outras"]} data={data} onChange={onChange} />
 
-          {data?.["Comorbidades"]?.includes("Outras") && (
-            <div className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-3">
-              <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Outras doenças / comorbidades" name="Outras doenças" data={data} onChange={onChange} />
-            </div>
-          )}
+          <ConditionalField
+            data={data}
+            onChange={onChange}
+            showIf={{ campo: "Comorbidades", "contém": "Outras" }}
+            campos={["Outras doenças"]}
+            className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-3"
+          >
+            <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Outras doenças / comorbidades" name="Outras doenças" data={data} onChange={onChange} />
+          </ConditionalField>
         </div>
         <InheritableTextarea inheritedData={inheritedData} origins={origins} 
           label="Estado Geral de Saúde" 
@@ -231,22 +246,22 @@ export function FonoaudiologiaForm({ data, onChange, patient, inheritedData, ori
           data={data} 
           onChange={onChange} 
         />
-        {data?.fezCirurgia === "Sim" && (
-          <InheritableInput inheritedData={inheritedData} origins={origins} 
-            label="Qual cirurgia e onde foi realizado?" 
-            name="qualCirurgia" 
-            data={data} 
-            onChange={onChange} 
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "fezCirurgia", igual: "Sim" }} campos={["qualCirurgia"]}>
+          <InheritableInput inheritedData={inheritedData} origins={origins}
+            label="Qual cirurgia e onde foi realizado?"
+            name="qualCirurgia"
+            data={data}
+            onChange={onChange}
           />
-        )}
-        {data?.fezCirurgia === "Outro" && (
-          <InheritableInput inheritedData={inheritedData} origins={origins} 
-            label="Especifique" 
-            name="especifiqueCirurgia" 
-            data={data} 
-            onChange={onChange} 
+        </ConditionalField>
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "fezCirurgia", igual: "Outro" }} campos={["especifiqueCirurgia"]}>
+          <InheritableInput inheritedData={inheritedData} origins={origins}
+            label="Especifique"
+            name="especifiqueCirurgia"
+            data={data}
+            onChange={onChange}
           />
-        )}
+        </ConditionalField>
 
         <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
           label="Apresenta algum desses sintomas? (múltipla seleção)"
@@ -264,16 +279,14 @@ export function FonoaudiologiaForm({ data, onChange, patient, inheritedData, ori
           data={data}
           onChange={onChange}
         />
-        {(data?.sintomasApresentados || []).includes("Outro") && (
-          <div className="mt-3">
-            <InheritableInput inheritedData={inheritedData} origins={origins} 
-              label="Especifique o sintoma" 
-              name="sintomaOutro" 
-              data={data} 
-              onChange={onChange} 
-            />
-          </div>
-        )}
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "sintomasApresentados", "contém": "Outro" }} campos={["sintomaOutro"]} className="mt-3">
+          <InheritableInput inheritedData={inheritedData} origins={origins}
+            label="Especifique o sintoma"
+            name="sintomaOutro"
+            data={data}
+            onChange={onChange}
+          />
+        </ConditionalField>
       </SectionCard>
 
       <SectionCard title="Encaminhamentos e conduta">
