@@ -12,6 +12,7 @@ export interface FormProps {
 }
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup } from "./shared/InheritableFormComponents";
+import { ConditionalField } from "./shared/ConditionalField";
 
 const SectionCard = ({ title, children, defaultOpen = true }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -131,25 +132,38 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
 
       <SectionCard title="Avaliação inicial">
         <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Sente cansaço:" name="TO_Cansaco" options={["Sim", "Um pouco", "Não"]} data={data} onChange={onChange} />
-        {(data?.TO_Cansaco === "Sim" || data?.TO_Cansaco === "Um pouco") && (
+        <ConditionalField
+          data={data}
+          onChange={onChange}
+          showIf={{ OU: [
+            { campo: "TO_Cansaco", igual: "Sim" },
+            { campo: "TO_Cansaco", igual: "Um pouco" },
+          ]}}
+          campos={["TO_Cansaco_Impede"]}
+        >
           <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Se sim, te impede no que você quer fazer? (O que?)" name="TO_Cansaco_Impede" data={data} onChange={onChange} rows={2} />
-        )}
-        
-        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Queda / Risco de queda" name="TO_Queda" options={["Sim - queda", "Risco de queda", "Não"]} data={data} onChange={onChange} />
-        
-        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Dor" name="TO_Dor" options={["Sim", "Não"]} data={data} onChange={onChange} />
-        {data?.TO_Dor === "Sim" && (
-          <div className="mt-2">
-            <label className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor:</label>
-            <PainScale name="TO_Dor_Intensidade" data={data} onChange={onChange} inheritedData={inheritedData} origins={origins} />
+        </ConditionalField>
 
-          </div>
-        )}
-        
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Queda / Risco de queda" name="TO_Queda" options={["Sim - queda", "Risco de queda", "Não"]} data={data} onChange={onChange} />
+
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Dor" name="TO_Dor" options={["Sim", "Não"]} data={data} onChange={onChange} />
+        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "TO_Dor", igual: "Sim" }} campos={["TO_Dor_Intensidade"]} className="mt-2">
+          <label className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor:</label>
+          <PainScale name="TO_Dor_Intensidade" data={data} onChange={onChange} inheritedData={inheritedData} origins={origins} />
+        </ConditionalField>
+
         <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Alteração da rotina" name="TO_AlteracaoRotina" options={["Sim", "Um pouco", "Não"]} data={data} onChange={onChange} />
-        {(data?.TO_AlteracaoRotina === "Sim" || data?.TO_AlteracaoRotina === "Um pouco") && (
+        <ConditionalField
+          data={data}
+          onChange={onChange}
+          showIf={{ OU: [
+            { campo: "TO_AlteracaoRotina", igual: "Sim" },
+            { campo: "TO_AlteracaoRotina", igual: "Um pouco" },
+          ]}}
+          campos={["TO_AlteracaoRotina_Descricao"]}
+        >
           <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Descreva a alteração" name="TO_AlteracaoRotina_Descricao" data={data} onChange={onChange} rows={2} />
-        )}
+        </ConditionalField>
       </SectionCard>
 
       <SectionCard title="AVDs — Atividades de vida diária">
@@ -168,9 +182,9 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Mobilidade funcional" name="TO_AVD_Mobilidade" options={avdOptions} data={data} onChange={onChange} />
           
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Utiliza algum dispositivo:" name="TO_AVD_Dispositivo" options={["Sim", "Não"]} data={data} onChange={onChange} />
-          {data?.TO_AVD_Dispositivo === "Sim" && (
+          <ConditionalField data={data} onChange={onChange} showIf={{ campo: "TO_AVD_Dispositivo", igual: "Sim" }} campos={["TO_AVD_Dispositivo_Qual"]}>
             <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Qual?:" name="TO_AVD_Dispositivo_Qual" data={data} onChange={onChange} rows={2} />
-          )}
+          </ConditionalField>
         </div>
       </SectionCard>
 
@@ -239,11 +253,15 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
             ]} 
             data={data} onChange={onChange} 
           />
-          {data?.TO_Diagnostico?.includes("Outro") && (
-            <div className="ml-6 border-l-2 border-[#1B6CA8]/30 pl-4">
-              <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique o outro diagnóstico:" name="TO_Diagnostico_Outro" data={data} onChange={onChange} />
-            </div>
-          )}
+          <ConditionalField
+            data={data}
+            onChange={onChange}
+            showIf={{ campo: "TO_Diagnostico", "contém": "Outro" }}
+            campos={["TO_Diagnostico_Outro"]}
+            className="ml-6 border-l-2 border-[#1B6CA8]/30 pl-4"
+          >
+            <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique o outro diagnóstico:" name="TO_Diagnostico_Outro" data={data} onChange={onChange} />
+          </ConditionalField>
         </div>
       </SectionCard>
 
@@ -272,11 +290,15 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
             ]} 
             data={data} onChange={onChange} 
           />
-          {data?.TO_Encaminhamentos?.includes("Encaminhamento para outra especialidade:") && (
-            <div className="ml-6 border-l-2 border-[#1B6CA8]/30 pl-4">
-              <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique a especialidade:" name="TO_Encaminhamentos_Especialidade" data={data} onChange={onChange} />
-            </div>
-          )}
+          <ConditionalField
+            data={data}
+            onChange={onChange}
+            showIf={{ campo: "TO_Encaminhamentos", "contém": "Encaminhamento para outra especialidade:" }}
+            campos={["TO_Encaminhamentos_Especialidade"]}
+            className="ml-6 border-l-2 border-[#1B6CA8]/30 pl-4"
+          >
+            <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique a especialidade:" name="TO_Encaminhamentos_Especialidade" data={data} onChange={onChange} />
+          </ConditionalField>
         </div>
       </SectionCard>
     </div>
