@@ -161,10 +161,10 @@ export function FonoaudiologiaForm({ data, onChange, patient, inheritedData, ori
           onChange={onChange} 
         />
         
-        <OriginField 
-          label="MEDICAMENTOS EM USO" 
-          value={data?.medicamentosEmUso || patient?.medicamentosEmUso || "Losartana 50 mg"} 
-          origin="Enfermagem" 
+        <OriginField
+          label="MEDICAMENTOS EM USO"
+          value={data?.medicacoes}
+          origin="Enfermagem"
         />
 
         <div className="mb-4">

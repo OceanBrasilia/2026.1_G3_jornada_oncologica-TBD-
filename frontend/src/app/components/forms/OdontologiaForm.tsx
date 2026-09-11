@@ -222,10 +222,10 @@ export function OdontologiaForm({ data, onChange, patient, inheritedData, origin
           source="Enfermagem" 
         />
         
-        <ReadOnlyField 
-          label="MEDICAMENTOS" 
-          
-          source="Enfermagem" 
+        <ReadOnlyField
+          label="MEDICAMENTOS"
+          value={data?.medicacoes}
+          source="Enfermagem"
         />
 
         <div className="space-y-4 mt-6">

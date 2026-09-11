@@ -2544,7 +2544,7 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
   const atendidos = patient.specialties.filter(s => s.status === "atendido" || s.status === "em-atendimento");
   const pendentes = patient.specialties.filter(s => s.status === "pendente");
 
-  const sharedFieldsToCheck = ["peso", "altura", "Alergia", "Reação alergica", "comorbidades_lista", "tabagismo", "etilismo", "medicacoes", "Diagnóstico oncológico"];
+  const sharedFieldsToCheck = ["peso", "altura", "Alergia", "Reação alergica", "Comorbidades", "tabagismo", "etilismo", "medicacoes", "Diagnóstico"];
   const divergencies: { field: string; answers: { specName: string; value: string }[] }[] = [];
   
   sharedFieldsToCheck.forEach(field => {
