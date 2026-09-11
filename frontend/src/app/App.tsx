@@ -30,6 +30,7 @@ import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts
 import {
   buildDadosGerais, buildDetalhesEspecialidade, buildInformacoesCompartilhadas, buildResumoNutricao, buildResumoPsicologia, statusLabel,
 } from "./consolidado/buildConsolidatedView";
+import type { EspecialidadePdf } from "./pdf/FichaConsolidadaPdf";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2522,7 +2523,9 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
   const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
   const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
   const temAcessoConfidencial = podeVerConfidencial(role);
-  const dadosCompartilhados = buildDadosGerais(patient.formAnswers, patient.specialties);
+  const infosCompartilhadas = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+  const dadosCompartilhados = infosCompartilhadas.filter(i => !i.divergente);
+  const divergencies = infosCompartilhadas.filter(i => i.divergente);
   const blocks = [
     {
       title: "Dados gerais",
@@ -2555,32 +2558,46 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
     },
   ];
 
-  const handleExportPDF = () => {
-    window.print();
-  };
-
-  const sharedFieldsToCheck = ["peso", "altura", "Alergia", "Reação alergica", "Comorbidades", "tabagismo", "etilismo", "medicacoes", "Diagnóstico"];
-  const divergencies: { field: string; answers: { specName: string; value: string }[] }[] = [];
-  
-  sharedFieldsToCheck.forEach(field => {
-    const answersForField: { specName: string; value: string }[] = [];
-    patient.specialties.forEach(spec => {
-      if (spec.status === "atendido" || spec.status === "em-atendimento") {
-        const val = patient.formAnswers?.[spec.id]?.[field];
-        if (val && val !== "—") {
-          answersForField.push({ specName: spec.name, value: val });
-        }
-      }
-    });
-
-    if (answersForField.length > 1) {
-      const firstVal = answersForField[0].value.trim().toLowerCase();
-      const hasDivergence = answersForField.some(a => a.value.trim().toLowerCase() !== firstVal);
-      if (hasDivergence) {
-        divergencies.push({ field, answers: answersForField });
-      }
-    }
+  const especialidadesParaPdf: EspecialidadePdf[] = patient.specialties.map(sp => {
+    const preenchido = sp.status === "atendido" || sp.status === "em-atendimento";
+    const answers = preenchido ? patient.formAnswers?.[sp.id] : undefined;
+    return {
+      nome: sp.name,
+      status: statusLabel(sp.status),
+      profissional: preenchido ? sp.professional : undefined,
+      horario: preenchido && sp.completedTime ? `${patient.date} às ${sp.completedTime}` : undefined,
+      detalhes: preenchido ? buildDetalhesEspecialidade(sp.id, answers, temAcessoConfidencial) : [],
+      resumoNutricao: preenchido && sp.id === "nutricao" ? buildResumoNutricao(answers) : null,
+      resumoPsicologia: preenchido && sp.id === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null,
+    };
   });
+
+  const [exportando, setExportando] = useState(false);
+  const [erroExportacao, setErroExportacao] = useState("");
+
+  const handleExportPDF = async () => {
+    setErroExportacao("");
+    setExportando(true);
+    const exportadoPor = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+    try {
+      // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
+      // não pesa o carregamento inicial do app para quem nunca usa essa tela.
+      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const resultado = await exportarFichaConsolidadaPdf({
+        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+        geradoEm: now,
+        exportadoPor,
+        dadosCompartilhados,
+        divergencias: divergencies,
+        especialidades: especialidadesParaPdf,
+      });
+      if (!resultado.ok) setErroExportacao(resultado.erro);
+    } catch (erro) {
+      console.error("Falha ao carregar o gerador de PDF:", erro);
+      setErroExportacao("Não foi possível carregar o gerador de PDF agora. Tente novamente em instantes.");
+    }
+    setExportando(false);
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 print:space-y-4 print:max-w-none print:m-0 print:p-0">
@@ -2604,10 +2621,16 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
             <span>Chegada: {patient.date} às {patient.arrivalTime}</span>
           </div>
         </div>
-        <button onClick={handleExportPDF} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md">
-          <Download size={15} /> Exportar PDF
+        <button onClick={handleExportPDF} disabled={exportando} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
+          <Download size={15} /> {exportando ? "Gerando PDF..." : "Exportar PDF"}
         </button>
       </div>
+
+      {erroExportacao && (
+        <div className="print:hidden bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2 text-sm text-red-700">
+          <AlertTriangle size={16} className="shrink-0" /> {erroExportacao}
+        </div>
+      )}
 
       {blocks.map(b => (
         <div key={b.title} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 print:border-none print:shadow-none print:p-0 print:mb-6">
@@ -2650,13 +2673,17 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
           </h3>
           <div className="space-y-4">
             {divergencies.map(d => (
-              <div key={d.field} className="bg-white rounded-xl border border-amber-200/50 p-4 shadow-sm">
-                <h4 className="text-sm font-bold text-amber-900 mb-3">Divergência detectada em: <span className="font-extrabold">{d.field}</span></h4>
+              <div key={d.campo} className="bg-white rounded-xl border border-amber-200/50 p-4 shadow-sm">
+                <h4 className="text-sm font-bold text-amber-900 mb-3">Divergência detectada em: <span className="font-extrabold">{d.label}</span></h4>
                 <ul className="space-y-2">
-                  {d.answers.map((a, i) => (
+                  <li className="text-sm flex gap-3 items-start">
+                    <span className="text-amber-700 font-semibold min-w-[140px] mt-0.5">{d.origem}:</span>
+                    <span className="text-amber-900 bg-amber-100/50 px-2 py-0.5 rounded-md flex-1 leading-snug">{d.valor}</span>
+                  </li>
+                  {d.outrasRespostas.map((a, i) => (
                     <li key={i} className="text-sm flex gap-3 items-start">
-                      <span className="text-amber-700 font-semibold min-w-[140px] mt-0.5">{a.specName}:</span>
-                      <span className="text-amber-900 bg-amber-100/50 px-2 py-0.5 rounded-md flex-1 leading-snug">{a.value}</span>
+                      <span className="text-amber-700 font-semibold min-w-[140px] mt-0.5">{a.especialidades.join(", ")}:</span>
+                      <span className="text-amber-900 bg-amber-100/50 px-2 py-0.5 rounded-md flex-1 leading-snug">{a.valor}</span>
                     </li>
                   ))}
                 </ul>
