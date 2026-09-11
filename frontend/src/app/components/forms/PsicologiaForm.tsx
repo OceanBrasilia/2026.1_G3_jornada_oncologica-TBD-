@@ -12,6 +12,7 @@ export interface PsicologiaFormProps {
 }
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
+import { ConditionalField } from "./shared/ConditionalField";
 import { irpoQuestions, calculateIrpoTotal, classifyIrpoRisk, isIrpoCriticalRisk } from "../../calculos/irpo";
 
 const Card = ({ title, icon: Icon, children, className = "" }: any) => (
@@ -230,7 +231,7 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
             )}
           </div>
 
-          {hasSuicidalIdeation && (
+          <ConditionalField data={data} onChange={onChange} showIf={{ campo: "IdeacaoSuicida", igual: "Sim" }} campos={["PlanejamentoSuicida"]}>
             <div>
               <InheritableRadioPills
                 label="29. Apresenta planejamento?"
@@ -246,18 +247,16 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
                 </div>
               )}
             </div>
-          )}
+          </ConditionalField>
 
-          {hasSuicidalIdeation && (
-            <div className="pt-2 border-t border-gray-100">
-              <InheritableTextarea inheritedData={inheritedData} origins={origins} 
-                label="Conduta adotada frente ao alerta" 
-                name="CondutaAdotadaAlerta" 
-                data={data} 
-                onChange={onChange} 
-              />
-            </div>
-          )}
+          <ConditionalField data={data} onChange={onChange} showIf={{ campo: "IdeacaoSuicida", igual: "Sim" }} campos={["CondutaAdotadaAlerta"]} className="pt-2 border-t border-gray-100">
+            <InheritableTextarea inheritedData={inheritedData} origins={origins}
+              label="Conduta adotada frente ao alerta"
+              name="CondutaAdotadaAlerta"
+              data={data}
+              onChange={onChange}
+            />
+          </ConditionalField>
         </div>
       </SectionCard>
 
