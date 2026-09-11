@@ -30,7 +30,8 @@ import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts
 import {
   buildDadosGerais, buildDetalhesEspecialidade, buildInformacoesCompartilhadas, buildResumoNutricao, buildResumoPsicologia, statusLabel,
 } from "./consolidado/buildConsolidatedView";
-import type { EspecialidadePdf } from "./pdf/FichaConsolidadaPdf";
+import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
+import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -404,7 +405,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
       ];
 
   const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : "Coordenação";
-  const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+  const userName = nomeExibicaoPorPerfil(role);
 
   return (
     <>
@@ -2087,9 +2088,40 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   ];
   const activeSpec = patient.specialties.find(s => s.id === activeTab);
 
-  function handleExport(specName: string) {
-    setExportMsg(`Exportando avaliação de ${specName}...`);
-    setTimeout(() => setExportMsg(""), 2500);
+  const [exportError, setExportError] = useState("");
+
+  async function handleExport() {
+    setExportError("");
+    setExportMsg("Gerando PDF...");
+    const temAcessoConfidencial = podeVerConfidencial(role);
+    const agora = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const geradoEm = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
+    const infosCompartilhadas = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+
+    try {
+      // Import dinâmico: só baixa a biblioteca de PDF quando alguém realmente exporta.
+      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const resultado = await exportarFichaConsolidadaPdf({
+        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+        geradoEm,
+        exportadoPor: nomeExibicaoPorPerfil(role),
+        dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
+        divergencias: infosCompartilhadas.filter(i => i.divergente),
+        especialidades: buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial),
+      });
+      if (resultado.ok) {
+        setExportMsg("Ficha exportada em PDF.");
+      } else {
+        setExportMsg("");
+        setExportError(resultado.erro);
+      }
+    } catch (erro) {
+      console.error("Falha ao carregar o gerador de PDF:", erro);
+      setExportMsg("");
+      setExportError("Não foi possível gerar o PDF agora. Tente novamente em instantes.");
+    }
+    setTimeout(() => { setExportMsg(""); setExportError(""); }, 3000);
   }
 
   return (
@@ -2097,6 +2129,11 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
       {exportMsg && (
         <div className="fixed bottom-4 right-4 z-50 bg-[#1B6CA8] text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2">
           <Download size={15} /> {exportMsg}
+        </div>
+      )}
+      {exportError && (
+        <div className="fixed bottom-4 right-4 z-50 bg-red-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 max-w-xs">
+          <AlertTriangle size={15} className="shrink-0" /> {exportError}
         </div>
       )}
 
@@ -2128,7 +2165,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
                 <FileText size={13} /> Ficha consolidada
               </button>
-              <button onClick={() => handleExport("Ficha")}
+              <button onClick={() => handleExport()}
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
                 <Download size={13} /> PDF
               </button>
@@ -2340,7 +2377,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                     professional={activeSpec.professional}
                     completedTime={activeSpec.completedTime}
                     onEdit={() => onOpenSpecialty(activeSpec.id, "edit")}
-                    onExport={() => handleExport(activeSpec.name)}
+                    onExport={() => handleExport()}
                   />
                 );
               })() : activeSpec.status === "nao-se-aplica" ? (
@@ -2558,19 +2595,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
     },
   ];
 
-  const especialidadesParaPdf: EspecialidadePdf[] = patient.specialties.map(sp => {
-    const preenchido = sp.status === "atendido" || sp.status === "em-atendimento";
-    const answers = preenchido ? patient.formAnswers?.[sp.id] : undefined;
-    return {
-      nome: sp.name,
-      status: statusLabel(sp.status),
-      profissional: preenchido ? sp.professional : undefined,
-      horario: preenchido && sp.completedTime ? `${patient.date} às ${sp.completedTime}` : undefined,
-      detalhes: preenchido ? buildDetalhesEspecialidade(sp.id, answers, temAcessoConfidencial) : [],
-      resumoNutricao: preenchido && sp.id === "nutricao" ? buildResumoNutricao(answers) : null,
-      resumoPsicologia: preenchido && sp.id === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null,
-    };
-  });
+  const especialidadesParaPdf = buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial);
 
   const [exportando, setExportando] = useState(false);
   const [erroExportacao, setErroExportacao] = useState("");
@@ -2578,7 +2603,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
   const handleExportPDF = async () => {
     setErroExportacao("");
     setExportando(true);
-    const exportadoPor = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+    const exportadoPor = nomeExibicaoPorPerfil(role);
     try {
       // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
       // não pesa o carregamento inicial do app para quem nunca usa essa tela.
@@ -3435,7 +3460,7 @@ export default function App() {
 
   function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+    const userName = nomeExibicaoPorPerfil(role);
 
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
