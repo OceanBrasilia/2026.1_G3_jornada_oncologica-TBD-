@@ -91,33 +91,33 @@ export function ServicoSocialForm({ data, onChange, patient, inheritedData, orig
         onChange={onChange}
       >
         <div className="space-y-5">
-          <InheritableSelect inheritedData={inheritedData} origins={origins} 
-            label="Sexo" 
-            name="sexo" 
-            options={["Feminino", "Masculino", "Outro"]} 
-            data={data} 
-            onChange={onChange} 
+          <InheritableSelect inheritedData={inheritedData} origins={origins}
+            label="Sexo"
+            name="Sexo"
+            options={["Feminino", "Masculino", "Outro"]}
+            data={data}
+            onChange={onChange}
           />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} 
-            label="Cor/Raça (autodeclarada)" 
-            name="corRaca" 
-            options={["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não informada"]} 
-            data={data} 
-            onChange={onChange} 
+          <InheritableSelect inheritedData={inheritedData} origins={origins}
+            label="Cor/Raça (autodeclarada)"
+            name="corRaca"
+            options={["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não informada"]}
+            data={data}
+            onChange={onChange}
           />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} 
-            label="Grau de escolaridade" 
-            name="grauEscolaridade" 
-            options={["Sem instrução", "Ensino Fundamental I", "Ensino Fundamental II", "Ensino Médio", "Ensino Superior", "Pós-graduação"]} 
-            data={data} 
-            onChange={onChange} 
+          <InheritableSelect inheritedData={inheritedData} origins={origins}
+            label="Grau de escolaridade"
+            name="Escolaridade"
+            options={["Sem instrução", "Ensino Fundamental I", "Ensino Fundamental II", "Ensino Médio", "Ensino Superior", "Pós-graduação"]}
+            data={data}
+            onChange={onChange}
           />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} 
-            label="Estado civil" 
-            name="estadoCivil" 
-            options={["Solteiro(a)", "Casado(a)", "Viúvo(a)", "Divorciado(a)", "União Estável"]} 
-            data={data} 
-            onChange={onChange} 
+          <InheritableSelect inheritedData={inheritedData} origins={origins}
+            label="Estado civil"
+            name="Estado civil"
+            options={["Solteiro(a)", "Casado(a)", "Viúvo(a)", "Divorciado(a)", "União Estável"]}
+            data={data}
+            onChange={onChange}
           />
 
           <InheritableInput inheritedData={inheritedData} origins={origins} 
