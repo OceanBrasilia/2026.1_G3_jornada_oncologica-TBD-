@@ -1,209 +1,328 @@
-import React from "react";
-import { User, Activity, HeartPulse, FileText } from "lucide-react";
-import { VitalsField } from "./shared/VitalsField";
-import { ComorbiditiesField } from "./shared/ComorbiditiesField";
-import { HabitsField } from "./shared/HabitsField";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { PatientHeader } from "../PatientHeader";
+import { ReusedDataAccordion } from "../ReusedDataAccordion";
 
 export interface FonoaudiologiaFormProps {
   data: Record<string, any>;
   onChange: (key: string, value: any) => void;
   patient: any;
   origins?: Record<string, string>;
+  inheritedData?: Record<string, any>;
 }
 
-const Card = ({ title, icon: Icon, children }: any) => (
-  <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5">
-    <h3 className="font-bold text-[#1A2332] mb-4 text-sm flex items-center gap-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
-      <Icon size={16} className="text-[#1B6CA8]" /> {title}
-    </h3>
-    <div className="grid sm:grid-cols-2 gap-4">
-      {children}
-    </div>
-  </div>
-);
+import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup } from "./shared/InheritableFormComponents";
 
-const Input = ({ label, name, placeholder = "", type = "text", value, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
+const SectionCard = ({ title, children, defaultOpen = true }: any) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-      />
+    <div className="bg-white rounded-2xl border border-[#D5E6F3] shadow-sm mb-4">
+      <div 
+        className="p-5 flex justify-between items-center cursor-pointer select-none"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h3 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {title}
+        </h3>
+        {isOpen ? <ChevronUp size={20} className="text-[#8A9EB9]" /> : <ChevronDown size={20} className="text-[#8A9EB9]" />}
+      </div>
+      {isOpen && (
+        <div className="px-5 pb-5 pt-0 space-y-5">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
 
-const TextArea = ({ label, name, placeholder = "", rows = 4, value, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
-  return (
-    <div className="sm:col-span-2">
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      <textarea
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none"
-      />
-    </div>
-  );
-};
+// Removed local components, using shared Inheritable components
 
-const RadioGroup = ({ label, name, options, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
+
+
+const OriginField = ({ label, value, origin }: { label: string, value: string, origin: string }) => {
   return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-2">{label}</label>
-      <div className="flex flex-wrap gap-4">
-        {options.map((opt: any) => (
-          <label key={opt.value || opt} className="flex items-center gap-2 text-sm text-[#1A2332] cursor-pointer">
-            <input
-              type="radio"
-              name={name}
-              value={opt.value || opt}
-              checked={(data?.[name] || "") === (opt.value || opt)}
-              onChange={handleChange}
-              className="accent-[#1B6CA8] w-4 h-4"
-            />
-            {opt.label || opt}
-          </label>
-        ))}
+    <div className="bg-white rounded-xl border border-[#D5E6F3] p-4 flex justify-between items-start">
+      <div>
+        <label className="block text-[10px] uppercase font-bold text-[#8A9EB9] tracking-wider mb-1">
+          {label}
+        </label>
+        <div className="text-sm text-[#1A2332] font-semibold">
+          {value || "Não informado"}
+        </div>
+      </div>
+      <div className="bg-[#E8F3FA] text-[#1B6CA8] text-xs px-2 py-1 rounded-md flex items-center gap-1 font-medium whitespace-nowrap">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+        {origin}
       </div>
     </div>
   );
 };
 
-const CheckboxGroup = ({ label, options, selected, onChange }: any) => (
-  <div className="sm:col-span-2">
-    <label className="block text-xs font-bold text-[#1A2332] mb-2">{label}</label>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-      {options.map((opt: string) => (
-        <label key={opt} className="flex items-center space-x-2 text-sm text-[#1A2332] cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={(selected || []).includes(opt)} 
-            onChange={(e) => {
-              const current = selected || [];
-              if (e.target.checked) {
-                onChange([...current, opt]);
-              } else {
-                onChange(current.filter((item: string) => item !== opt));
-              }
-            }}
-            className="w-4 h-4 rounded text-[#1B6CA8] focus:ring-[#1B6CA8] accent-[#1B6CA8]"
-          />
-          <span>{opt}</span>
-        </label>
-      ))}
-    </div>
-  </div>
-);
-
-export function FonoaudiologiaForm({ data, onChange, patient, origins }: FonoaudiologiaFormProps) {
-  const getVal = (key: string, fallbackKey?: string) => {
-    if (data[key] !== undefined) return data[key];
-    if (fallbackKey && patient[fallbackKey] !== undefined) return patient[fallbackKey];
-    return "";
-  };
-
-  const handleFieldChange = (key: string, value: any) => {
-    onChange(key, value);
-  };
+export function FonoaudiologiaForm({ data, onChange, patient, inheritedData, origins }: FonoaudiologiaFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* Bloco 1: Identificação e Dados Básicos */}
-      <Card title="Identificação e Dados Básicos" icon={User}>
-        <Input label="Data" name="fono_data" type="date" data={data} onChange={handleFieldChange} />
-        <Input label="Nome" name="fono_nome" data={data} onChange={handleFieldChange} value={getVal('fono_nome', 'name')} />
-        <Input label="Registro" name="fono_registro" data={data} onChange={handleFieldChange} value={getVal('fono_registro', 'id')} />
-        <Input label="Data de nascimento" name="fono_data_nascimento" type="date" data={data} onChange={handleFieldChange} />
-        <Input label="Idade" name="fono_idade" type="number" data={data} onChange={handleFieldChange} value={getVal('fono_idade', 'age')} />
-        <Input label="Profissão" name="fono_profissao" data={data} onChange={handleFieldChange} />
-        <Input label="Acompanhante" name="fono_acompanhante" data={data} onChange={handleFieldChange} />
-        <Input label="Contato" name="fono_contato" data={data} onChange={handleFieldChange} placeholder="(00) 00000-0000" />
-        <div className="sm:col-span-2 mt-4">
-          <VitalsField data={data} patient={patient} origins={origins} onChange={onChange} />
-        </div>
-      </Card>
+      <PatientHeader 
+        id="CAO-2024-0005"
+        name={patient?.name || ""}
+        age={patient?.age}
+        diagnosis={patient?.diagnosis}
+        cid={patient?.cid}
+        specialty="Fonoaudiologia"
+        status="Pendente"
+        alerts={patient?.alerts}
+      />
 
-      {/* Bloco 2: Histórico Clínico e Comorbidades */}
-      <Card title="Histórico Clínico e Comorbidades" icon={Activity}>
-        <TextArea label="Queixa" name="fono_queixa" data={data} onChange={handleFieldChange} />
-        <Input label="Topografia" name="fono_topografia" data={data} onChange={handleFieldChange} />
-        <Input label="CID" name="fono_cid" data={data} onChange={handleFieldChange} />
-        <div className="sm:col-span-2 my-2">
-          <ComorbiditiesField data={data} origins={origins} onChange={onChange} />
-        </div>
-        <TextArea label="Estado geral de saúde (Observações)" name="fono_estado_geral" data={data} onChange={handleFieldChange} />
-        
-        <div className="sm:col-span-2">
-          <RadioGroup 
-            label="Você fez alguma cirurgia?" 
-            name="fono_cirurgia" 
-            options={["Sim", "Não", "Outro"]} 
-            data={data} 
-            onChange={handleFieldChange} 
-          />
-          {data["fono_cirurgia"] === "Outro" && (
-            <div className="mt-2 pl-4 border-l-2 border-[#1B6CA8]/20">
-              <Input label="Especifique a cirurgia" name="fono_cirurgia_outro" data={data} onChange={handleFieldChange} />
-            </div>
-          )}
-        </div>
-        <div className="sm:col-span-2 mt-4">
-          <HabitsField data={data} origins={origins} onChange={onChange} />
-        </div>
-      </Card>
+      <ReusedDataAccordion
+        title="I - Dados Pessoais (reaproveitados)"
+        fields={[
+          { label: "NOME COMPLETO", value: patient?.name, origin: "Cadastro" },
+          { label: "DIAGNÓSTICO", value: patient?.diagnosis, origin: "Recepção" },
+          { label: "CID", value: patient?.cid, origin: "Recepção" },
+          { label: "TELEFONE", value: patient?.phone, origin: "Cadastro" },
+          { label: "IDADE", value: `${patient?.age || ''} anos`, origin: "Cadastro" },
+        ]}
+        data={data}
+        onChange={onChange}
+      />
 
-      {/* Bloco 3: Terapêutica e Suporte Nutricional */}
-      <Card title="Terapêutica e Suporte Nutricional" icon={HeartPulse}>
-        <Input label="Pneumonia?" name="fono_pneumonia" data={data} onChange={handleFieldChange} />
-        <Input label="Suplementação" name="fono_suplementacao" data={data} onChange={handleFieldChange} />
-        <TextArea label="Tratamentos" name="fono_tratamentos" data={data} onChange={handleFieldChange} />
-        <TextArea label="Medicamentos em uso" name="fono_medicamentos" data={data} onChange={handleFieldChange} />
-        
-        <CheckboxGroup 
-          label="Via alimentar"
-          options={["Oral", "GTT", "SNE", "NPT"]}
-          selected={data["fono_via_alimentar"] || []}
-          onChange={(val: any) => handleFieldChange("fono_via_alimentar", val)}
+      <SectionCard title="Avaliação fonoaudiológica">
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Queixa principal" 
+          name="queixaPrincipal" 
+          data={data} 
+          onChange={onChange} 
         />
-      </Card>
+        <InheritableInput inheritedData={inheritedData} origins={origins} 
+          label="Topografia e CID (ajustar se necessário)" 
+          name="topografiaCid" 
+          data={data} 
+          onChange={onChange} 
+          placeholder="Ex: C16.9 — Câncer Gástrico"
+        />
+        <InheritableInput inheritedData={inheritedData} origins={origins} 
+          label="Peso ponderal (kg)" 
+          name="pesoPonderal" 
+          type="number" 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Tratamentos em curso" 
+          name="tratamentosEmCurso" 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Via alimentar" 
+          name="viaAlimentar" 
+          options={["Oral", "GTT", "SNE", "NPT"]} 
+          hasOther={true}
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} 
+          label="Suplementação" 
+          name="suplementacao" 
+          options={["Sim", "Não"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Alteração de apetite?" 
+          name="alteracaoApetite" 
+          options={["Sim", "Não"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Pneumonia (conforme ficha atual)" 
+          name="pneumonia" 
+          data={data} 
+          onChange={onChange} 
+          rows={2}
+        />
+      </SectionCard>
 
-      {/* Bloco 4: Avaliação Fonoaudiológica / Trato Digestivo */}
-      <Card title="Avaliação Fonoaudiológica / Trato Digestivo" icon={FileText}>
-        <RadioGroup label="Apresenta alteração de apetite?" name="fono_apetite" options={["Sim", "Não"]} data={data} onChange={handleFieldChange} />
-        <RadioGroup label="Apresenta azia?" name="fono_azia" options={["Sim", "Não"]} data={data} onChange={handleFieldChange} />
-        <RadioGroup label="Apresenta refluxo?" name="fono_refluxo" options={["Sim", "Não"]} data={data} onChange={handleFieldChange} />
+      <SectionCard title="Sintomas e hábitos">
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Apresenta azia?" 
+          name="apresentaAzia" 
+          options={["Sim", "Não"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Apresenta refluxo?" 
+          name="apresentaRefluxo" 
+          options={["Sim", "Não"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <OriginField 
+          label="MEDICAMENTOS EM USO" 
+          value={data?.medicamentosEmUso || patient?.medicamentosEmUso || "Losartana 50 mg"} 
+          origin="Enfermagem" 
+        />
 
-        <div className="sm:col-span-2">
-          <CheckboxGroup 
-            label="Você apresenta algum desses sintomas:"
-            options={["Náusea", "Vômitos", "Regurgitação", "Vômito de sangue fresco", "Vômito de sangue velho", "Dor ao engolir", "Dor no peito", "Outro"]}
-            selected={data["fono_sintomas"] || []}
-            onChange={(val: any) => handleFieldChange("fono_sintomas", val)}
-          />
-          {(data["fono_sintomas"] || []).includes("Outro") && (
-            <div className="mt-2 pl-4 border-l-2 border-[#1B6CA8]/20">
-              <Input label="Especifique o sintoma" name="fono_sintomas_outro" data={data} onChange={handleFieldChange} />
+        <div className="mb-4">
+          <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tabagismo" name="tabagismo" options={["Não", "Sim", "Ex-tabagista"]} data={data} onChange={onChange} />
+          {(data?.tabagismo === "Sim" || data?.tabagismo === "Ex-tabagista") && (
+            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
+              </div>
+              {data?.tabagismo === "Ex-tabagista" && (
+                <div className="flex-1">
+                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
+                </div>
+              )}
             </div>
           )}
         </div>
-      </Card>
+
+        <div className="mb-4">
+          <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Etilismo" name="etilismo" options={["Não", "Sim", "Ex-etilista"]} data={data} onChange={onChange} />
+          {(data?.etilismo === "Sim" || data?.etilismo === "Ex-etilista") && (
+            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Quantidade" name="etilismo_quantidade" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Frequência" name="etilismo_frequencia" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
+              </div>
+              {data?.etilismo === "Ex-etilista" && (
+                <div className="flex-1">
+                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="mb-4">
+          <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} label="Comorbidades (Doenças prévias)" name="Comorbidades" options={["Diabetes Mellitus (DM)", "Hipertensão Arterial Sistêmica (HAS)", "Cardiopatia", "DPOC", "Outras"]} data={data} onChange={onChange} />
+
+          {data?.["Comorbidades"]?.includes("Outras") && (
+            <div className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-3">
+              <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Outras doenças / comorbidades" name="Outras doenças" data={data} onChange={onChange} />
+            </div>
+          )}
+        </div>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Estado Geral de Saúde" 
+          name="comorbidadesEstadoGeral" 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
+
+      <SectionCard title="Cirurgia e sintomas">
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} 
+          label="Fez alguma cirurgia?" 
+          name="fezCirurgia" 
+          options={["Sim", "Não", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        {data?.fezCirurgia === "Sim" && (
+          <InheritableInput inheritedData={inheritedData} origins={origins} 
+            label="Qual cirurgia e onde foi realizado?" 
+            name="qualCirurgia" 
+            data={data} 
+            onChange={onChange} 
+          />
+        )}
+        {data?.fezCirurgia === "Outro" && (
+          <InheritableInput inheritedData={inheritedData} origins={origins} 
+            label="Especifique" 
+            name="especifiqueCirurgia" 
+            data={data} 
+            onChange={onChange} 
+          />
+        )}
+
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
+          label="Apresenta algum desses sintomas? (múltipla seleção)"
+          name="sintomasApresentados"
+          options={[
+            "Náusea",
+            "Vômitos",
+            "Regurgitação",
+            "Vômito de sangue fresco",
+            "Vômito de sangue velho",
+            "Dor ao engolir",
+            "Dor no peito",
+            "Outro"
+          ]}
+          data={data}
+          onChange={onChange}
+        />
+        {(data?.sintomasApresentados || []).includes("Outro") && (
+          <div className="mt-3">
+            <InheritableInput inheritedData={inheritedData} origins={origins} 
+              label="Especifique o sintoma" 
+              name="sintomaOutro" 
+              data={data} 
+              onChange={onChange} 
+            />
+          </div>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Encaminhamentos e conduta">
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Demanda identificada" 
+          name="demandaIdentificada" 
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Risco de aspiração/penetração" 
+          name="riscoAspiracao" 
+          options={["Alto", "Médio", "Baixo", "Nenhum"]} 
+          hasOther={true}
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Risco de disfagia" 
+          name="riscoDisfagia" 
+          options={["Leve", "Moderada", "Grave", "Ausente"]} 
+          hasOther={true}
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Alteração da qualidade vocal" 
+          name="alteracaoVocal" 
+          options={["Sim", "Não"]} 
+          hasOther={true}
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Encaminhamento" 
+          name="encaminhamento" 
+          options={["Médico", "Nutrição", "Psicologia", "Fisioterapia", "Serviço Social", "Nenhum"]} 
+          hasOther={true}
+          data={data} 
+          onChange={onChange} 
+        />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Observações" 
+          name="observacoesFinais" 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
     </div>
   );
 }
+

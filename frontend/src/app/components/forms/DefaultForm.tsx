@@ -8,7 +8,7 @@ export function DefaultForm({ data, onChange, patient }: FormProps & { specName?
 
   return (
     <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-      <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Campos específicos – {patient.specName || "Especialidade"}</h3>
+      <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Campos específicos – {patient.specName || ""}</h3>
       <div className="space-y-3">
         {["Avaliação geral","Queixas principais","Conduta","Encaminhamentos"].map(f => (
           <div key={f}>

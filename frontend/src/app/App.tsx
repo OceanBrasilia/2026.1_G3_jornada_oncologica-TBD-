@@ -3,9 +3,9 @@ import { api } from "./services/api";
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
-  Filter, Heart, Home, LogOut, Menu, Phone, Plus, Save,
-  Search, Stethoscope, TrendingUp, Upload, User, Users, X,
-  ChevronRight, Calendar, MapPin, Paperclip, Layers,
+  Filter, Heart, Home, LogOut, Menu, Plus, Save,
+  Search, Stethoscope, Upload, User, Users, X,
+  MapPin, Paperclip, Layers,
   AlertTriangle, Clipboard, UserPlus, Shield, Pencil, Trash2,
   SlidersHorizontal, RotateCcw
 } from "lucide-react";
@@ -19,7 +19,10 @@ import { ServicoSocialForm } from "./components/forms/ServicoSocialForm";
 import { DefaultForm } from "./components/forms/DefaultForm";
 import { OdontologiaForm } from "./components/forms/OdontologiaForm";
 import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
-import { SharedPatientCard } from "./components/SharedPatientCard";
+import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
+import { AlertBadge } from "./components/ui/AlertBadge";
+import { mockPatientAlerts } from "./mocks/patientAlertsMock";
+import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -81,6 +84,7 @@ interface Patient {
   religion?: string;
   raceColor?: string;
   formAnswers?: Record<string, Record<string, string>>;
+  alerts?: PatientAlert[];
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -114,7 +118,8 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Frequência cardíaca": "78 bpm",
     "peso": "68",
     "altura": "1.63",
-    "alergias": "Dipirona",
+    "Alergia": "Sim",
+    "Reação alergica": "Dipirona",
     "comorbidades_lista": "Hipertensão Arterial",
     "tabagismo": "Ex-tabagista",
     "tabagismo_detalhes": "parou há 5 anos",
@@ -210,6 +215,7 @@ const PATIENTS: Patient[] = [
       recepcao: MOCK_FORM_ANSWERS.recepcao,
       enfermagem: MOCK_FORM_ANSWERS.enfermagem,
     },
+    alerts: mockPatientAlerts,
     specialties: mkSpecs(["atendido", "atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "nao-se-aplica", "nao-se-aplica", "pendente"]),
   },
   {
@@ -1960,7 +1966,7 @@ function ProfessionalDashboard({ onOpenPatient }: { onOpenPatient: (p: Patient) 
 
 // ─── Patient Record ───────────────────────────────────────────────────────────
 
-function AnswerCard({ answers, specName, professional, completedTime, onEdit, onExport }: {
+function AnswerCard({ answers, professional, completedTime, onEdit, onExport }: {
   answers: Record<string, string>;
   specName: string;
   professional?: string;
@@ -2054,7 +2060,16 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex-1">
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">{patient.id}</p>
-            <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-2xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
+              {patient.alerts && patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+                <div className="flex items-center gap-1">
+                  {patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                    <AlertBadge key={alert.id} category={alert.category} alert={alert} />
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-blue-100">
               <span>{patient.age} anos</span>
               <span>{patient.diagnosis}</span>
@@ -2396,48 +2411,36 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-const SharedField = ({ label, value, from, onChange }: { label: string; value?: string; from?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div>
-    <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-    {from
-      ? <div className="relative">
-        <input type="text" value={value ?? ""} onChange={onChange}
-          className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition" />
-        <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2">↩ {from}</span>
-      </div>
-      : <input type="text" value={value ?? ""} onChange={onChange}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 transition" />}
-  </div>
-);
-
-function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
+function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
   onBack: () => void;
   onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
-  const isEdit = mode === "edit";
   const spec = patient.specialties.find(s => s.id === specId);
   const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
   const inheritedData: Record<string, string> = {};
   const origins: Record<string, string> = {};
-  const sharedFields = ["peso", "altura", "comorbidades_lista", "comorbidades_outras", "tabagismo", "tabagismo_detalhes", "etilismo", "etilismo_detalhes", "outros_habitos", "alergias", "medicacoes", "Queixas principais"];
 
-  sharedFields.forEach(field => {
-    for (let i = patient.specialties.length - 1; i >= 0; i--) {
+  if (patient.formAnswers) {
+    for (let i = 0; i < patient.specialties.length; i++) {
       const s = patient.specialties[i];
-      const val = patient.formAnswers?.[s.id]?.[field];
-      if (val && val !== "—") {
-        inheritedData[field] = val;
-        origins[field] = s.name;
-        break;
+      if (s.id === specId) continue;
+      const answers = patient.formAnswers[s.id];
+      if (answers) {
+        for (const [key, val] of Object.entries(answers)) {
+          if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
+          if (val && val !== "—") {
+            inheritedData[key] = val;
+            origins[key] = s.name;
+          }
+        }
       }
     }
-  });
+  }
 
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({
-    ...inheritedData,
     ...(patient.formAnswers?.[specId] || {})
   });
 
@@ -2450,31 +2453,22 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
     "Observações": obs
   });
 
+  const mergedData = { ...inheritedData, ...dynamicAnswers };
+
   return (
     <div className="max-w-2xl space-y-5">
-      {/* Patient mini-header */}
-      <div className="bg-[#E8F4FD] rounded-xl px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-xs text-[#1B6CA8] font-bold">{patient.id}</p>
-          <p className="text-sm font-bold text-[#1A2332]">{patient.name}</p>
-        </div>
-        <span className="text-xs font-semibold text-[#1B6CA8] bg-white px-2.5 py-1 rounded-full border border-[#D5E6F3]">{isEdit ? "Editar – " : ""}{spec?.name}</span>
-      </div>
-
-      {/* Shared fields */}
-      <SharedPatientCard patient={patient} data={inheritedData} origins={origins} />
       {/* Specialty-specific */}
-      {specId === "nutricao" && <NutricaoForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "fisioterapia" && <FisioterapiaForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "terapia-ocupacional" && <TerapiaOcupacionalForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "enfermagem" && <EnfermagemForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "medicina" && <MedicinaForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "psicologia" && <PsicologiaForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "servico-social" && <ServicoSocialForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "odontologia" && <OdontologiaForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
-      {specId === "fonoaudiologia" && <FonoaudiologiaForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "nutricao" && <NutricaoForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "fisioterapia" && <FisioterapiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "terapia-ocupacional" && <TerapiaOcupacionalForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "enfermagem" && <EnfermagemForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "medicina" && <MedicinaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "psicologia" && <PsicologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "servico-social" && <ServicoSocialForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "odontologia" && <OdontologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "fonoaudiologia" && <FonoaudiologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
       {(specId !== "nutricao" && specId !== "fisioterapia" && specId !== "terapia-ocupacional" && specId !== "enfermagem" && specId !== "medicina" && specId !== "psicologia" && specId !== "servico-social" && specId !== "odontologia" && specId !== "fonoaudiologia") && (
-        <DefaultForm data={dynamicAnswers} origins={origins} onChange={handleDynamicAnswer} patient={{ ...patient, specName: spec?.name }} />
+        <DefaultForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={{ ...patient, specName: spec?.name }} />
       )}
       {/* Observations */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
@@ -2485,22 +2479,22 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button onClick={onBack}
-          className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+          className="flex items-center justify-center gap-2 px-6 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-full text-sm font-bold hover:bg-[#F4F7FB] transition">
           <ArrowLeft size={15} /> Voltar
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "em-atendimento")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-full text-sm font-bold hover:bg-[#F4F7FB] transition">
           <Save size={15} /> Salvar rascunho
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "nao-se-aplica")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#FCD34D] bg-white text-[#D97706] rounded-full text-sm font-bold hover:bg-[#FFFBEB] transition">
           <X size={15} /> Não se aplica
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "atendido")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
-          <CheckCircle size={15} /> Finalizar atendimento
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0F9E62] text-white rounded-full text-sm font-bold hover:bg-[#0B7A4B] transition shadow-sm">
+          <CheckCircle size={15} /> Finalizar avaliação
         </button>
       </div>
     </div>
@@ -2550,7 +2544,7 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
   const atendidos = patient.specialties.filter(s => s.status === "atendido" || s.status === "em-atendimento");
   const pendentes = patient.specialties.filter(s => s.status === "pendente");
 
-  const sharedFieldsToCheck = ["peso", "altura", "alergias", "comorbidades_lista", "tabagismo", "etilismo", "medicacoes", "Diagnóstico oncológico"];
+  const sharedFieldsToCheck = ["peso", "altura", "Alergia", "Reação alergica", "comorbidades_lista", "tabagismo", "etilismo", "medicacoes", "Diagnóstico oncológico"];
   const divergencies: { field: string; answers: { specName: string; value: string }[] }[] = [];
   
   sharedFieldsToCheck.forEach(field => {
@@ -2577,7 +2571,16 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
     <div className="max-w-4xl mx-auto space-y-5 print:space-y-4 print:max-w-none print:m-0 print:p-0">
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm px-6 py-4 flex items-center justify-between print:border-none print:shadow-none print:px-0 print:py-2 print:border-b-2 print:border-gray-800 print:rounded-none">
         <div>
-          <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
+            {patient.alerts && patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+              <div className="flex items-center gap-1 print:hidden">
+                {patient.alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                  <AlertBadge key={alert.id} category={alert.category} alert={alert} />
+                ))}
+              </div>
+            )}
+          </div>
           <p className="text-sm text-[#9AAABB] print:text-gray-600">Gerada em {now} · Paciente: {patient.name} ({patient.id})</p>
         </div>
         <button onClick={handleExportPDF} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md">
@@ -2656,7 +2659,7 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
                         return (
                           <div key={q} className="text-sm">
                             <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{label}</dt>
-                            <dd className="text-[#1A2332] mt-0.5 print:mt-0">{a}</dd>
+                            <dd className="text-[#1A2332] mt-0.5 print:mt-0">{Array.isArray(a) ? a.join(", ") : a}</dd>
                           </div>
                         );
                       })}
@@ -3370,7 +3373,82 @@ export default function App() {
         }
       };
 
-      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers };
+      const newAlerts = [...(p.alerts || [])];
+      
+      // Auto-generate Allergy Alert if reported
+      if (answers["Alergia"] === "Sim" && !newAlerts.some(a => a.category === AlertCategory.ALLERGY)) {
+        newAlerts.push({
+          id: `alert-allergy-${Date.now()}`,
+          category: AlertCategory.ALLERGY,
+          level: [AlertLevel.LEVEL_3],
+          title: "Alergia Reportada",
+          description: `Paciente possui alergia: ${answers["Reação alergica"] || "não especificada"}.`,
+          active: true,
+        });
+      } else if (answers["Alergia"] === "Nega") {
+        // Remove allergy alert if they changed it to "Nega"
+        const idx = newAlerts.findIndex(a => a.category === AlertCategory.ALLERGY);
+        if (idx !== -1) newAlerts.splice(idx, 1);
+      }
+
+      // Auto-generate Device Usage Alert
+      const activeDevices = [];
+      if (answers["via_alimentacao"] && answers["via_alimentacao"] !== "Oral") activeDevices.push(`${answers["via_alimentacao"]} (Alimentação)`);
+      if (answers["Diurese"] === "Uso de sonda (SVD)") activeDevices.push("SVD (Diurese)");
+      if (answers["Evacuação"] === "Uso de ostomia") activeDevices.push("Ostomia (Evacuação)");
+      if (Array.isArray(answers["Dispositivos invasivos"])) {
+        const inv = answers["Dispositivos invasivos"].filter(d => d !== "Nenhum" && d !== "Outro");
+        if (inv.length > 0) activeDevices.push(...inv);
+      }
+      
+      const hasDevice = activeDevices.length > 0;
+      
+      if (hasDevice && !newAlerts.some(a => a.category === AlertCategory.DEVICE_USAGE)) {
+        newAlerts.push({
+          id: `alert-device-${Date.now()}`,
+          category: AlertCategory.DEVICE_USAGE,
+          level: [AlertLevel.LEVEL_3],
+          title: "Uso de Dispositivo",
+          description: `Paciente em uso de: ${activeDevices.join(", ")}.`,
+          active: true,
+        });
+      } else if (!hasDevice && Object.keys(answers).some(k => ["via_alimentacao", "Diurese", "Evacuação", "Dispositivos invasivos"].includes(k))) {
+        // Here we could remove it, but we'll leave it as is for safety or implement removal later
+      }
+
+      // Auto-generate Clinical Risk Alert
+      const hasClinicalRisk = Array.isArray(answers["Comorbidades"]) && answers["Comorbidades"].length > 0;
+        
+      if (hasClinicalRisk && !newAlerts.some(a => a.category === AlertCategory.CLINICAL_RISK)) {
+        newAlerts.push({
+          id: `alert-clinical-${Date.now()}`,
+          category: AlertCategory.CLINICAL_RISK,
+          level: [AlertLevel.LEVEL_3],
+          title: "Risco Clínico",
+          description: `Comorbidade reportada: ${Array.isArray(answers["Comorbidades"]) ? answers["Comorbidades"].join(", ") : answers["Comorbidades"]}`,
+          active: true,
+        });
+      }
+
+      // Auto-generate Severe Symptoms (Pain) Alert
+      const painScore = Math.max(
+        parseInt(answers["Avaliação da dor"] || "0"),
+        parseInt(answers["escala_verbal_dor"] || "0"),
+        parseInt(answers["TO_Dor_Intensidade"] || "0")
+      );
+      
+      if (painScore >= 8 && !newAlerts.some(a => a.category === AlertCategory.SEVERE_SYMPTOMS)) {
+        newAlerts.push({
+          id: `alert-pain-${Date.now()}`,
+          category: AlertCategory.SEVERE_SYMPTOMS,
+          level: [AlertLevel.LEVEL_3],
+          title: "Dor Intensa",
+          description: `Paciente reportou dor intensa (nível ${painScore}).`,
+          active: true,
+        });
+      }
+
+      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
       if (answers.Altura) updatedPatient.height = answers.Altura;
 
@@ -3447,6 +3525,11 @@ export default function App() {
       {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} />}
+      
+      {/* Global Critical Alert */}
+      {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (
+        <GlobalCriticalAlert alerts={selectedPatient.alerts || []} />
+      )}
     </AppLayout>
   );
 }

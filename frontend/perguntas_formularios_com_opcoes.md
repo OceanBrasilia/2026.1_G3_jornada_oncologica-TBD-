@@ -1,0 +1,336 @@
+# Lista de Perguntas, Campos e Opções por Formulário
+
+## EnfermagemForm
+
+- **[Input]** Qual trabalho exerce/exercia?
+- **[Input]** A que e qual a reação?
+- **[Input]** Quais?
+- **[Input]** Cigarros/dia
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Quantidade
+- **[Input]** Frequência
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Parentesco
+- **[Input]** Tipo de câncer
+- **[Input]** Qual?
+- **[Input]** Qual?
+- **[Input]** Locomoção
+- **[Input]** MMII (membros inferiores)
+- **[Input]** Qual dispositivo?
+- **[Select]** Procedência (cidade em que mora)
+  - **Opções:** Belo Horizonte, Contagem, Betim, Outra
+- **[Select]** Escolaridade
+  - **Opções:** Analfabeto, Ensino Fundamental Incompleto, Ensino Fundamental Completo, Ensino Médio Incompleto, Ensino Médio Completo, Ensino Superior Incompleto, Ensino Superior Completo
+- **[Select]** Ocupação / Profissão
+  - **Opções:** Trabalhando, Aposentado, Desempregado, Afastado, Do lar, Estudante
+- **[Select]** Religião
+  - **Opções:** Católica, Evangélica, Espírita, Outra, Nenhuma
+- **[Select]** Acompanhante hoje
+  - **Opções:** Desacompanhado, Cônjuge, Filho(a), Irmão(ã), Outro parente, Amigo(a)
+- **[Select]** Mora com quem?
+  - **Opções:** Sozinho(a), Cônjuge, Filhos(as), Outros familiares, Amigos / Colegas
+- **[Select]** Forma de deslocamento até a clínica
+  - **Opções:** Carro próprio / Carona, Transporte por aplicativo / Táxi, Ônibus / Metrô, Ambulância / Transporte da Prefeitura, Outro
+- **[Select]** Apoio familiar
+  - **Opções:** Adequado, Parcial, Inexistente
+- **[Select]** Limitação de atividade laboral
+  - **Opções:** Nenhuma, Parcial, Total
+- **[Select]** Aceitação da dieta
+  - **Opções:** Boa, Regular, Ruim
+- **[Select]** Disfagia
+  - **Opções:** Sim, Não
+- **[Select]** Quedas nos últimos 3 meses
+  - **Opções:** Nenhuma, Sim, 1 vez, Sim, mais de 1 vez
+- **[Select]** Eliminações fisiológicas - Diurese (Urina)
+  - **Opções:** Presente / Sem alterações, Disúria (dor/ardor), Hematúria (sangue), Uso de sonda (SVD)
+- **[Select]** Eliminações fisiológicas - Evacuação (Fezes)
+  - **Opções:** Presente / Sem alterações, Constipação, Diarreia, Uso de ostomia
+- **[Textarea]** Outras doenças / comorbidades
+- **[Textarea]** Medicações de uso contínuo
+- **[Textarea]** Sinais e sintomas atuais (relacionados à doença ou tratamento)
+- **[Textarea]** Qual tratamento prévio?
+- **[Textarea]** Exames realizados
+- **[Textarea]** Afeto e humor
+- **[Textarea]** Descrever (localização, aspecto, curativo atual):
+- **[RadioPills]** Situação profissional atual
+  - **Opções:** Trabalhando, Aposentado(a), Desempregado(a), Afastado(a) pelo INSS, Do lar, Estudante, Outro
+- **[RadioPills]** Alergia
+  - **Opções:** Nega, Sim
+- **[RadioPills]** Cirurgias prévias
+  - **Opções:** Nega, Sim
+- **[RadioPills]** Tabagismo
+  - **Opções:** Não, Sim, Ex-tabagista
+- **[RadioPills]** Etilismo
+  - **Opções:** Não, Sim, Ex-etilista
+- **[RadioPills]** Paciente tem conhecimento sobre seu diagnóstico?
+  - **Opções:** Sim, Não, Parcialmente
+- **[RadioPills]** Casos de câncer na família?
+  - **Opções:** Sim, Não, Não sabe
+- **[RadioPills]** Nível de consciência
+  - **Opções:** Lúcido e orientado, Desorientado / Confuso, Torporoso, Outro
+- **[RadioPills]** Padrão de sono
+  - **Opções:** Preservado, Alterado (insônia, despertar frequente), Outro
+- **[RadioPills]** Presença de lesão na pele / ferida tumoral?
+  - **Opções:** Nega, Sim
+- **[CheckboxGroup]** Comorbidades (Doenças prévias)
+  - **Opções:** Diabetes Mellitus (DM), Hipertensão Arterial Sistêmica (HAS), Cardiopatia, DPOC, Outras
+- **[CheckboxGroup]** Tratamento oncológico prévio
+  - **Opções:** Nenhum (Iniciando tratamento), Cirurgia oncológica, Quimioterapia, Radioterapia, Imunoterapia / Hormonioterapia, Outro
+- **[CheckboxGroup]** Uso de dispositivos invasivos
+  - **Opções:** Nenhum, Acesso venoso periférico, Port-a-cath, PICC, Cateter duplo lúmen, Sonda nasoenteral (SNE), Gastrostomia (GTT), Outro
+
+## FisioterapiaForm
+
+- **[Input]** Se houve tratamento cirúrgico, qual a data?
+- **[Input]** Qual cirurgia e onde foi realizado?
+- **[Input]** Quais exercícios?
+- **[Input]** Local da restrição
+- **[Input]** Especifique a restrição
+- **[Input]** Local do linfedema
+- **[Input]** Especifique o linfedema
+- **[Input]** Graduação da Fadiga (ECN 0-10)
+- **[Input]** Quando foi o início da incontinência?
+- **[Input]** Especifique a demanda
+- **[Select]** Tratamento prévio
+  - **Opções:** Cirurgia, Quimioterapia, Radioterapia, Não
+- **[Select]** Fadiga
+  - **Opções:** Sim, Não
+- **[Select]** Em caso de fadiga
+  - **Opções:** Aos mínimos esforços, Aos médios esforços, Aos grandes esforços, Não se aplica
+- **[Select]** Incontinência
+  - **Opções:** Urinária, Fecal, Não, Não se aplica
+- **[Select]** Orientações para Incontinência?
+  - **Opções:** Sim, Não, Não se aplica
+
+## FonoaudiologiaForm
+
+- **[Input]** Topografia e CID (ajustar se necessário)
+- **[Input]** Peso ponderal (kg)
+- **[Input]** Cigarros/dia
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Quantidade
+- **[Input]** Frequência
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Qual cirurgia e onde foi realizado?
+- **[Input]** Especifique
+- **[Input]** Especifique o sintoma
+- **[Select]** Via alimentar
+  - **Opções:** Oral, GTT, SNE, NPT
+- **[Select]** Alteração de apetite?
+  - **Opções:** Sim, Não
+- **[Select]** Apresenta azia?
+  - **Opções:** Sim, Não
+- **[Select]** Apresenta refluxo?
+  - **Opções:** Sim, Não
+- **[Select]** Risco de aspiração/penetração
+  - **Opções:** Alto, Médio, Baixo, Nenhum
+- **[Select]** Risco de disfagia
+  - **Opções:** Leve, Moderada, Grave, Ausente
+- **[Select]** Alteração da qualidade vocal
+  - **Opções:** Sim, Não
+- **[Select]** Encaminhamento
+  - **Opções:** Médico, Nutrição, Psicologia, Fisioterapia, Serviço Social, Nenhum
+- **[CheckboxGroup]** Comorbidades (Doenças prévias)
+  - **Opções:** Diabetes Mellitus (DM), Hipertensão Arterial Sistêmica (HAS), Cardiopatia, DPOC, Outras
+- **[CheckboxGroup]** Apresenta algum desses sintomas? (múltipla seleção)
+  - **Opções:** Náusea, Vômitos, Regurgitação, Vômito de sangue fresco, Vômito de sangue velho, Dor ao engolir, Dor no peito, Outro
+
+## MedicinaForm
+
+- **[Input]** A que e qual a reação?
+- **[Input]** Cigarros/dia
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Quantidade
+- **[Input]** Frequência
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** ACV
+- **[Input]** AR
+- **[Input]** ABD
+- **[Input]** MMII
+- **[Select]** Estadiamento:
+  - **Opções:** I, II, III, IV, Não se aplica
+- **[Select]** Investimento:
+  - **Opções:** Pleno, Proporcional, Medidas de conforto
+- **[RadioPills]** Alergias:
+  - **Opções:** Nega, Sim
+- **[RadioPills]** Tabagismo
+  - **Opções:** Não, Sim, Ex-tabagista
+- **[RadioPills]** Etilismo
+  - **Opções:** Não, Sim, Ex-etilista
+- **[CheckboxGroup]** Comorbidades (Doenças prévias):
+  - **Opções:** Diabetes Mellitus (DM), Hipertensão Arterial Sistêmica (HAS), Cardiopatia, DPOC, Outras
+
+## NutricaoForm
+
+- **[Input]** Qual?
+- **[Input]** Pessoas na habitação
+- **[Input]** Cigarros/dia
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Fermentados ml/sem
+- **[Input]** Destilados ml/sem
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Peso aferido (kg)
+- **[Input]** Altura (m)
+- **[Input]** Há um mês atrás eu pesava aproximadamente (kg)
+- **[Input]** Há seis meses atrás eu pesava aproximadamente (kg)
+- **[Input]** Onde?
+- **[Input]** Quais outros problemas?
+- **[Input]** Especifique o outro estadiamento
+- **[Select]** Via de alimentação
+  - **Opções:** Oral, Sonda
+- **[Select]** Escolaridade
+  - **Opções:** Ensino Médio, Ensino Superior
+- **[Select]** Renda familiar
+  - **Opções:** 1 a 2 salários, 3 a 4 salários, Mais de 4 salários
+- **[Select]** Estadiamento da doença primária
+  - **Opções:** I, II, III, IV, Outro, Não aplicável
+- **[Select]** Febre
+- **[Select]** Duração da febre
+- **[Select]** Corticosteroides
+  - **Opções:** 0 = Nenhum / Sem corticosteroides, 1 = Baixo / Dose baixa (< 10 mg prednisona/dia), 2 = Moderado / Dose moderada (≥ 10 e < 30 mg prednisona/dia), 3 = Alto / Dose alta (≥ 30 mg prednisona/dia)
+- **[Select]** Reservas de gordura (peri-orbital, tríceps, últimas costelas)
+  - **Opções:** 0 - Sem déficit, +1 - Déficit leve, +2 - Déficit moderado, +3 - Déficit grave
+- **[Select]** Estado muscular (temporal, clavícula, ombros, interósseo, escápula, coxa, panturrilha)
+  - **Opções:** 0 - Sem déficit, +1 - Déficit leve, +2 - Déficit moderado, +3 - Déficit grave
+- **[Select]** Estado de hidratação (tornozelo, sacral, ascite)
+  - **Opções:** 0 - Sem déficit, +1 - Déficit leve, +2 - Déficit moderado, +3 - Déficit grave
+- **[Textarea]** Todos diagnósticos relevantes (especifique)
+- **[Textarea]** Conduta nutricional
+- **[RadioPills]** Suplementação
+  - **Opções:** Não, Sim
+- **[RadioPills]** Tratamento prévio
+  - **Opções:** Não, Sim
+- **[RadioPills]** Qual?
+  - **Opções:** Cirurgia, RT, RQT, QT
+- **[RadioPills]** Atividade física
+  - **Opções:** Sim: intensidade leve, moderada - min 30min, 5x/semana ou intensidade vigorosa, min 20min, 3x/semana, Não
+- **[RadioPills]** Tabagismo
+  - **Opções:** Não, Sim, Ex-tabagista
+- **[RadioPills]** Etilismo
+  - **Opções:** Não, Sim, Ex-etilista
+- **[RadioPills]** Durante as 2 últimas semanas o meu peso:
+  - **Opções:** Diminuiu (1), Ficou igual (0), Aumentou (0)
+- **[RadioPills]** Em comparação à minha alimentação normal, eu poderia considerar minha ingestão alimentar durante o último mês como:
+  - **Opções:** Sem mudanças (0), Mais que o normal (0), Menos que o normal (1)
+- **[RadioPills]** Atualmente, eu estou comendo:
+  - **Opções:** Comida normal (alimentos sólidos) em menor quantidade (1), Comida normal (alimentos sólidos) em pouca quantidade (2), Apenas líquidos (3), Apenas suplementos nutricionais (3), Muito pouco de qualquer comida (4), Apenas alimentos pela sonda ou pela veia (0)
+- **[RadioPills]** No último mês, eu consideraria minha atividade como:
+  - **Opções:** Normal, sem nenhuma limitação (0), Não totalmente normal, mas capaz de manter quase todas as atividades normais (1), Não me sentindo bem para a maioria das coisas, mas ficando na cama ou na cadeira menos da metade do dia (2), Capaz de fazer pouca atividade, e passando a maior parte do tempo na cadeira ou na cama (3), Bastante tempo acamado, raramente fora da cama (3)
+- **[RadioPills]** Avaliação global do déficit corporal:
+  - **Opções:** 0 – Sem déficit, +1 – Déficit leve, +2 – Déficit moderado, +3 – Déficit grave
+- **[RadioPills]** Avaliação global ASG-PPP — classificação pelo profissional:
+  - **Opções:** Bem nutrido ou anabólico (ASG A), Desnutrição moderada ou suspeita (ASG B), Gravemente desnutrido (ASG C)
+
+## OdontologiaForm
+
+- **[Input]** Data de Nascimento
+- **[Input]** RG e Expedição
+- **[Input]** Nacionalidade
+- **[Input]** Naturalidade
+- **[Input]** Filiação (Pai)
+- **[Input]** Filiação (Mãe)
+- **[Input]** Responsável Legal
+- **[Input]** Telefones de contato
+- **[Input]** Endereço (Rua)
+- **[Input]** Bairro
+- **[Input]** Cidade - UF
+- **[Input]** CEP
+- **[Input]** Ocupação
+- **[Input]** Em qual período?
+- **[Input]** PA sistólica (mmHg)
+- **[Input]** PA diastólica (mmHg)
+- **[Input]** Cigarros/dia
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Quantidade
+- **[Input]** Frequência
+- **[Input]** Duração
+- **[Input]** Parou há
+- **[Input]** Outros hábitos
+- **[RadioPills]** Tabagismo
+  - **Opções:** Não, Sim, Ex-tabagista
+- **[RadioPills]** Etilismo
+  - **Opções:** Não, Sim, Ex-etilista
+
+## PsicologiaForm
+
+- **[Input]** Profissional responsável pela aplicação
+- **[Select]** Sexo
+  - **Opções:** Masculino, Feminino
+- **[Select]** Estado civil
+  - **Opções:** Solteiro/a, Casado/a, Divorciado/a, Viúvo/a
+- **[Select]** Escolaridade
+  - **Opções:** Não alfabetizado, Ensino Fundamental Incompleto, Ensino Fundamental Completo, Ensino Médio Incompleto, Ensino Médio Completo, Ensino Superior Incompleto, Ensino Superior Completo
+- **[Select]** Religião/Crença
+  - **Opções:** Católica, Evangélica, Espírita, Religião de Matriz Africana, Nenhuma
+- **[Select]** Fase do tratamento
+  - **Opções:** Diagnóstico, Tratamento, Acompanhamento (Follow-up), Cuidados Paliativos
+- **[Select]** Encaminhado(a) para
+  - **Opções:** Ambulatório de Psicologia, Ambulatório de Psiquiatria, Não identificada necessidade de encaminhamento nesse momento, mas o serviço foi disponibilizado para busca por livre demanda
+- **[Textarea]** Conduta adotada frente ao alerta
+
+## ServicoSocialForm
+
+- **[Input]** Profissão / Ocupação
+- **[Input]** Nome
+- **[Input]** Telefone de contato
+- **[Input]** Procedência
+- **[Input]** Parente/amigo que auxilia com tecnologia (nome e parentesco)
+- **[Input]** Assistente Social entrevistador(a)
+- **[Select]** Sexo
+  - **Opções:** Feminino, Masculino, Outro
+- **[Select]** Cor/Raça (autodeclarada)
+  - **Opções:** Branca, Preta, Parda, Amarela, Indígena, Não informada
+- **[Select]** Grau de escolaridade
+  - **Opções:** Sem instrução, Ensino Fundamental I, Ensino Fundamental II, Ensino Médio, Ensino Superior, Pós-graduação
+- **[Select]** Estado civil
+  - **Opções:** Solteiro(a), Casado(a), Viúvo(a), Divorciado(a), União Estável
+- **[Select]** Religião
+  - **Opções:** Católica, Evangélica, Espírita, Religião de matriz africana, Sem religião, Outra
+- **[Select]** Diagnóstico oncológico (confirmar)
+  - **Opções:** Confirmado, Em investigação
+- **[Select]** Onde foi feito o diagnóstico?
+  - **Opções:** HUB, Outro Hospital Público, Hospital Particular, Clínica Privada
+- **[Select]** Grau de parentesco
+  - **Opções:** Cônjuge, Filho(a), Irmão(ã), Pai/Mãe, Outro parente, Amigo(a), Cuidador profissional
+- **[Select]** Suporte familiar
+  - **Opções:** Adequado, Parcial, Frágil, Inexistente
+- **[Select]** Possui acesso e facilidade com celular e internet?
+  - **Opções:** Sim, Apenas acesso, sem facilidade, Não possui acesso
+- **[Select]** Na sua casa existe computador e acesso à internet?
+  - **Opções:** Sim, temos computador e internet., Somente computador., Somente internet., Não temos computador nem internet.
+- **[Select]** Renda do paciente
+  - **Opções:** Sem renda, Menos de 1 salário mínimo, 1 a 2 salários mínimos, 3 a 5 salários mínimos, Mais de 5 salários mínimos
+- **[Select]** Renda familiar
+  - **Opções:** Sem renda, Menos de 1 salário mínimo, 1 a 2 salários mínimos, 3 a 5 salários mínimos, Mais de 5 salários mínimos
+- **[CheckboxGroup]** Como vem ao HUB? (múltipla seleção)
+  - **Opções:** Transporte Público, Transporte Particular, TFD, Outro
+- **[CheckboxGroup]** Qual a situação previdenciária/ocupacional atual do(a) paciente?
+  - **Opções:** Aposentado(a) por idade e/ou tempo de contribuição, Aposentado(a) por invalidez, Pensionista, Trabalhando com vínculo formal, Trabalhando como autônomo (trabalho informal/bico), Em gozo de Auxílio-Doença (benefício por incapacidade temporária), Desempregado(a) (Neste caso, especificar se o paciente é segurado, isto é, quando foi sua última contribuição/último emprego com carteira assinada), Não segurado(a) - Nunca contribuiu para o INSS, BPC da pessoa com deficiência, BPC da pessoa idosa (a partir de 65 anos), Segurado(a) (autônomo, facultativo), Outro
+- **[CheckboxGroup]** O(a) paciente/família está incluído em algum programa ou benefício social municipal, estadual ou federal?
+  - **Opções:** Não, Passe Livre DF (Pessoa com Deficiência), Passe Livre Interestadual, Tratamento Fora de Domicílio (TFD), Programa Bolsa Família (PBF), Benefício de Prestação Continuada (BPC), Outro
+- **[CheckboxGroup]** Assinale as orientações e/ou encaminhamentos realizados pelo Serviço Social, no momento do acolhimento:
+  - **Opções:** Passe Livre DF, Passe Livre Interestadual (PLI), Tratamento Fora de Domicílio (TFD), Auxílio-Doença (Benefício por incapacidade temporária), Benefício de Prestação Continuada (BPC), Isenção de Impostos, Saque de FGTS/ PIS / PASEP, Programa de Transporte a Pessoas com Necessidades Especiais do DF - PTNED, Fluxo de Relatórios Médicos, Programa Melhor em Casa, Farmácia de Alto Custo, Associações e grupos de apoio oncológico, Encaminhamento para a Defensoria Pública da União, do DF ou do Estado de origem, Orientações sobre judicialização na Saúde, Orientações sobre recuperação da qualidade de segurado(a), Programa Bolsa Família (PBF), Outro
+
+## TerapiaOcupacionalForm
+
+- **[Input]** Naturalidade / Reside em
+- **[Input]** Especifique o outro diagnóstico:
+- **[Input]** Especifique a especialidade:
+- **[Select]** Renda atual
+  - **Opções:** Até 1 salário mínimo, De 1 a 3 salários mínimos, Mais de 3 salários mínimos, Sem renda
+- **[CheckboxGroup]** Neste momento, quem mais te ajuda?
+  - **Opções:** Amigos, Equipe, Companheiro(a), Vizinho, Familiares, Outros
+- **[CheckboxGroup]** Diagnóstico Terapêutico Ocupacional (múltipla seleção):
+  - **Opções:** Capacidade funcional preservada e desempenho ocupacional satisfatório, Dependência para realização de AIVDs, Dependência para realização de AVDs, Alterações na mobilidade, Risco de queda, Dor incapacitante, Fadiga, Outro
+- **[CheckboxGroup]** Encaminhamentos (múltipla seleção):
+  - **Opções:** Orientações em Saúde, Ambulatório de Terapia Ocupacional, Visita Domiciliar, Prescrição de Tecnologias Assistivas, Encaminhamento para outra especialidade:
+

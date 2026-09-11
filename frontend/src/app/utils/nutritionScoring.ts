@@ -1,6 +1,6 @@
 export function calculateIMC(weightStr: string, heightStr: string): string {
-  const w = parseFloat(weightStr.replace(",", "."));
-  const h = parseFloat(heightStr.replace(",", "."));
+  const w = parseFloat((weightStr || "").replace(",", "."));
+  const h = parseFloat((heightStr || "").replace(",", "."));
   if (w > 0 && h > 0) {
     return (w / (h * h)).toFixed(2);
   }
@@ -15,9 +15,9 @@ export function calculateBox1Score(
 ): number {
   let score = 0;
   
-  const current = parseFloat(currentStr.replace(",", ".")) || 0;
-  const oneMonth = parseFloat(oneMonthStr.replace(",", ".")) || 0;
-  const sixMonths = parseFloat(sixMonthsStr.replace(",", ".")) || 0;
+  const current = parseFloat((currentStr || "").replace(",", ".")) || 0;
+  const oneMonth = parseFloat((oneMonthStr || "").replace(",", ".")) || 0;
+  const sixMonths = parseFloat((sixMonthsStr || "").replace(",", ".")) || 0;
   
   if (oneMonth > 0 && current > 0) {
     const loss = ((oneMonth - current) / oneMonth) * 100;
@@ -33,7 +33,7 @@ export function calculateBox1Score(
     else if (loss >= 2) score = 1;
   }
   
-  if (recentWeightChange === "diminuiu") {
+  if (recentWeightChange === "Diminuiu (1)") {
     score += 1;
   }
   
@@ -42,18 +42,18 @@ export function calculateBox1Score(
 
 export function calculateBox2Score(intakeChangeStr: string, currentEatingStr: string): number {
   const intakeScores: Record<string, number> = {
-    "sem mudanças": 0,
-    "mais que o normal": 0,
-    "menos que o normal": 1,
+    "Sem mudanças (0)": 0,
+    "Mais que o normal (0)": 0,
+    "Menos que o normal (1)": 1,
   };
   
   const currentEatingScores: Record<string, number> = {
-    "comida normal em menor quantidade": 1,
-    "comida normal em pouca quantidade": 2,
-    "apenas líquidos": 3,
-    "apenas suplementos nutricionais": 3,
-    "muito pouco de qualquer comida": 4,
-    "apenas alimentos pela sonda ou veia": 0,
+    "Comida normal (alimentos sólidos) em menor quantidade (1)": 1,
+    "Comida normal (alimentos sólidos) em pouca quantidade (2)": 2,
+    "Apenas líquidos (3)": 3,
+    "Apenas suplementos nutricionais (3)": 3,
+    "Muito pouco de qualquer comida (4)": 4,
+    "Apenas alimentos pela sonda ou pela veia (0)": 0,
   };
 
   const s1 = intakeScores[intakeChangeStr] ?? 0;
@@ -63,20 +63,21 @@ export function calculateBox2Score(intakeChangeStr: string, currentEatingStr: st
 
 export function calculateBox3Score(symptoms: string[]): number {
   const scores: Record<string, number> = {
-    "sem problemas para se alimentar": 0,
-    "sem apetite": 3,
-    "náusea": 1,
-    "vômito": 3,
-    "constipação": 1,
-    "diarreia": 3,
-    "feridas na boca": 2,
-    "boca seca": 1,
-    "problemas para engolir": 2,
-    "alimentos com gosto estranho/sem gosto": 1,
-    "rapidamente me sinto satisfeito": 1,
-    "cheiros me enjoam": 1,
-    "dor": 3,
-    "outros": 1
+    "Sem problemas para se alimentar (0)": 0,
+    "Sem apetite, apenas sem vontade de comer (3)": 3,
+    "Náusea (1)": 1,
+    "Vômito (3)": 3,
+    "Constipação (1)": 1,
+    "Diarreia (3)": 3,
+    "Feridas na boca (2)": 2,
+    "Boca seca (1)": 1,
+    "Dificuldade para engolir (2)": 2,
+    "Problemas para engolir (2)": 2, // Alternative just in case
+    "Os alimentos têm gosto estranho ou não têm gosto (1)": 1,
+    "Rapidamente me sinto satisfeito (1)": 1,
+    "Os cheiros me enjoam (1)": 1,
+    "Dor; onde? (3)": 3,
+    "Outros** (1)": 1
   };
   
   let total = 0;
@@ -88,11 +89,11 @@ export function calculateBox3Score(symptoms: string[]): number {
 
 export function calculateBox4Score(activityStr: string): number {
   const scores: Record<string, number> = {
-    "normal, sem limitação": 0,
-    "capaz de manter quase todas as atividades normais": 1,
-    "ficando na cama/cadeira menos da metade do dia": 2,
-    "capaz de fazer pouca atividade, maior parte do tempo na cama/cadeira": 3,
-    "acamado, raramente fora da cama": 3,
+    "Normal, sem nenhuma limitação (0)": 0,
+    "Não totalmente normal, mas capaz de manter quase todas as atividades normais (1)": 1,
+    "Não me sentindo bem para a maioria das coisas, mas ficando na cama ou na cadeira menos da metade do dia (2)": 2,
+    "Capaz de fazer pouca atividade, e passando a maior parte do tempo na cadeira ou na cama (3)": 3,
+    "Bastante tempo acamado, raramente fora da cama (3)": 3,
   };
   return scores[activityStr] ?? 0;
 }
@@ -101,8 +102,8 @@ export function calculateBoxBScore(diseases: string[]): number {
   return diseases.length;
 }
 
-export function calculateBoxCScore(feverScore: number, corticoScore: number): number {
-  return feverScore + corticoScore;
+export function calculateBoxCScore(feverScore: number, feverDurationScore: number, corticoScore: number): number {
+  return feverScore + feverDurationScore + corticoScore;
 }
 
 export function calculateBoxDScore(subjectiveScore: number): number {

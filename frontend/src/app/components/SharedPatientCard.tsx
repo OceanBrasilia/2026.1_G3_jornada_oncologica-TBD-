@@ -41,7 +41,7 @@ export function SharedPatientCard({ patient, data, origins }: SharedPatientCardP
         <SharedField label="Altura" value={data["Altura"]} origin={origins?.["Altura"]} />
         
         <div className="sm:col-span-2">
-          <SharedField label="Alergias" value={data["Alergias"]} origin={origins?.["Alergias"]} />
+          <SharedField label="Alergias" value={data["Alergia"] === "Sim" ? `Sim - ${data['Reação alergica'] || ''}` : data["Alergia"]} origin={origins?.["Alergia"] || origins?.["Alergias"]} />
         </div>
         
         <div className="sm:col-span-2">

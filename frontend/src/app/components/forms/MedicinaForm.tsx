@@ -1,146 +1,172 @@
-import React from "react";
-import { User, Activity, FileText, HeartPulse, Search, ClipboardList, Clock } from "lucide-react";
-import { VitalsField } from "./shared/VitalsField";
-import { ComorbiditiesField } from "./shared/ComorbiditiesField";
-import { HabitsField } from "./shared/HabitsField";
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, FileText, HeartPulse, Search, ClipboardList } from "lucide-react";
+import { PatientHeader } from "../PatientHeader";
+import { ReusedDataAccordion } from "../ReusedDataAccordion";
 
 export interface MedicinaFormProps {
   data: Record<string, string>;
   onChange: (key: string, value: string) => void;
   patient: any;
   origins?: Record<string, string>;
+  inheritedData?: Record<string, any>;
 }
 
-const SharedField = ({ label, value }: any) => (
-  <div>
-    <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-    <div className="px-3 py-2.5 rounded-xl bg-[#F4F7FB] border border-[#E8F4FD] text-sm text-[#6B7A8D] font-medium min-h-[42px] flex items-center">
-      {value || "—"}
-    </div>
-  </div>
-);
+import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup } from "./shared/InheritableFormComponents";
 
-const Card = ({ title, icon: Icon, children }: any) => (
-  <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5">
-    <h3 className="font-bold text-[#1A2332] mb-4 text-sm flex items-center gap-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
-      <Icon size={16} className="text-[#1B6CA8]" /> {title}
-    </h3>
-    <div className="grid sm:grid-cols-2 gap-4">
-      {children}
-    </div>
-  </div>
-);
-
-const Input = ({ label, name, placeholder = "", type = "text", value, from, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
+const SectionAccordion = ({ title, icon: Icon, children, defaultOpen = true }: any) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      {from ? (
-        <div className="relative">
-          <input
-            type={type}
-            name={name}
-            value={value ?? data?.[name] ?? ""}
-            onChange={handleChange}
-            placeholder={placeholder}
-            className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition"
-          />
-          <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2 whitespace-nowrap">↩ {from}</span>
+    <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm mb-4">
+      <div 
+        className="p-5 flex justify-between items-center cursor-pointer select-none"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <h3 className="font-bold text-[#1A2332] text-sm flex items-center gap-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {Icon && <Icon size={16} className="text-[#1B6CA8]" />} {title}
+        </h3>
+        {isOpen ? <ChevronUp size={20} className="text-[#8A9EB9]" /> : <ChevronDown size={20} className="text-[#8A9EB9]" />}
+      </div>
+      {isOpen && (
+        <div className="px-5 pb-5 pt-0 space-y-4">
+          {children}
         </div>
-      ) : (
-        <input
-          type={type}
-          name={name}
-          value={value ?? data?.[name] ?? ""}
-          onChange={handleChange}
-          placeholder={placeholder}
-          className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-        />
       )}
     </div>
   );
 };
 
-const TextArea = ({ label, name, placeholder = "", rows = 4, value, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
-  return (
-    <div className="sm:col-span-2">
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-      <textarea
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        rows={rows}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none"
-      />
-    </div>
-  );
-};
+// Removed local components, using shared Inheritable components
 
-export function MedicinaForm({ data, origins, onChange, patient }: MedicinaFormProps) {
+export function MedicinaForm({ data, onChange, patient, inheritedData, origins }: MedicinaFormProps) {
+
   return (
     <div>
-      {/* 1. Campos e Dados Compartilhados (Identificação e Biometria) */}
-      <Card title="Campos e Dados Compartilhados (Identificação e Biometria)" icon={User}>
-        <SharedField label="Nome Completo" value={patient?.name} />
-        <SharedField label="Telefone" value={patient?.phone} />
-        <SharedField label="Diagnóstico" value={patient?.diagnosis} />
-        <SharedField label="CID" value={patient?.cid} />
-        <div className="sm:col-span-2">
-          <VitalsField data={data} patient={patient} origins={origins} onChange={onChange} />
+      <PatientHeader 
+        id="CAO-2024-0002"
+        name={patient?.name || ""}
+        age={patient?.age}
+        diagnosis={patient?.diagnosis}
+        cid={patient?.cid}
+        specialty="Medicina"
+        status="Pendente"
+        alerts={patient?.alerts}
+      />
+
+      <ReusedDataAccordion
+        title="ID — Dados da jornada (reaproveitados)"
+        fields={[
+          { label: "NOME COMPLETO", value: patient?.name, origin: "Cadastro" },
+          { label: "DIAGNÓSTICO ONCOLÓGICO", value: patient?.diagnosis, origin: "Recepção" },
+          { label: "CID", value: patient?.cid, origin: "Recepção" },
+          { label: "ALERGIAS", value: data?.Alergia === "Sim" ? `Sim - ${data?.['Reação alergica'] || ''}` : data?.Alergia || "", origin: "Enfermagem" },
+          { label: "MEDICAMENTOS EM USO", value: data?.medicacoes || "", origin: "Enfermagem" },
+        ]}
+        data={data}
+        onChange={onChange}
+      />
+
+      <SectionAccordion title="Diagnóstico oncológico" icon={Activity}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Diagnóstico:" name="Diagnóstico" rows={2} data={data} onChange={onChange} />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} label="Estadiamento:" name="Estadiamento" options={["I", "II", "III", "IV", "Não se aplica"]} data={data} onChange={onChange} />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Tipo histológico:" name="Tipo histológico" rows={2} data={data} onChange={onChange} />
+      </SectionAccordion>
+
+      <SectionAccordion title="Tratamento atual" icon={Activity}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Tratamento atual:" name="Tratamento em curso" placeholder="Descreva o tratamento atual..." data={data} onChange={onChange} />
+      </SectionAccordion>
+
+      <SectionAccordion title="História oncológica" icon={Activity}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="História oncológica:" name="História oncológica" placeholder="Descreva a evolução da doença..." data={data} onChange={onChange} />
+      </SectionAccordion>
+
+      <SectionAccordion title="Antecedentes" icon={FileText}>
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} label="Comorbidades (Doenças prévias):" name="Comorbidades" options={["Diabetes Mellitus (DM)", "Hipertensão Arterial Sistêmica (HAS)", "Cardiopatia", "DPOC", "Outras"]} data={data} onChange={onChange} />
+
+        {data?.["Comorbidades"]?.includes("Outras") && (
+          <div className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-2">
+            <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Outras doenças / comorbidades" name="Outras doenças" rows={2} data={data} onChange={onChange} />
+          </div>
+        )}
+        
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="MUC:" name="MUC" data={data} onChange={onChange} />
+        
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Alergias:" name="Alergia" options={["Nega", "Sim"]} data={data} onChange={onChange} />
+
+        {((data?.["Alergia"] ?? inheritedData?.["Alergia"]) === "Sim") && (
+          <div className="pl-4 border-l-2 border-[#D5E6F3] ml-2 mt-4">
+            <InheritableInput inheritedData={inheritedData} origins={origins} label="A que e qual a reação?" name="Reação alergica" data={data} onChange={onChange} />
+          </div>
+        )}
+
+        <div className="mb-4">
+          <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tabagismo" name="tabagismo" options={["Não", "Sim", "Ex-tabagista"]} data={data} onChange={onChange} />
+          {(data?.tabagismo === "Sim" || data?.tabagismo === "Ex-tabagista") && (
+            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
+              </div>
+              {data?.tabagismo === "Ex-tabagista" && (
+                <div className="flex-1">
+                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </Card>
 
-      {/* 2. Avaliação Oncológica */}
-      <Card title="Avaliação Oncológica" icon={Activity}>
-        <div className="sm:col-span-2">
-          <Input label="Diagnóstico oncológico" name="Diagnóstico oncológico" data={data} onChange={onChange} />
+        <div className="mb-4">
+          <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Etilismo" name="etilismo" options={["Não", "Sim", "Ex-etilista"]} data={data} onChange={onChange} />
+          {(data?.etilismo === "Sim" || data?.etilismo === "Ex-etilista") && (
+            <div className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Quantidade" name="etilismo_quantidade" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Frequência" name="etilismo_frequencia" data={data} onChange={onChange} />
+              </div>
+              <div className="flex-1">
+                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
+              </div>
+              {data?.etilismo === "Ex-etilista" && (
+                <div className="flex-1">
+                  <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        <TextArea label="História oncológica" name="História oncológica" data={data} onChange={onChange} />
-        <TextArea label="Tratamento atual" name="Tratamento atual" data={data} onChange={onChange} />
-      </Card>
 
-      {/* 3. Antecedentes */}
-      <Card title="Antecedentes" icon={FileText}>
-        <div className="sm:col-span-2">
-          <ComorbiditiesField data={data} origins={origins} onChange={onChange} />
-        </div>
-        <div className="sm:col-span-2">
-          <HabitsField data={data} origins={origins} onChange={onChange} />
-        </div>
-        <Input label="Medicações de Uso Contínuo" name="medicacoes" from={origins?.["medicacoes"]} data={data} onChange={onChange} />
-        <Input label="Alergias" name="alergias" from={origins?.["alergias"]} data={data} onChange={onChange} />
-        <Input label="História familiar" name="História familiar" data={data} onChange={onChange} />
-      </Card>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="História familiar:" name="História familiar oncológica" rows={2} data={data} onChange={onChange} />
+      </SectionAccordion>
 
-      {/* 4. Situação Atual e Exame Físico */}
-      <Card title="Situação Atual e Exame Físico" icon={HeartPulse}>
-        <TextArea label="Atual" name="Atual" data={data} onChange={onChange} />
-        <TextArea label="Exame físico" name="Exame físico" data={data} onChange={onChange} />
-        <Input label="ACV" name="ACV" data={data} onChange={onChange} />
-        <Input label="AR" name="AR" data={data} onChange={onChange} />
-        <Input label="ABD" name="ABD" data={data} onChange={onChange} />
-        <Input label="MMII" name="MMII" data={data} onChange={onChange} />
-      </Card>
+      <SectionAccordion title="Atual" icon={HeartPulse}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Atual:" name="Situação atual" placeholder="Quadro clínico atual..." data={data} onChange={onChange} />
+      </SectionAccordion>
 
-      {/* 5. Investigação e Diagnóstico */}
-      <Card title="Investigação e Diagnóstico" icon={Search}>
-        <TextArea label="Anatomopatológico" name="Anatomopatológico" data={data} onChange={onChange} />
-        <TextArea label="Exames complementares" name="Exames complementares" data={data} onChange={onChange} />
-        <TextArea label="Impressão" name="Impressão" data={data} onChange={onChange} />
-      </Card>
+      <SectionAccordion title="Exame físico" icon={HeartPulse}>
+        <InheritableInput inheritedData={inheritedData} origins={origins} label="ACV" name="ACV" data={data} onChange={onChange} />
+        <InheritableInput inheritedData={inheritedData} origins={origins} label="AR" name="AR" data={data} onChange={onChange} />
+        <InheritableInput inheritedData={inheritedData} origins={origins} label="ABD" name="ABD" data={data} onChange={onChange} />
+        <InheritableInput inheritedData={inheritedData} origins={origins} label="MMII" name="MMII" data={data} onChange={onChange} />
+      </SectionAccordion>
 
-      {/* 6. Planejamento Terapêutico */}
-      <Card title="Planejamento Terapêutico" icon={ClipboardList}>
-        <TextArea label="Conduta" name="Conduta" value={data["Conduta"] ?? data["Conduta proposta"] ?? ""} data={data} onChange={onChange} />
-        <Input label="Investimento" name="Investimento" data={data} onChange={onChange} />
-      </Card>
+      <SectionAccordion title="Anatomopatológico" icon={Search}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Anatomopatológico:" name="Resultado anatomopatológico" data={data} onChange={onChange} />
+      </SectionAccordion>
+
+      <SectionAccordion title="Exames complementares" icon={Search}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Exames complementares:" name="Exames complementares" data={data} onChange={onChange} />
+      </SectionAccordion>
+
+      <SectionAccordion title="Impressão e conduta" icon={ClipboardList}>
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Impressão:" name="Impressão diagnóstica" data={data} onChange={onChange} />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Conduta:" name="Conduta" data={data} onChange={onChange} />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} label="Investimento:" name="Investimento" options={["Pleno", "Proporcional", "Medidas de conforto"]} data={data} onChange={onChange} />
+      </SectionAccordion>
 
     </div>
   );

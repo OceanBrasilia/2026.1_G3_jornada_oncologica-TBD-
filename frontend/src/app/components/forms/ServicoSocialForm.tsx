@@ -1,303 +1,302 @@
-import React from "react";
-import { User, Home, DollarSign, ClipboardList } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
+import { PatientHeader } from "../PatientHeader";
+import { ReusedDataAccordion } from "../ReusedDataAccordion";
 
 export interface ServicoSocialFormProps {
   data: Record<string, any>;
   onChange: (key: string, value: any) => void;
   patient: any;
   origins?: Record<string, string>;
+  inheritedData?: Record<string, any>;
 }
 
-const Card = ({ title, icon: Icon, children, className = "" }: any) => (
-  <div className={`bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5 ${className}`}>
-    <h3 className="font-bold text-[#1A2332] mb-4 text-sm flex items-center gap-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
-      {Icon && <Icon size={16} className="text-[#1B6CA8]" />} {title}
-    </h3>
-    <div className="grid sm:grid-cols-2 gap-4">
-      {children}
-    </div>
-  </div>
-);
+import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
 
-const Input = ({ label, name, placeholder = "", type = "text", value, data, onChange, required }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
+const SectionCard = ({ title, children, defaultOpen = true, className = "" }: any) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        required={required}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-      />
-    </div>
-  );
-};
-
-const TextArea = ({ label, name, placeholder = "", rows = 4, value, data, onChange, required }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
-  return (
-    <div className="sm:col-span-2">
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <textarea
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        required={required}
-        rows={rows}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none"
-      />
-    </div>
-  );
-};
-
-const Select = ({ label, name, options, data, onChange, required }: any) => {
-  const value = data?.[name] || "";
-  
-  return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        name={name}
-        value={value}
-        required={required}
-        onChange={(e) => {
-          onChange(name, e.target.value);
-        }}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
+    <div className={`bg-white rounded-2xl border border-[#D5E6F3] shadow-sm ${className}`}>
+      <div 
+        className="p-5 flex justify-between items-center cursor-pointer select-none"
+        onClick={() => setIsOpen(!isOpen)}
       >
-        <option value="">Selecione...</option>
-        {options.map((o: string) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
-    </div>
-  );
-};
-
-const RadioGroup = ({ label, name, options, data, onChange, required }: any) => {
-  const value = data?.[name] || "";
-  const isOther = value && !options.includes(value) && value !== "";
-  
-  return (
-    <div className="mb-4 sm:col-span-2">
-      <label className="block text-sm font-bold text-[#1A2332] mb-2 leading-tight">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-6 gap-2">
-        {options.map((opt: string) => {
-          if (opt === "Outro") {
-            return (
-              <div key={opt} className="flex flex-col gap-2 w-full sm:w-auto">
-                <label className="flex items-center gap-2 text-sm font-normal text-[#3A4354] cursor-pointer hover:text-[#1B6CA8] transition-colors">
-                  <input
-                    type="radio"
-                    name={name}
-                    value={opt}
-                    checked={isOther || data?.[`${name}_isOther`] === "true"}
-                    onChange={(e) => {
-                      onChange(`${name}_isOther`, "true");
-                      onChange(name, "");
-                    }}
-                    className="accent-[#1B6CA8] w-4 h-4"
-                    required={required && !value && data?.[`${name}_isOther`] !== "true"}
-                  />
-                  {opt}
-                </label>
-                {(isOther || data?.[`${name}_isOther`] === "true") && (
-                  <input
-                    type="text"
-                    value={isOther ? value : ""}
-                    onChange={(e) => onChange(name, e.target.value)}
-                    placeholder="Especifique..."
-                    className="px-3 py-1.5 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-                    required={required}
-                  />
-                )}
-              </div>
-            );
-          }
-          return (
-            <label key={opt} className="flex items-center gap-2 text-sm font-normal text-[#3A4354] cursor-pointer hover:text-[#1B6CA8] transition-colors">
-              <input
-                type="radio"
-                name={name}
-                value={opt}
-                checked={data?.[name] === opt}
-                onChange={(e) => {
-                  onChange(`${name}_isOther`, "false");
-                  onChange(name, e.target.value);
-                }}
-                className="accent-[#1B6CA8] w-4 h-4"
-                required={required && !value && data?.[`${name}_isOther`] !== "true"}
-              />
-              {opt}
-            </label>
-          );
-        })}
+        <h3 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {title}
+        </h3>
+        {isOpen ? <ChevronUp size={20} className="text-[#8A9EB9]" /> : <ChevronDown size={20} className="text-[#8A9EB9]" />}
       </div>
+      {isOpen && (
+        <div className="px-5 pb-5 pt-0 space-y-5">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
 
-const CheckboxGroup = ({ label, name, options, data, onChange, required }: any) => {
-  const selected = Array.isArray(data?.[name]) ? data[name] : [];
-  
-  return (
-    <div className="mb-4 sm:col-span-2">
-      <label className="block text-sm font-bold text-[#1A2332] mb-2 leading-tight">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-6 gap-2">
-        {options.map((opt: string) => {
-          if (opt === "Outro") {
-            const isOther = selected.some((s: string) => !options.includes(s) && s !== "Outro");
-            const otherValue = selected.find((s: string) => !options.includes(s) && s !== "Outro") || "";
-            return (
-              <div key={opt} className="flex flex-col gap-2 w-full sm:w-auto">
-                <label className="flex items-center gap-2 text-sm font-normal text-[#3A4354] cursor-pointer hover:text-[#1B6CA8] transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={isOther || data?.[`${name}_isOther`] === "true"}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        onChange(`${name}_isOther`, "true");
-                      } else {
-                        onChange(`${name}_isOther`, "false");
-                        const newSelected = selected.filter((item: string) => options.includes(item));
-                        onChange(name, newSelected);
-                      }
-                    }}
-                    className="accent-[#1B6CA8] w-4 h-4 rounded"
-                  />
-                  {opt}
-                </label>
-                {(isOther || data?.[`${name}_isOther`] === "true") && (
-                  <input
-                    type="text"
-                    value={otherValue}
-                    onChange={(e) => {
-                      const baseSelected = selected.filter((item: string) => options.includes(item));
-                      if (e.target.value) {
-                        onChange(name, [...baseSelected, e.target.value]);
-                      } else {
-                        onChange(name, baseSelected);
-                      }
-                    }}
-                    placeholder="Especifique..."
-                    className="px-3 py-1.5 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-                  />
-                )}
-              </div>
-            );
-          }
-          return (
-            <label key={opt} className="flex items-center gap-2 text-sm font-normal text-[#3A4354] cursor-pointer hover:text-[#1B6CA8] transition-colors">
-              <input
-                type="checkbox"
-                checked={selected.includes(opt)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    onChange(name, [...selected, opt]);
-                  } else {
-                    onChange(name, selected.filter((item: string) => item !== opt));
-                  }
-                }}
-                className="accent-[#1B6CA8] w-4 h-4 rounded"
-              />
-              {opt}
-            </label>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+// Removed local components, using shared Inheritable components
 
-export function ServicoSocialForm({ data, onChange, patient }: ServicoSocialFormProps) {
+const CheckboxGroup = ({ label, name, options, data, onChange, direction = "row" }: any) => {
+  const selected = data?.[name] || [];
   return (
     <div>
-      <Card title="Identificação" icon={User}>
-        <Input label="Nome" name="Nome" data={data} onChange={onChange} required />
-        <Input label="Registro HUB" name="Registro HUB" data={data} onChange={onChange} required />
-        <Input label="Idade" name="Idade" type="number" data={data} onChange={onChange} />
-        <RadioGroup label="Sexo" name="Sexo" options={["Masculino", "Feminino", "Outro"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Cor" name="Cor" options={["Indígena", "Sem declaração", "Amarelo", "Negra", "Parda", "Branca", "Outro"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Grau de Escolaridade" name="Grau de Escolaridade" options={["Nenhum", "Alfabetizado", "Ensino Fund. Completo", "Ensino Fund. Incompleto", "Ensino Médio Completo", "Ensino Médio Incompleto", "Superior Completo", "Superior Incompleto", "Pós Graduação", "Outro"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Estado Civil" name="Estado Civil" options={["Casado(a)", "Solteiro(a)", "União Estável", "Divorciado(a) legalmente", "Separação apenas de corpos", "Viúvo(a)", "Outro"]} data={data} onChange={onChange} required />
-        
-        <Input label="Acompanhante/Cuidador" name="Acompanhante/Cuidador" data={data} onChange={onChange} required />
-        <CheckboxGroup label="Grau de Parentesco" name="Grau de Parentesco" options={["Filho(a)", "Neto(a)", "Esposo(a)/Companheiro(a)", "Namorado(a)", "Amigo(a)", "Pai/Mãe", "Sobrinho(a)", "Cunhado(a)", "Irmão(ã)", "Primo(a)", "Outro"]} data={data} onChange={onChange} />
-        
-        <div className="sm:col-span-2">
-          <Input label="Telefone de contato (Nome - Grau de parentesco + Tel)" name="Telefone de contato" data={data} onChange={onChange} required />
-        </div>
+      <label className="block text-xs font-bold text-[#1A2332] mb-3">{label}</label>
+      <div className={`grid ${direction === "col" ? "grid-cols-1 gap-y-3" : "grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4"}`}>
+        {options.map((opt: string) => (
+          <label key={opt} className="flex items-center space-x-3 text-sm font-normal text-[#1A2332] cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={selected.includes(opt)} 
+              onChange={(e) => {
+                if (e.target.checked) {
+                  onChange(name, [...selected, opt]);
+                } else {
+                  onChange(name, selected.filter((item: string) => item !== opt));
+                }
+              }}
+              className="w-4 h-4 rounded border-[#D5E6F3] text-[#1B6CA8] focus:ring-[#1B6CA8] accent-[#1B6CA8]"
+            />
+            <span>{opt}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+};
 
-        <RadioGroup label="Paciente fez diagnóstico onde?" name="Paciente fez diagnóstico onde?" options={["SES-DF", "HUB", "Outro"]} data={data} onChange={onChange} />
-        
-        <div className="sm:col-span-2">
-          <Select 
-            label="Diagnóstico" 
-            name="Diagnóstico" 
-            options={["Mama", "Próstata", "Colo Uterino", "Ovário", "Endométrio", "Bexiga", "Pulmão", "Estômago", "Cólon", "Reto", "Canal Anal", "Vesícula Biliar", "Pâncreas", "Sarcoma de Kaposi", "Sarcomas", "Testículos", "Base de Língua", "Assoalho da Boca", "Palato", "Orofaringe", "Nasofaringe", "Laringe", "Esôfago", "Pele", "Fígado/Vias Biliares", "Outro"]} 
+export function ServicoSocialForm({ data, onChange, patient, inheritedData, origins }: ServicoSocialFormProps) {
+  const commonProps = { data, onChange, inheritedData, origins };
+  return (
+    <div className="space-y-6 pb-20">
+      <PatientHeader 
+        id="CAO-2024-0002"
+        name={patient?.name || "Roberto Ferreira Silva"}
+        age={patient?.age || "68 anos"}
+        diagnosis={patient?.diagnosis || "Câncer de Próstata"}
+        cid={patient?.cid || "CID C61"}
+        specialty="Serviço Social"
+        status="Pendente"
+        alerts={patient?.alerts}
+      />
+
+      <ReusedDataAccordion
+        title="I – Identificação (reaproveitada)"
+        fields={[
+          { label: "NOME", value: patient?.name || "Roberto Ferreira Silva", origin: "Cadastro" },
+          { label: "DIAGNÓSTICO", value: patient?.diagnosis || "Câncer de Próstata", origin: "Recepção" },
+          { label: "CID", value: patient?.cid || "C61", origin: "Recepção" },
+        ]}
+        data={data}
+        onChange={onChange}
+      >
+        <div className="space-y-5">
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Sexo" 
+            name="sexo" 
+            options={["Feminino", "Masculino", "Outro"]} 
             data={data} 
             onChange={onChange} 
-            required 
           />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Cor/Raça (autodeclarada)" 
+            name="corRaca" 
+            options={["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não informada"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Grau de escolaridade" 
+            name="grauEscolaridade" 
+            options={["Sem instrução", "Ensino Fundamental I", "Ensino Fundamental II", "Ensino Médio", "Ensino Superior", "Pós-graduação"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Estado civil" 
+            name="estadoCivil" 
+            options={["Solteiro(a)", "Casado(a)", "Viúvo(a)", "Divorciado(a)", "União Estável"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+
+          <InheritableInput inheritedData={inheritedData} origins={origins} 
+            label="Profissão / Ocupação" 
+            name="Ocupação/Trabalho" 
+            data={data} 
+            onChange={onChange} 
+          />
+
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Diagnóstico oncológico (confirmar)" 
+            name="diagnosticoConfirmar" 
+            options={["Confirmado", "Em investigação"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Onde foi feito o diagnóstico?" 
+            name="localDiagnostico" 
+            options={["HUB", "Outro Hospital Público", "Hospital Particular", "Clínica Privada"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+          
+          <div className="pt-2">
+            <h4 className="font-bold text-[#1A2332] text-sm mb-4">Acompanhante/Cuidador:</h4>
+            <div className="space-y-5">
+              <InheritableInput inheritedData={inheritedData} origins={origins} 
+                label="Nome" 
+                name="acompanhanteNome" 
+                data={data} 
+                onChange={onChange} 
+              />
+              <InheritableSelect inheritedData={inheritedData} origins={origins} 
+                label="Grau de parentesco" 
+                name="acompanhanteParentesco" 
+                options={["Cônjuge", "Filho(a)", "Irmão(ã)", "Pai/Mãe", "Outro parente", "Amigo(a)", "Cuidador profissional"]} 
+                data={data} 
+                onChange={onChange} 
+              />
+              <InheritableInput inheritedData={inheritedData} origins={origins} 
+                label="Telefone de contato" 
+                name="acompanhanteTelefone" 
+                data={data} 
+                onChange={onChange} 
+              />
+            </div>
+          </div>
         </div>
-        
-        <RadioGroup label="Religião" name="Religião" options={["Católico", "Evangélico", "Espírita", "Cristão", "Ateu", "Religiões Afro", "Protestante", "Indígena", "Testemunha de Jeová", "Outro"]} data={data} onChange={onChange} />
-        <Input label="Profissão" name="Profissão" data={data} onChange={onChange} />
-      </Card>
+      </ReusedDataAccordion>
 
-      <Card title="Situação Habitacional/Familiar" icon={Home}>
-        <Select label="Reside no Distrito Federal?" name="Reside no Distrito Federal?" options={["Sim", "Não"]} data={data} onChange={onChange} required />
-        <Input label="Procedência?" name="Procedência?" data={data} onChange={onChange} required />
+      <SectionCard title="II – Situação habitacional e familiar">
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} 
+          label="Necessita de hospedagem em abrigo?" 
+          name="necessitaAbrigo" 
+          options={["Sim", "Não", "Não se aplica"]} 
+          data={data} 
+          onChange={onChange} 
+        />
         
-        <Select label="Se não, tem algum amigo ou familiar para ficar hospedado durante o tratamento?" name="Hospedagem amigo ou familiar" options={["Não", "Sim", "Não se aplica"]} data={data} onChange={onChange} />
-        <Input label="Se sim, Onde?" name="Onde ficará hospedado" data={data} onChange={onChange} />
+        <InheritableRadioPills inheritedData={inheritedData} origins={origins} 
+          label="Possui dependentes previdenciários?" 
+          name="dependentesPrevidenciarios" 
+          options={["Sim", "Não", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
         
-        <Select label="Necessita de hospedagem em abrigo durante o tratamento?" name="Necessita abrigo" options={["Sim", "Não", "Não se aplica"]} data={data} onChange={onChange} />
-        <RadioGroup label="Possui dependentes (previdência)?" name="Possui dependentes" options={["Sim", "Não", "Outro"]} data={data} onChange={onChange} />
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Suporte familiar" 
+          name="suporteFamiliar" 
+          options={["Adequado", "Parcial", "Frágil", "Inexistente"]} 
+          data={data} 
+          onChange={onChange} 
+        />
         
-        <Input label="Se sim, qual a Idade dos dependentes?" name="Idade dependentes" data={data} onChange={onChange} />
-        <RadioGroup label="Possui suporte familiar?" name="Possui suporte familiar" options={["Excelente", "Satisfatório", "Restrito", "Precário", "Não possui", "Outro"]} data={data} onChange={onChange} required />
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Observação da situação familiar" 
+          name="observacaoFamiliar" 
+          data={data} 
+          onChange={onChange} 
+        />
         
-        <TextArea label="Observação de situação familiar" name="Observação de situação familiar" data={data} onChange={onChange} />
-        
-        <CheckboxGroup label="Como vem para o HUB realizar o tratamento?" name="Como vem para o HUB" options={["Transporte Público", "Transporte Particular", "TFD", "Outro"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Você possui acesso e facilidade com Telefone com rede de internet?" name="Acesso internet" options={["Sim", "Não"]} data={data} onChange={onChange} required />
-        
-        <TextArea label="Você tem parentes ou amigos que te auxiliam quando você precisa resolver algo no celular/computador? (Nomes e parentesco)" name="Auxílio tecnologia" data={data} onChange={onChange} required />
-        <RadioGroup label="Você possui computador em casa? E internet?" name="Computador e internet" options={["Apenas computador", "Possuo internet", "Computador e internet", "Nenhum", "Outro"]} data={data} onChange={onChange} required />
-      </Card>
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
+          label="Como vem ao HUB? (múltipla seleção)" 
+          name="comoVemHub" 
+          direction="col"
+          options={["Transporte Público", "Transporte Particular", "TFD", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
 
-      <Card title="Situação Econômica" icon={DollarSign}>
-        <CheckboxGroup label="Como se apresenta a situação previdenciária do paciente?" name="Situação previdenciária" options={["Aposentado por idade/tempo", "Aposentado por Invalidez", "Pensionista", "Trabalhando", "Auxílio Doença", "Segurado", "Não segurado", "BPC Deficiente", "BPC Idoso", "Outro"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Renda do Paciente" name="Renda do Paciente" options={["Sem renda", "1 Salário Mínimo", "1,2 a 3 Salários Mínimos", "Acima de 3 Salários Mínimos", "Não quis responder"]} data={data} onChange={onChange} required />
-        <RadioGroup label="Renda Familiar" name="Renda Familiar" options={["Sem renda", "1 Salário Mínimo", "1,2 a 3 Salários Mínimos", "Acima de 3 Salários Mínimos", "Não quis responder"]} data={data} onChange={onChange} required />
-        <TextArea label="Observações de situação econômica" name="Observações de situação econômica" data={data} onChange={onChange} />
-        <CheckboxGroup label="Incluído em algum programa/benefício?" name="Benefício programa" options={["Não", "Sim", "Passe Livre do DF", "Passe Livre Interestadual", "TFD", "PBF", "BPC", "Outro"]} data={data} onChange={onChange} />
-      </Card>
+      <SectionCard title="III – Acesso digital">
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Possui acesso e facilidade com celular e internet?" 
+          name="acessoInternet" 
+          options={["Sim", "Apenas acesso, sem facilidade", "Não possui acesso"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableInput inheritedData={inheritedData} origins={origins} 
+          label="Parente/amigo que auxilia com tecnologia (nome e parentesco)" 
+          name="auxilioTecnologia" 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Na sua casa existe computador e acesso à internet?" 
+          subLabel="Considerar o acesso à internet domiciliar/rede wifi, os pacotes de dados pré-pagos de celular não são considerados."
+          name="computadorEmCasa" 
+          options={["Sim, temos computador e internet.", "Somente computador.", "Somente internet.", "Não temos computador nem internet."]} 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
 
-      <Card title="Plano de Trabalho" icon={ClipboardList}>
-        <CheckboxGroup label="Orientações e Encaminhamentos" name="Orientações e Encaminhamentos" options={["PL-df", "PLI", "TFD", "Auxílio Doença", "BPC", "Isenção de impostos", "Saque de FGTS", "Programa PTNED", "Fluxo de relatórios", "Agendamento prévio", "Programa Melhor em Casa", "Farmácia de Alto Custo", "Associações de apoio", "DPU", "Judicialização na saúde", "Recuperação de qualidade de segurado", "PBF", "Outro"]} data={data} onChange={onChange} required />
-        <CheckboxGroup label="Assistente Social entrevistador(a)" name="Assistente Social entrevistador(a)" options={["Liana", "Rafaela", "Anna", "Luana", "Est. Douglas", "Giorgia", "Outro"]} data={data} onChange={onChange} required />
-      </Card>
+      <SectionCard title="IV – Situação econômica">
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
+          label="Qual a situação previdenciária/ocupacional atual do(a) paciente?" 
+          name="situacaoPrevidenciaria" 
+          direction="col"
+          options={["Aposentado(a) por idade e/ou tempo de contribuição", "Aposentado(a) por invalidez", "Pensionista", "Trabalhando com vínculo formal", "Trabalhando como autônomo (trabalho informal/bico)", "Em gozo de Auxílio-Doença (benefício por incapacidade temporária)", "Desempregado(a) (Neste caso, especificar se o paciente é segurado, isto é, quando foi sua última contribuição/último emprego com carteira assinada)", "Não segurado(a) - Nunca contribuiu para o INSS", "BPC da pessoa com deficiência", "BPC da pessoa idosa (a partir de 65 anos)", "Segurado(a) (autônomo, facultativo)", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Renda do paciente" 
+          name="rendaPaciente" 
+          options={["Sem renda", "Menos de 1 salário mínimo", "1 a 2 salários mínimos", "3 a 5 salários mínimos", "Mais de 5 salários mínimos"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableSelect inheritedData={inheritedData} origins={origins} 
+          label="Renda familiar" 
+          name="rendaFamiliar" 
+          options={["Sem renda", "Menos de 1 salário mínimo", "1 a 2 salários mínimos", "3 a 5 salários mínimos", "Mais de 5 salários mínimos"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+          label="Tem alguma observação relevante sobre a situação econômica/previdenciária do(a) paciente? Qual?" 
+          name="observacoesEconomicas" 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
+          label="O(a) paciente/família está incluído em algum programa ou benefício social municipal, estadual ou federal?" 
+          name="programasBeneficios" 
+          direction="col"
+          options={["Não", "Passe Livre DF (Pessoa com Deficiência)", "Passe Livre Interestadual", "Tratamento Fora de Domicílio (TFD)", "Programa Bolsa Família (PBF)", "Benefício de Prestação Continuada (BPC)", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
+
+      <SectionCard title="V – Plano de trabalho" className="!mt-3">
+        <InheritableCheckboxGroup inheritedData={inheritedData} origins={origins} 
+          label="Assinale as orientações e/ou encaminhamentos realizados pelo Serviço Social, no momento do acolhimento:" 
+          name="orientacoesEncaminhamentos" 
+          direction="col"
+          options={["Passe Livre DF", "Passe Livre Interestadual (PLI)", "Tratamento Fora de Domicílio (TFD)", "Auxílio-Doença (Benefício por incapacidade temporária)", "Benefício de Prestação Continuada (BPC)", "Isenção de Impostos", "Saque de FGTS/ PIS / PASEP", "Programa de Transporte a Pessoas com Necessidades Especiais do DF - PTNED", "Fluxo de Relatórios Médicos", "Programa Melhor em Casa", "Farmácia de Alto Custo", "Associações e grupos de apoio oncológico", "Encaminhamento para a Defensoria Pública da União, do DF ou do Estado de origem", "Orientações sobre judicialização na Saúde", "Orientações sobre recuperação da qualidade de segurado(a)", "Programa Bolsa Família (PBF)", "Outro"]} 
+          data={data} 
+          onChange={onChange} 
+        />
+        
+        <InheritableInput inheritedData={inheritedData} origins={origins} 
+          label="Assistente Social entrevistador(a)" 
+          name="assistenteSocial" 
+          data={data} 
+          onChange={onChange} 
+        />
+      </SectionCard>
     </div>
   );
 }

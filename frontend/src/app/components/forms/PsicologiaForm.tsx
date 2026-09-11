@@ -1,23 +1,17 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { User, Activity, AlertTriangle, FileText, CheckCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { PatientHeader } from "../PatientHeader";
+import { ReusedDataAccordion } from "../ReusedDataAccordion";
 
 export interface PsicologiaFormProps {
   data: Record<string, string>;
   onChange: (key: string, value: string) => void;
   patient: any;
   origins?: Record<string, string>;
+  inheritedData?: Record<string, any>;
 }
 
-const SharedField = ({ label, value, required }: any) => (
-  <div>
-    <label className="block text-xs font-bold text-[#1A2332] mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <div className="px-3 py-2.5 rounded-xl bg-[#F4F7FB] border border-[#E8F4FD] text-sm text-[#6B7A8D] font-medium">
-      {value || "—"}
-    </div>
-  </div>
-);
+import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
 
 const Card = ({ title, icon: Icon, children, className = "" }: any) => (
   <div className={`bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5 ${className}`}>
@@ -28,96 +22,79 @@ const Card = ({ title, icon: Icon, children, className = "" }: any) => (
   </div>
 );
 
-const Input = ({ label, name, placeholder = "", type = "text", value, data, onChange, required }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
+const SectionCard = ({ title, children, defaultOpen = true }: any) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value ?? data?.[name] ?? ""}
-        onChange={handleChange}
-        placeholder={placeholder}
-        required={required}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-      />
-    </div>
-  );
-};
-
-const Select = ({ label, name, options, data, onChange, required }: any) => {
-  const value = data?.[name] || "";
-  const isOther = value && !options.includes(value);
-  
-  return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        name={name}
-        value={isOther ? "Outro" : value}
-        required={required}
-        onChange={(e) => {
-          if (e.target.value !== "Outro") {
-            onChange(name, e.target.value);
-            onChange(`${name}_isOther`, "false");
-          } else {
-            onChange(name, ""); 
-            onChange(`${name}_isOther`, "true");
-          }
-        }}
-        className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
+    <div className="bg-white rounded-2xl border border-[#D5E6F3] shadow-sm mb-4">
+      <div 
+        className="p-5 flex justify-between items-center cursor-pointer select-none"
+        onClick={() => setIsOpen(!isOpen)}
       >
-        <option value="">Selecione...</option>
-        {options.map((o: string) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-        <option value="Outro">Outro</option>
-      </select>
-      
-      {(isOther || data?.[`${name}_isOther`] === "true") && (
-        <input
-          type="text"
-          value={isOther ? value : ""}
-          onChange={(e) => {
-            onChange(name, e.target.value);
-          }}
-          placeholder="Especifique..."
-          required={required}
-          className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
-        />
+        <h3 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {title}
+        </h3>
+        {isOpen ? <ChevronUp size={20} className="text-[#8A9EB9]" /> : <ChevronDown size={20} className="text-[#8A9EB9]" />}
+      </div>
+      {isOpen && (
+        <div className="px-5 pb-5 pt-0 space-y-5">
+          {children}
+        </div>
       )}
     </div>
   );
 };
 
-const RadioGroup = ({ label, name, options, data, onChange, required }: any) => {
+// Removed local components, using shared Inheritable components
+
+const IrpoQuestionCard = ({ q, data, onChange }: any) => {
+  const value = data[`IRPO_${q.id}`];
+  
+  const options = [
+    { label: "1", value: "Nunca" },
+    { label: "2", value: "Raramente" },
+    { label: "3", value: "Às vezes" },
+    { label: "4", value: "Frequentemente" },
+    { label: "5", value: "Sempre" }
+  ];
+
   return (
-    <div className="mb-4">
-      <label className="block text-sm font-bold text-[#1A2332] mb-2 leading-tight">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="flex flex-col sm:flex-row sm:gap-6 gap-2">
-        {options.map((opt: string) => (
-          <label key={opt} className="flex items-center gap-2 text-sm font-normal text-[#3A4354] cursor-pointer hover:text-[#1B6CA8] transition-colors">
-            <input
-              type="radio"
-              name={name}
-              value={opt}
-              checked={data?.[name] === opt}
-              onChange={(e) => onChange(name, e.target.value)}
-              className="accent-[#1B6CA8] w-4 h-4"
-              required={required}
-            />
-            {opt}
-          </label>
-        ))}
+    <div className="pb-8 border-b border-gray-100 last:border-0 last:pb-0">
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-2">
+          <span className="font-bold text-[#8A9EB9] text-sm">{q.id}.</span>
+          <span className="font-medium text-[#1A2332] text-sm">{q.text}</span>
+        </div>
+        {q.padrao === 'B' && (
+          <span className="bg-[#F1F5F9] text-[#64748B] text-[10px] font-bold px-1.5 py-0.5 rounded border border-[#E2E8F0] ml-2 shrink-0">
+            inv.
+          </span>
+        )}
+      </div>
+
+      <div>
+        <div className="flex justify-between gap-2 sm:gap-4">
+          {options.map((opt) => {
+            const isSelected = value === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange(`IRPO_${q.id}`, opt.value)}
+                className={`flex-1 py-2.5 rounded-full text-sm font-medium transition-all ${
+                  isSelected
+                    ? "bg-[#1B6CA8] text-white border-2 border-[#1B6CA8] shadow-sm scale-[1.05]"
+                    : "bg-white text-[#3A4354] border border-[#D5E6F3] hover:border-[#1B6CA8] hover:text-[#1B6CA8]"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex justify-between mt-2 px-1 text-[11px] text-[#8A9EB9] font-medium">
+          <span>Nunca</span>
+          <span>Sempre</span>
+        </div>
       </div>
     </div>
   );
@@ -141,9 +118,9 @@ const irpoQuestions = [
   { id: 15, text: "Tento manter minha rotina o máximo possível.", padrao: 'B' },
   { id: 16, text: "Busco conversar abertamente sobre meus sentimentos.", padrao: 'B' },
   { id: 17, text: "Tenho alguém que me acompanha às consultas e exames.", padrao: 'B' },
-  { id: 18, text: "Recebo ajuda prática (financeira, transporte, alimentação, etc.) quando preciso.", padrao: 'B' },
+  { id: 18, text: "Recebo ajuda prática (financeira, transporte, alimentação etc.) quando preciso.", padrao: 'B' },
   { id: 19, text: "Sinto que minha família está organizada para me ajudar.", padrao: 'B' },
-  { id: 20, text: "Tenho recebido os cuidados de que preciso desde a descoberta do diagnóstico atual (médicos, familiares, social/espiritual).", padrao: 'B' },
+  { id: 20, text: "Tenho recebido os cuidados de que preciso desde a descoberta do diagnóstico.", padrao: 'B' },
   { id: 21, text: "Sinto que minha doença mudou completamente quem eu sou.", padrao: 'A' },
   { id: 22, text: "Tenho me sentido um peso para minha família.", padrao: 'A' },
   { id: 23, text: "Acho que minha vida perdeu o sentido por causa da doença.", padrao: 'A' },
@@ -152,8 +129,6 @@ const irpoQuestions = [
   { id: 26, text: "Evito falar sobre minha doença.", padrao: 'A' },
   { id: 27, text: "Tenho medo constante da morte.", padrao: 'A' },
 ];
-
-const likertOptions = ["Nunca", "Raramente", "Às vezes", "Frequentemente", "Sempre"];
 
 const calculateScore = (answer: string, padrao: string) => {
   if (!answer) return 0;
@@ -177,8 +152,8 @@ const calculateScore = (answer: string, padrao: string) => {
   return padrao === 'A' ? scoreMapA[answer] || 0 : scoreMapB[answer] || 0;
 };
 
-export function PsicologiaForm({ data, onChange, patient }: PsicologiaFormProps) {
-  
+export function PsicologiaForm({ data, onChange, patient, inheritedData, origins }: PsicologiaFormProps) {
+  const commonProps = { data, onChange, inheritedData, origins };
   const irpoTotalScore = useMemo(() => {
     let total = 0;
     irpoQuestions.forEach((q) => {
@@ -207,9 +182,22 @@ export function PsicologiaForm({ data, onChange, patient }: PsicologiaFormProps)
     }
   }, [isCriticalRisk]);
 
+  const answeredQuestionsCount = irpoQuestions.filter(q => data[`IRPO_${q.id}`]).length;
+
   return (
     <div className="space-y-6">
       
+      <PatientHeader 
+        id="CAO-2024-0002"
+        name={patient?.name || ""}
+        age={patient?.age}
+        diagnosis={patient?.diagnosis}
+        cid={patient?.cid}
+        specialty="Psicologia"
+        status="Pendente"
+        alerts={patient?.alerts}
+      />
+
       {isCriticalRisk && !alertAcknowledged && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200 border-t-8 border-red-600">
@@ -231,6 +219,7 @@ export function PsicologiaForm({ data, onChange, patient }: PsicologiaFormProps)
               </div>
             </div>
             <button 
+               type="button"
               onClick={() => setAlertAcknowledged(true)}
               className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition shadow-md hover:shadow-lg active:scale-[0.98]"
             >
@@ -240,84 +229,116 @@ export function PsicologiaForm({ data, onChange, patient }: PsicologiaFormProps)
         </div>
       )}
 
-      {/* Card 1: Estrutura de Identificação e Dados Sociodemográficos */}
-      <Card title="1. Identificação e Dados Sociodemográficos" icon={User}>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <SharedField label="Nome Completo" value={patient.name} required />
-          <SharedField label="Prontuário" value={patient.id} />
-          <SharedField label="CID" value={patient.cid} />
-          <SharedField label="Contato telefônico" value={patient.phone} />
-          <SharedField label="Idade" value={`${patient.age} anos`} required />
-          <Input label="Data" name="Data" type="date" data={data} onChange={onChange} required />
-          <Input label="Profissional Responsável" name="Profissional Responsável" data={data} onChange={onChange} />
-          <Select label="Fase do Tratamento" name="Fase do Tratamento" options={["Diagnóstico", "Tratamento", "Acompanhamento (Follow-up)", "Cuidados Paliativos"]} data={data} onChange={onChange} />
-          <Input label="Profissão" name="Profissão" data={data} onChange={onChange} />
-          <Select label="Sexo" name="Sexo" options={["Masculino", "Feminino"]} data={data} onChange={onChange} required />
-          <Select label="Estado Civil" name="Estado Civil" options={["Solteiro/a", "Casado/a", "Divorciado/a", "Viúvo/a"]} data={data} onChange={onChange} required />
-          <Select label="Escolaridade" name="Escolaridade" options={["Não alfabetizado", "Ensino Fundamental Incompleto", "Ensino Fundamental Completo", "Ensino Médio Incompleto", "Ensino Médio Completo", "Ensino Superior Incompleto", "Ensino Superior Completo"]} data={data} onChange={onChange} required />
-          <Input label="Religião / Crença" name="Religião" value={patient.religion} data={data} onChange={onChange} required />
-          <Select label="Possui acompanhante hoje?" name="Acompanhante Hoje" options={["Sim", "Não"]} data={data} onChange={onChange} required />
-        </div>
-      </Card>
+      <ReusedDataAccordion
+        title="Identificação (reaproveitada)"
+        fields={[
+          { label: "NOME COMPLETO", value: patient?.name || "", origin: "Cadastro" },
+          { label: "CID", value: patient?.cid || "", origin: "Recepção" },
+          { label: "DIAGNÓSTICO", value: patient?.diagnosis || "", origin: "Recepção" },
+          { label: "TELEFONE", value: patient?.phone || "", origin: "Cadastro" },
+        ]}
+        data={data}
+        onChange={onChange}
+      >
+        <div className="flex flex-col gap-4">
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Sexo" name="Sexo" options={["Masculino", "Feminino"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Estado civil" name="Estado civil" options={["Solteiro/a", "Casado/a", "Divorciado/a", "Viúvo/a"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Não alfabetizado", "Ensino Fundamental Incompleto", "Ensino Fundamental Completo", "Ensino Médio Incompleto", "Ensino Médio Completo", "Ensino Superior Incompleto", "Ensino Superior Completo"]} data={data} onChange={onChange} />
 
-      {/* Card 2: Questionário IRPO */}
-      <Card title="2. Questionário IRPO" icon={Activity}>
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-6 text-sm text-blue-800">
-          <strong>Instrução:</strong> Assinale a frequência com que cada situação ocorreu nas últimas semanas.
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Fase do tratamento" name="Fase do tratamento" options={["Diagnóstico", "Tratamento", "Acompanhamento (Follow-up)", "Cuidados Paliativos"]} data={data} onChange={onChange} />
+          <InheritableInput inheritedData={inheritedData} origins={origins} label="Profissional responsável pela aplicação" name="Profissional Responsável" data={data} onChange={onChange} />
         </div>
-        
-        <div className="space-y-6 divide-y divide-gray-100">
+      </ReusedDataAccordion>
+
+      <SectionCard title="IRPO — Instruções" defaultOpen={true}>
+        <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-5 text-sm text-[#1A2332]">
+          <p className="mb-4">Este questionário identifica indicadores de sofrimento emocional e necessidades de apoio psicológico durante o tratamento oncológico.</p>
+          <p className="font-bold">Responda considerando a ÚLTIMA SEMANA.</p>
+        </div>
+        <div className="flex flex-wrap gap-4 justify-between text-[13px] text-[#8A9EB9] font-medium mt-4 px-2">
+          <span>1 – Nunca</span>
+          <span>2 – Raramente</span>
+          <span>3 – Às vezes</span>
+          <span>4 – Frequentemente</span>
+          <span>5 – Sempre</span>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="IRPO — Questões 1 a 27" defaultOpen={true}>
+        <div className="space-y-6">
           {irpoQuestions.map((q) => (
-            <div key={q.id} className="pt-4 first:pt-0">
-              <RadioGroup
-                label={`${q.id}. ${q.text}`}
-                name={`IRPO_${q.id}`}
-                options={likertOptions}
-                data={data}
-                onChange={onChange}
-                required
-              />
-            </div>
+            <IrpoQuestionCard key={q.id} q={q} data={data} onChange={onChange} />
           ))}
         </div>
-      </Card>
+        <div className="pt-5 mt-2 text-sm text-[#3A4354] font-medium">
+          Respondidas: {answeredQuestionsCount} / 27
+        </div>
+      </SectionCard>
 
-      {/* Card 3: Perguntas Extras e Conduta */}
-      <Card title="3. Perguntas Extras e Conduta" icon={FileText}>
-        <div className="space-y-6">
-          <RadioGroup
-            label="28. Recentemente tenho pensado em acabar com a minha própria vida"
-            name="IdeacaoSuicida"
-            options={["Sim", "Não"]}
-            data={data}
-            onChange={onChange}
-          />
-
-          {hasSuicidalIdeation && (
-            <RadioGroup
-              label="29. Se sim, apresenta planejamento?"
-              name="PlanejamentoSuicida"
-              options={["Sim", "Não", "Outro"]}
+      <SectionCard title="Alertas clínicos (questões 28 e 29)">
+        <div className="space-y-8">
+          <div>
+            <InheritableRadioPills
+              label="28. Recentemente tenho pensado em acabar com a minha própria vida?"
+              name="IdeacaoSuicida"
+              options={["Sim", "Não"]}
               data={data}
               onChange={onChange}
             />
+            {data["IdeacaoSuicida"] === "Sim" && (
+              <div className="mt-4 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-4 flex items-center gap-3">
+                <AlertTriangle className="text-[#DC2626] h-5 w-5 shrink-0" />
+                <span className="text-[#B91C1C] font-bold text-sm">Alerta clínico ativo — registrar conduta imediatamente.</span>
+              </div>
+            )}
+          </div>
+
+          {hasSuicidalIdeation && (
+            <div>
+              <InheritableRadioPills
+                label="29. Apresenta planejamento?"
+                name="PlanejamentoSuicida"
+                options={["Sim", "Não", "Outro"]}
+                data={data}
+                onChange={onChange}
+              />
+              {data["PlanejamentoSuicida"] === "Sim" && (
+                <div className="mt-4 bg-[#FEF2F2] border border-[#FCA5A5] rounded-xl p-4 flex items-center gap-3">
+                  <AlertTriangle className="text-[#DC2626] h-5 w-5 shrink-0" />
+                  <span className="text-[#B91C1C] font-bold text-sm">Risco aumentado com planejamento confirmado — acionar protocolo institucional.</span>
+                </div>
+              )}
+            </div>
           )}
 
-          <div className="pt-4 border-t border-gray-100">
-            <Select 
-              label="Conduta: Encaminhado para" 
-              name="CondutaEncaminhamento" 
-              options={["Ambulatório de Psicologia", "Ambulatório de Psiquiatria", "Não identificada necessidade de encaminhamento no momento"]} 
-              data={data} 
-              onChange={onChange} 
-            />
-          </div>
+          {hasSuicidalIdeation && (
+            <div className="pt-2 border-t border-gray-100">
+              <InheritableTextarea inheritedData={inheritedData} origins={origins} 
+                label="Conduta adotada frente ao alerta" 
+                name="CondutaAdotadaAlerta" 
+                data={data} 
+                onChange={onChange} 
+              />
+            </div>
+          )}
         </div>
-      </Card>
+      </SectionCard>
+
+      <SectionCard title="Conduta e encaminhamento">
+        <div className="space-y-5">
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Encaminhado(a) para" 
+            name="CondutaEncaminhamento" 
+            options={["Ambulatório de Psicologia", "Ambulatório de Psiquiatria", "Não identificada necessidade de encaminhamento nesse momento, mas o serviço foi disponibilizado para busca por livre demanda"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+        </div>
+      </SectionCard>
 
       {/* Resultados do IGR */}
       {irpoRisk && (
-        <Card title="4. Estratificação de Risco (Índice Global de Risco - IGR)" icon={CheckCircle} className="bg-gray-50 border-gray-200">
+        <Card title="Estratificação de Risco (Índice Global de Risco - IGR)" icon={CheckCircle} className="bg-gray-50 border-gray-200">
           <div className="flex flex-col md:flex-row items-center gap-6 p-2">
             <div className="flex flex-col items-center justify-center p-6 bg-white rounded-full h-32 w-32 border-4 shadow-sm border-blue-100">
               <span className="text-3xl font-black text-blue-900">{irpoTotalScore}</span>
