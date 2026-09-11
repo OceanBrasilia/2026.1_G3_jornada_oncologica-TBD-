@@ -17,10 +17,11 @@ export interface InheritableProps {
 }
 
 // Helpers
-const useInheritance = (name: string, data: Record<string, any>, inheritedData?: Record<string, any>, origins?: Record<string, string>) => {
+const useInheritance = (name: string, data: Record<string, any>, inheritedData?: Record<string, any>, origins?: Record<string, string>, sourceName?: string) => {
+  const sourceKey = sourceName ?? name;
   const isSuppressed = data?.[`${name}_suppressed`] === true;
-  const inheritedValue = inheritedData?.[name];
-  const origin = origins?.[name];
+  const inheritedValue = inheritedData?.[sourceKey];
+  const origin = origins?.[sourceKey];
   const isInheritedActive = inheritedValue !== undefined && inheritedValue !== "" && !isSuppressed;
 
   return { isSuppressed, inheritedValue, origin, isInheritedActive };
@@ -145,8 +146,9 @@ export const InheritableTextarea = ({ label, name, placeholder = "", rows = 3, d
   );
 };
 
-export const InheritableSelect = ({ label, name, options, data, onChange, inheritedData, origins, hasOther = false, subLabel }: InheritableProps & { options: string[], hasOther?: boolean, subLabel?: string }) => {
-  const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
+export const InheritableSelect = ({ label, name, options, data, onChange, inheritedData, origins, hasOther = false, subLabel, sourceName, mapValue }: InheritableProps & { options: string[], hasOther?: boolean, subLabel?: string, sourceName?: string, mapValue?: (value: string) => string }) => {
+  const { inheritedValue: rawInheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins, sourceName);
+  const inheritedValue = isInheritedActive && mapValue ? mapValue(rawInheritedValue) : rawInheritedValue;
 
   if (isInheritedActive) {
     return (
@@ -154,7 +156,10 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
           <label className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
           <OriginBadge origin={origin} />
-          <SuppressButton onClick={() => onChange(`${name}_suppressed`, true)} />
+          <SuppressButton onClick={() => {
+            onChange(`${name}_suppressed`, true);
+            if (mapValue) onChange(name, inheritedValue);
+          }} />
         </div>
         {subLabel && <div className="text-[10px] text-[#8A9EB9] font-normal leading-tight mb-1">{subLabel}</div>}
         <input

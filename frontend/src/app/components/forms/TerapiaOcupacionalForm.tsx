@@ -13,7 +13,7 @@ export interface FormProps {
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup } from "./shared/InheritableFormComponents";
 import { ConditionalField } from "./shared/ConditionalField";
-import { ReferenceField } from "./shared/ReferenceField";
+import { mapRendaServicoSocialParaTerapiaOcupacional } from "./shared/rendaMapping";
 
 const SectionCard = ({ title, children, defaultOpen = true }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -126,8 +126,7 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
         onChange={onChange}
       >
         <div className="flex flex-col gap-4">
-          <ReferenceField label="Renda do paciente (registrada pelo Serviço Social)" value={data?.rendaPaciente} source="Serviço Social" />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Renda atual" name="rendaAtual" options={["Até 1 salário mínimo", "De 1 a 3 salários mínimos", "Mais de 3 salários mínimos", "Sem renda"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Renda atual" name="rendaAtual" sourceName="rendaPaciente" mapValue={mapRendaServicoSocialParaTerapiaOcupacional} options={["Até 1 salário mínimo", "De 1 a 3 salários mínimos", "Mais de 3 salários mínimos", "Sem renda"]} data={data} onChange={onChange} />
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Naturalidade / Reside em" name="naturalidade" data={data} onChange={onChange} />
         </div>
       </ReusedDataAccordion>
