@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { 
-  calculateIMC, calculateBox1Score, calculateBox2Score, calculateBox3Score, 
+  calculateBox1Score, calculateBox2Score, calculateBox3Score,
   calculateBox4Score, calculateBoxBScore, calculateBoxCScore, calculateBoxDScore
-} from "../../utils/nutritionScoring";
+} from "../../calculos/asgPpp";
+import { calculateIMC, IMC_FORMULA } from "../../calculos/imc";
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
 import {
@@ -103,7 +104,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
 
   const weight = getVal("peso", "weight");
   const height = getVal("altura", "height");
-  const imc = useMemo(() => calculateIMC(weight, height) || "—", [weight, height]);
+  const imc = useMemo(() => calculateIMC(weight, height), [weight, height]);
 
   // Scores
   const box1Score = useMemo(() => calculateBox1Score(weight, data.peso_1m || "", data.peso_6m || "", data.peso_var_2sem || ""), [weight, data.peso_1m, data.peso_6m, data.peso_var_2sem]);
@@ -228,7 +229,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           <div>
             <label className="block text-xs font-bold text-[#1A2332] mb-1">IMC calculado</label>
             <div className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#E8F4FD] text-sm text-[#1B6CA8] font-bold flex items-center justify-between">
-              <span>—</span>
+              <span>{IMC_FORMULA}</span>
               <span>{imc} {imc !== "—" && "kg/m²"}</span>
             </div>
           </div>

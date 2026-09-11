@@ -12,6 +12,7 @@ export interface PsicologiaFormProps {
 }
 
 import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
+import { irpoQuestions, calculateIrpoTotal, classifyIrpoRisk, isIrpoCriticalRisk } from "../../calculos/irpo";
 
 const Card = ({ title, icon: Icon, children, className = "" }: any) => (
   <div className={`bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 mb-5 ${className}`}>
@@ -100,79 +101,15 @@ const IrpoQuestionCard = ({ q, data, onChange }: any) => {
   );
 };
 
-const irpoQuestions = [
-  { id: 1, text: "Tenho me sentido muito ansioso(a) por causa do meu tratamento.", padrao: 'A' },
-  { id: 2, text: "Tenho medo do que pode acontecer comigo.", padrao: 'A' },
-  { id: 3, text: "Sinto dificuldade de controlar minha preocupação com a doença.", padrao: 'A' },
-  { id: 4, text: "Tenho sentido tristeza ou desânimo com frequência.", padrao: 'A' },
-  { id: 5, text: "Tenho vontade de chorar sem saber o motivo.", padrao: 'A' },
-  { id: 6, text: "Tenho tido pensamentos negativos sobre o futuro.", padrao: 'A' },
-  { id: 7, text: "Sinto que posso contar com alguém quando estou triste.", padrao: 'B' },
-  { id: 8, text: "Tenho recebido apoio emocional da minha família.", padrao: 'B' },
-  { id: 9, text: "Tenho amigos ou pessoas próximas que me escutam quando preciso.", padrao: 'B' },
-  { id: 10, text: "Sinto que as pessoas ao meu redor entendem o que estou passando.", padrao: 'B' },
-  { id: 11, text: "Tenho me sentido acolhido(a) pela equipe de saúde.", padrao: 'B' },
-  { id: 12, text: "Tenho buscado informações sobre o meu tratamento.", padrao: 'B' },
-  { id: 13, text: "Tento manter uma atitude positiva frente à doença.", padrao: 'B' },
-  { id: 14, text: "Procuro fazer atividades que me ajudam a relaxar ou distrair.", padrao: 'B' },
-  { id: 15, text: "Tento manter minha rotina o máximo possível.", padrao: 'B' },
-  { id: 16, text: "Busco conversar abertamente sobre meus sentimentos.", padrao: 'B' },
-  { id: 17, text: "Tenho alguém que me acompanha às consultas e exames.", padrao: 'B' },
-  { id: 18, text: "Recebo ajuda prática (financeira, transporte, alimentação etc.) quando preciso.", padrao: 'B' },
-  { id: 19, text: "Sinto que minha família está organizada para me ajudar.", padrao: 'B' },
-  { id: 20, text: "Tenho recebido os cuidados de que preciso desde a descoberta do diagnóstico.", padrao: 'B' },
-  { id: 21, text: "Sinto que minha doença mudou completamente quem eu sou.", padrao: 'A' },
-  { id: 22, text: "Tenho me sentido um peso para minha família.", padrao: 'A' },
-  { id: 23, text: "Acho que minha vida perdeu o sentido por causa da doença.", padrao: 'A' },
-  { id: 24, text: "Tenho dificuldade em aceitar meu diagnóstico.", padrao: 'A' },
-  { id: 25, text: "Sinto que minha saúde pode melhorar.", padrao: 'B' },
-  { id: 26, text: "Evito falar sobre minha doença.", padrao: 'A' },
-  { id: 27, text: "Tenho medo constante da morte.", padrao: 'A' },
-];
-
-const calculateScore = (answer: string, padrao: string) => {
-  if (!answer) return 0;
-  
-  const scoreMapA: Record<string, number> = {
-    "Nunca": 1,
-    "Raramente": 2,
-    "Às vezes": 3,
-    "Frequentemente": 4,
-    "Sempre": 5,
-  };
-  
-  const scoreMapB: Record<string, number> = {
-    "Nunca": 5,
-    "Raramente": 4,
-    "Às vezes": 3,
-    "Frequentemente": 2,
-    "Sempre": 1,
-  };
-  
-  return padrao === 'A' ? scoreMapA[answer] || 0 : scoreMapB[answer] || 0;
-};
-
 export function PsicologiaForm({ data, onChange, patient, inheritedData, origins }: PsicologiaFormProps) {
   const commonProps = { data, onChange, inheritedData, origins };
-  const irpoTotalScore = useMemo(() => {
-    let total = 0;
-    irpoQuestions.forEach((q) => {
-      const answer = data[`IRPO_${q.id}`];
-      total += calculateScore(answer, q.padrao);
-    });
-    return total;
-  }, [data]);
+  const irpoTotalScore = useMemo(() => calculateIrpoTotal(data), [data]);
 
-  const irpoRisk = useMemo(() => {
-    if (irpoTotalScore === 0) return null; // No score yet
-    if (irpoTotalScore < 55) return { level: "Baixo Risco", color: "bg-green-100 text-green-800 border-green-200", indication: "psicoeducação e orientações breves" };
-    if (irpoTotalScore <= 69) return { level: "Risco Moderado", color: "bg-yellow-100 text-yellow-800 border-yellow-200", indication: "psicoterapia breve focada em enfrentamento" };
-    return { level: "Alto Risco", color: "bg-red-100 text-red-800 border-red-200", indication: "psicoterapia intensiva e avaliação psiquiátrica" };
-  }, [irpoTotalScore]);
+  const irpoRisk = useMemo(() => classifyIrpoRisk(irpoTotalScore), [irpoTotalScore]);
 
   const hasSuicidalIdeation = data["IdeacaoSuicida"] === "Sim";
-  
-  const isCriticalRisk = hasSuicidalIdeation || (irpoTotalScore >= 70);
+
+  const isCriticalRisk = hasSuicidalIdeation || isIrpoCriticalRisk(irpoTotalScore);
 
   const [alertAcknowledged, setAlertAcknowledged] = useState(false);
 

@@ -1,12 +1,3 @@
-export function calculateIMC(weightStr: string, heightStr: string): string {
-  const w = parseFloat((weightStr || "").replace(",", "."));
-  const h = parseFloat((heightStr || "").replace(",", "."));
-  if (w > 0 && h > 0) {
-    return (w / (h * h)).toFixed(2);
-  }
-  return "";
-}
-
 export function calculateBox1Score(
   currentStr: string,
   oneMonthStr: string,
@@ -14,11 +5,11 @@ export function calculateBox1Score(
   recentWeightChange: string
 ): number {
   let score = 0;
-  
+
   const current = parseFloat((currentStr || "").replace(",", ".")) || 0;
   const oneMonth = parseFloat((oneMonthStr || "").replace(",", ".")) || 0;
   const sixMonths = parseFloat((sixMonthsStr || "").replace(",", ".")) || 0;
-  
+
   if (oneMonth > 0 && current > 0) {
     const loss = ((oneMonth - current) / oneMonth) * 100;
     if (loss >= 10) score = 4;
@@ -32,11 +23,11 @@ export function calculateBox1Score(
     else if (loss >= 6) score = 2;
     else if (loss >= 2) score = 1;
   }
-  
+
   if (recentWeightChange === "Diminuiu (1)") {
     score += 1;
   }
-  
+
   return score;
 }
 
@@ -46,7 +37,7 @@ export function calculateBox2Score(intakeChangeStr: string, currentEatingStr: st
     "Mais que o normal (0)": 0,
     "Menos que o normal (1)": 1,
   };
-  
+
   const currentEatingScores: Record<string, number> = {
     "Comida normal (alimentos sólidos) em menor quantidade (1)": 1,
     "Comida normal (alimentos sólidos) em pouca quantidade (2)": 2,
@@ -79,7 +70,7 @@ export function calculateBox3Score(symptoms: string[]): number {
     "Dor; onde? (3)": 3,
     "Outros** (1)": 1
   };
-  
+
   let total = 0;
   for (const s of symptoms) {
     total += (scores[s] ?? 0);
@@ -123,7 +114,7 @@ export function getTriageInfo(total: number) {
     text: "4-8: Necessita de intervenção pelo nutricionista juntamente com enfermeiro/médico.",
     color: "bg-orange-100 text-orange-800 border-orange-200"
   };
-  
+
   return {
     text: "≥ 9: Necessidade crítica de melhora no manuseio dos sintomas e/ou opções de intervenção nutricional.",
     color: "bg-red-100 text-red-800 border-red-200"
