@@ -1,5 +1,9 @@
 import os
 import sys
+
+# Add backend directory to sys.path to allow importing app module
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from datetime import date
 
 import bcrypt
@@ -10,15 +14,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import models
-from app.database import get_db
-from app.main import app as main_app
-
-# Add backend directory to sys.path to allow importing app module
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 import app.models  # noqa: F401
-from app.database import Base
+from app import models
+from app.database import Base, get_db
+from app.main import app as main_app
 
 
 @event.listens_for(Engine, "connect")

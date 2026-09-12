@@ -448,11 +448,13 @@ def _processar_respostas(respostas):  # noqa: C901
         if pontuacao_item is not None:
             pontuacao_total += pontuacao_item
             
-        nome_lower = campo.nome.lower()
-        if "peso" in nome_lower and resposta.valor_numero is not None:
+        nome_lower = campo.nome.lower().strip()
+        if nome_lower in ("peso", "peso (kg)", "peso kg") and resposta.valor_numero is not None:
             peso = float(resposta.valor_numero)
-        if "altura" in nome_lower and resposta.valor_numero is not None:
+        if nome_lower in ("altura", "altura (m)", "altura (cm)", "altura m", "altura cm") and resposta.valor_numero is not None:
             altura = float(resposta.valor_numero)
+            if altura > 3.0:
+                altura = altura / 100.0
             
         resumo_respostas.append(schemas.ResumoCampoResponse(
             campo=campo.nome,
@@ -523,7 +525,7 @@ def print_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
         html += "<table><tr><th>Campo</th><th>Resposta</th><th>Pontuação</th></tr>"
         for resp in esp.respostas:
             pont_str = str(resp.pontuacao) if resp.pontuacao is not None else "-"
-            html += f"<tr><td>{resp.campo}</td><td>{resp.valor}</td><td>{pont_str}</td></tr>"
+            html += f"<tr><td>{html.escape(resp.campo)}</td><td>{html.escape(resp.valor)}</td><td>{pont_str}</td></tr>"
         html += "</table></div>"
         
     html += "</body><script>window.onload = function() { window.print(); }</script></html>"
