@@ -1,3 +1,4 @@
+import html
 import uuid
 from datetime import datetime, timezone
 from typing import List
@@ -513,21 +514,29 @@ def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
 def print_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
     data = get_consolidated_resume(id, db)
     
-    html = f"<html><head><title>Resumo Clínico - {data.paciente_nome}</title>"
-    html += "<style>body { font-family: Arial, sans-serif; padding: 20px; } h1 { border-bottom: 2px solid #333; } .especialidade { margin-top: 20px; padding: 10px; border: 1px solid #ddd; } .especialidade h2 { margin-top: 0; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border: 1px solid #ccc; padding: 8px; text-align: left; } th { background-color: #f9f9f9; } @media print { body { padding: 0; } .especialidade { page-break-inside: avoid; } }</style></head>"
-    html += f"<body><h1>Resumo Consolidado - Jornada</h1><p><strong>Paciente:</strong> {data.paciente_nome}</p><p><strong>Idade:</strong> {data.idade_exata}</p><hr>"
+    paciente_escaped = html.escape(str(data.paciente_nome))
+    idade_escaped = html.escape(str(data.idade_exata))
+    
+    html_content = f"<html><head><title>Resumo Clínico - {paciente_escaped}</title>"
+    html_content += "<style>body { font-family: Arial, sans-serif; padding: 20px; } h1 { border-bottom: 2px solid #333; } .especialidade { margin-top: 20px; padding: 10px; border: 1px solid #ddd; } .especialidade h2 { margin-top: 0; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border: 1px solid #ccc; padding: 8px; text-align: left; } th { background-color: #f9f9f9; } @media print { body { padding: 0; } .especialidade { page-break-inside: avoid; } }</style></head>"
+    html_content += f"<body><h1>Resumo Consolidado - Jornada</h1><p><strong>Paciente:</strong> {paciente_escaped}</p><p><strong>Idade:</strong> {idade_escaped}</p><hr>"
     
     for esp in data.especialidades:
-        html += f"<div class='especialidade'><h2>{esp.area_atendimento_nome}</h2><p><strong>Profissional:</strong> {esp.profissional_nome or 'Não informado'}</p><p><strong>Pontuação Total (Score/Risco):</strong> {esp.pontuacao_total}</p>"
+        area_escaped = html.escape(str(esp.area_atendimento_nome))
+        prof_escaped = html.escape(str(esp.profissional_nome)) if esp.profissional_nome else "Não informado"
+        
+        html_content += f"<div class='especialidade'><h2>{area_escaped}</h2><p><strong>Profissional:</strong> {prof_escaped}</p><p><strong>Pontuação Total (Score/Risco):</strong> {esp.pontuacao_total}</p>"
         if esp.imc_calculado:
-            html += f"<p><strong>IMC Calculado:</strong> {esp.imc_calculado}</p>"
+            html_content += f"<p><strong>IMC Calculado:</strong> {esp.imc_calculado}</p>"
             
-        html += "<table><tr><th>Campo</th><th>Resposta</th><th>Pontuação</th></tr>"
+        html_content += "<table><tr><th>Campo</th><th>Resposta</th><th>Pontuação</th></tr>"
         for resp in esp.respostas:
             pont_str = str(resp.pontuacao) if resp.pontuacao is not None else "-"
-            html += f"<tr><td>{html.escape(resp.campo)}</td><td>{html.escape(resp.valor)}</td><td>{pont_str}</td></tr>"
-        html += "</table></div>"
+            campo_escaped = html.escape(str(resp.campo))
+            valor_escaped = html.escape(str(resp.valor))
+            html_content += f"<tr><td>{campo_escaped}</td><td>{valor_escaped}</td><td>{pont_str}</td></tr>"
+        html_content += "</table></div>"
         
-    html += "</body><script>window.onload = function() { window.print(); }</script></html>"
-    return HTMLResponse(content=html)
+    html_content += "</body><script>window.onload = function() { window.print(); }</script></html>"
+    return HTMLResponse(content=html_content)
 

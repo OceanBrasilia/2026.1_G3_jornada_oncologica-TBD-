@@ -69,3 +69,59 @@ def test_print_html_endpoint(client: TestClient, jornada_seed):
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "<html>" in response.text
+    assert "Resumo Consolidado" in response.text
+
+
+def test_print_html_endpoint_with_answers_and_xss_sanitization(
+    client: TestClient, db_session: Session, jornada_seed, usuario_seed, paciente_seed, area_seed
+):
+    jornada, etapa = jornada_seed
+
+    formulario = models.Formulario(nome="Form Impressao")
+    db_session.add(formulario)
+    db_session.commit()
+
+    versao = models.FormularioVersao(formulario_id=formulario.id, criado_por_id=usuario_seed.id, versao=1)
+    db_session.add(versao)
+    db_session.commit()
+
+    campo_pergunta = models.CampoFormulario(
+        formulario_versao_id=versao.id, nome="Sintoma <script>alert(1)</script>", tipo="TEXTO", ordem_exibicao=1
+    )
+    campo_peso = models.CampoFormulario(
+        formulario_versao_id=versao.id, nome="Peso (kg)", tipo="NUMERO", ordem_exibicao=2
+    )
+    campo_altura = models.CampoFormulario(
+        formulario_versao_id=versao.id, nome="Altura (cm)", tipo="NUMERO", ordem_exibicao=3
+    )
+    db_session.add_all([campo_pergunta, campo_peso, campo_altura])
+    db_session.commit()
+
+    payload = {
+        "formulario_versao_id": str(versao.id),
+        "profissional_id": str(usuario_seed.id),
+        "respostas": [
+            {"campo_formulario_id": str(campo_pergunta.id), "valor_texto": "<b>Dor intensa & febre</b>"},
+            {"campo_formulario_id": str(campo_peso.id), "valor_numero": 80.0},
+            {"campo_formulario_id": str(campo_altura.id), "valor_numero": 180.0},
+        ],
+    }
+
+    res_post = client.post(f"/journeys/{jornada.id}/forms/{area_seed.id}", json=payload)
+    assert res_post.status_code == 201
+
+    # Verify consolidated normalizes height in cm (180 -> 1.80, imc = 80 / (1.8^2) = 24.69)
+    res_cons = client.get(f"/journeys/{jornada.id}/consolidated")
+    assert res_cons.status_code == 200
+    cons_data = res_cons.json()
+    assert cons_data["especialidades"][0]["imc_calculado"] == 24.69
+
+    # Verify print endpoint renders properly and escapes HTML
+    res_print = client.get(f"/journeys/{jornada.id}/print")
+    assert res_print.status_code == 200
+    assert "<script>alert(1)</script>" not in res_print.text
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in res_print.text
+    assert "&lt;b&gt;Dor intensa &amp; febre&lt;/b&gt;" in res_print.text
+    assert "IMC Calculado:" in res_print.text
+    assert "24.69" in res_print.text
+
