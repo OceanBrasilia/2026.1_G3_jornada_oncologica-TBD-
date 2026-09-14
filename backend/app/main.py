@@ -380,6 +380,173 @@ def calcular_asg_ppp_endpoint(req: schemas.ASGPPPRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
 
+# Endpoints de Formulários e Resumo Consolidado (Issue 7) ─────────────────
+
+
+@app.post("/journeys/{id}/forms/{id_especialidade}", status_code=status.HTTP_201_CREATED)
+def submit_form(
+    id: uuid.UUID,
+    id_especialidade: uuid.UUID,
+    req: schemas.PreenchimentoCreate,
+    db: Session = Depends(get_db)
+):
+    journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
+    if not journey:
+        raise HTTPException(status_code=404, detail="Jornada não encontrada.")
+
+    step = db.query(models.EtapaJornada).filter(
+        models.EtapaJornada.jornada_id == id,
+        models.EtapaJornada.area_atendimento_id == id_especialidade
+    ).first()
+    if not step:
+        raise HTTPException(status_code=404, detail="Especialidade/Etapa não encontrada nesta jornada.")
+
+    preenchimento = models.PreenchimentoFormulario(
+        etapa_jornada_id=step.id,
+        formulario_versao_id=req.formulario_versao_id,
+        profissional_id=req.profissional_id,
+        status="FINALIZADO"
+    )
+    db.add(preenchimento)
+    db.flush()
+
+    for r in req.respostas:
+        nova_resposta = models.Resposta(
+            preenchimento_id=preenchimento.id,
+            campo_formulario_id=r.campo_formulario_id,
+            valor_texto=r.valor_texto,
+            valor_numero=r.valor_numero,
+            valor_booleano=r.valor_booleano,
+            valor_data=r.valor_data
+        )
+        db.add(nova_resposta)
+
+    db.commit()
+    return {"message": "Formulário salvo com sucesso.", "preenchimento_id": str(preenchimento.id)}
+
+
+def _processar_respostas(respostas):  # noqa: C901
+    pontuacao_total = 0
+    peso = None
+    altura = None
+    resumo_respostas = []
+
+    for resposta in respostas:
+        campo = resposta.campo_formulario
+
+        valor_exibicao = ""
+        pontuacao_item = None
+
+        if resposta.valor_texto is not None:
+            valor_exibicao = resposta.valor_texto
+            for opcao in campo.opcoes:
+                if opcao.valor == resposta.valor_texto:
+                    pontuacao_item = opcao.pontuacao
+                    break
+        elif resposta.valor_numero is not None:
+            valor_exibicao = str(resposta.valor_numero)
+        elif resposta.valor_booleano is not None:
+            valor_exibicao = "Sim" if resposta.valor_booleano else "Não"
+        elif resposta.valor_data is not None:
+            valor_exibicao = resposta.valor_data.strftime("%Y-%m-%d")
+
+        if pontuacao_item is not None:
+            pontuacao_total += pontuacao_item
+
+        nome_lower = campo.nome.lower().strip()
+        if nome_lower in ("peso", "peso (kg)", "peso kg") and resposta.valor_numero is not None:
+            peso = float(resposta.valor_numero)
+        if nome_lower in ("altura", "altura (m)", "altura (cm)", "altura m", "altura cm") and resposta.valor_numero is not None:
+            altura = float(resposta.valor_numero)
+            if altura > 3.0:
+                altura = altura / 100.0
+
+        resumo_respostas.append(schemas.ResumoCampoResponse(
+            campo=campo.nome,
+            valor=valor_exibicao,
+            pontuacao=pontuacao_item
+        ))
+
+    return pontuacao_total, peso, altura, resumo_respostas
+
+
+@app.get("/journeys/{id}/consolidated", response_model=schemas.ResumoConsolidadoResponse)
+def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
+    journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
+    if not journey:
+        raise HTTPException(status_code=404, detail="Jornada não encontrada.")
+
+    paciente = journey.patient
+    hoje = datetime.now(timezone.utc).date()
+    delta = relativedelta(hoje, paciente.data_nascimento)
+    idade_exata = f"{delta.years} anos, {delta.months} meses e {delta.days} dias"
+
+    # Busca preenchimentos da jornada
+    preenchimentos = db.query(models.PreenchimentoFormulario).join(
+        models.EtapaJornada
+    ).filter(
+        models.EtapaJornada.jornada_id == id
+    ).all()
+
+    especialidades_list = []
+
+    for p in preenchimentos:
+        area_nome = p.etapa_jornada.area_atendimento.nome
+        prof_nome = p.profissional.nome if p.profissional else None
+
+        pontuacao_total, peso, altura, resumo_respostas = _processar_respostas(p.respostas)
+
+        imc_calc = None
+        if peso is not None and altura is not None and altura > 0:
+            imc_calc = round(peso / (altura ** 2), 2)
+
+        especialidades_list.append(schemas.ResumoEspecialidadeResponse(
+            area_atendimento_nome=area_nome,
+            profissional_nome=prof_nome,
+            pontuacao_total=pontuacao_total,
+            imc_calculado=imc_calc,
+            respostas=resumo_respostas
+        ))
+
+    return schemas.ResumoConsolidadoResponse(
+        jornada_id=journey.id,
+        paciente_nome=paciente.nome_completo,
+        idade_exata=idade_exata,
+        especialidades=especialidades_list
+    )
+
+
+@app.get("/journeys/{id}/print", response_class=HTMLResponse)
+def print_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
+    data = get_consolidated_resume(id, db)
+
+    paciente_escaped = html.escape(str(data.paciente_nome))
+    idade_escaped = html.escape(str(data.idade_exata))
+
+    html_content = f"<html><head><title>Resumo Clínico - {paciente_escaped}</title>"
+    html_content += "<style>body { font-family: Arial, sans-serif; padding: 20px; } h1 { border-bottom: 2px solid #333; } .especialidade { margin-top: 20px; padding: 10px; border: 1px solid #ddd; } .especialidade h2 { margin-top: 0; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border: 1px solid #ccc; padding: 8px; text-align: left; } th { background-color: #f9f9f9; } @media print { body { padding: 0; } .especialidade { page-break-inside: avoid; } }</style></head>"
+    html_content += f"<body><h1>Resumo Consolidado - Jornada</h1><p><strong>Paciente:</strong> {paciente_escaped}</p><p><strong>Idade:</strong> {idade_escaped}</p><hr>"
+
+    for esp in data.especialidades:
+        area_escaped = html.escape(str(esp.area_atendimento_nome))
+        prof_escaped = html.escape(str(esp.profissional_nome)) if esp.profissional_nome else "Não informado"
+
+        html_content += f"<div class='especialidade'><h2>{area_escaped}</h2><p><strong>Profissional:</strong> {prof_escaped}</p><p><strong>Pontuação Total (Score/Risco):</strong> {esp.pontuacao_total}</p>"
+        if esp.imc_calculado:
+            html_content += f"<p><strong>IMC Calculado:</strong> {esp.imc_calculado}</p>"
+
+        html_content += "<table><tr><th>Campo</th><th>Resposta</th><th>Pontuação</th></tr>"
+        for resp in esp.respostas:
+            pont_str = str(resp.pontuacao) if resp.pontuacao is not None else "-"
+            campo_escaped = html.escape(str(resp.campo))
+            valor_escaped = html.escape(str(resp.valor))
+            html_content += f"<tr><td>{campo_escaped}</td><td>{valor_escaped}</td><td>{pont_str}</td></tr>"
+        html_content += "</table></div>"
+
+    html_content += "</body><script>window.onload = function() { window.print(); }</script></html>"
+    return HTMLResponse(content=html_content)
+
+
 # Endpoints de Dashboard de Atendimento (Issue 5) ──────────────────────────
 
 
@@ -396,7 +563,7 @@ def get_dashboard_jornadas_hoje(db: Session = Depends(get_db)):
 
     result = []
     for j in jornadas:
-        paciente = j.paciente
+        paciente = j.patient
         if not paciente:
             continue
 

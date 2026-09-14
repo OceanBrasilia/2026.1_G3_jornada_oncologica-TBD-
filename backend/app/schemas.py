@@ -552,3 +552,41 @@ class ASGPPPRequest(BaseModel):
     bloco3_sintomas: int = 0
     bloco4_capacidade: int = 0
     adicionais_estresse: int = 0
+
+
+# Schemas para Formulários e Resumo Consolidado (Issue 7)
+
+class RespostaCriacaoAuxiliar(BaseModel):
+    campo_formulario_id: UUID
+    valor_texto: Optional[str] = None
+    valor_numero: Optional[float] = None
+    valor_booleano: Optional[bool] = None
+    valor_data: Optional[date] = None
+
+
+class PreenchimentoCreate(BaseModel):
+    formulario_versao_id: UUID
+    profissional_id: UUID
+    respostas: List[RespostaCriacaoAuxiliar]
+
+
+class ResumoCampoResponse(BaseModel):
+    campo: str
+    valor: str
+    pontuacao: Optional[int] = None
+
+
+class ResumoEspecialidadeResponse(BaseModel):
+    area_atendimento_nome: str
+    profissional_nome: Optional[str] = None
+    pontuacao_total: int
+    imc_calculado: Optional[float] = None
+    respostas: List[ResumoCampoResponse]
+
+
+class ResumoConsolidadoResponse(BaseModel):
+    jornada_id: UUID
+    paciente_nome: str
+    idade_exata: str
+    especialidades: List[ResumoEspecialidadeResponse]
+
