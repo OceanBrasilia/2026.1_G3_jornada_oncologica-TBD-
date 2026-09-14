@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { api } from "./services/api";
+import React, { useState, useEffect } from "react";
+import { api, type DashboardJornadaItem, type DashboardCoordenacaoResponse } from "./services/api";
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
@@ -916,19 +916,48 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
 }) {
   const [search, setSearch] = useState("");
 
+  // Deriva o check-in "padrão" de um paciente a partir do status que veio da API.
+  function deriveCheckin(p: Patient): CheckinRecord {
+    return p.status === "finalizado"
+      ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: "12:30" }
+      : p.status !== "aguardando"
+      ? { arrived: true, arrivedAt: p.arrivalTime, departed: false }
+      : { arrived: false, departed: false };
+  }
+
   const initCheckins = () => {
     const r: Record<string, CheckinRecord> = {};
-    patients.forEach(p => {
-      r[p.id] = p.status === "finalizado"
-        ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: "12:30" }
-        : p.status !== "aguardando"
-          ? { arrived: true, arrivedAt: p.arrivalTime, departed: false }
-          : { arrived: false, departed: false };
-    });
+    patients.forEach(p => { r[p.id] = deriveCheckin(p); });
     return r;
   };
 
   const [checkins, setCheckins] = useState<Record<string, CheckinRecord>>(initCheckins);
+
+  // A cada atualização de `patients` (polling da API a cada 30s), sincroniza a fila:
+  // adiciona pacientes novos e avança o status de quem a API já confirmou como
+  // "em atendimento" ou "finalizado" — sem nunca reverter uma marcação manual
+  // (chegada/saída) que a recepção já tenha feito na tela.
+  useEffect(() => {
+    setCheckins(prev => {
+      let changed = false;
+      const next = { ...prev };
+      patients.forEach(p => {
+        const derived = deriveCheckin(p);
+        const atual = next[p.id];
+        if (!atual) {
+          next[p.id] = derived;
+          changed = true;
+        } else if (derived.departed && !atual.departed) {
+          next[p.id] = derived;
+          changed = true;
+        } else if (derived.arrived && !atual.arrived) {
+          next[p.id] = derived;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [patients]);
   const [showModal, setShowModal] = useState(false);
   const [modalSearch, setModalSearch] = useState("");
 
@@ -1791,13 +1820,14 @@ function FormsListScreen({ onOpenPatient }: { onOpenPatient: (p: Patient) => voi
 
 // ─── Professional Dashboard ───────────────────────────────────────────────────
 
-function ProfessionalDashboard({ onOpenPatient }: { onOpenPatient: (p: Patient) => void }) {
+function ProfessionalDashboard({ onOpenPatient, patients: patientsProp }: { onOpenPatient: (p: Patient) => void; patients?: Patient[] }) {
+  const patients = patientsProp ?? PATIENTS;
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("todos");
   const [filterSpec, setFilterSpec] = useState("todas");
   const [filterCid, setFilterCid] = useState("");
 
-  const filtered = PATIENTS.filter(p => {
+  const filtered = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.id.includes(search);
     const matchStatus = filterStatus === "todos" || p.status === filterStatus;
     const matchSpec = filterSpec === "todas" || p.specialties.some(s => s.name === filterSpec && (s.status === "pendente" || s.status === "em-atendimento"));
@@ -1806,10 +1836,10 @@ function ProfessionalDashboard({ onOpenPatient }: { onOpenPatient: (p: Patient) 
   });
 
   const counts = {
-    aguardando: PATIENTS.filter(p => p.status === "aguardando").length,
-    em: PATIENTS.filter(p => p.status === "em-atendimento").length,
-    pendentes: PATIENTS.reduce((acc, p) => acc + p.specialties.filter(s => s.status === "pendente").length, 0),
-    finalizado: PATIENTS.filter(p => p.status === "finalizado").length,
+    aguardando: patients.filter(p => p.status === "aguardando").length,
+    em: patients.filter(p => p.status === "em-atendimento").length,
+    pendentes: patients.reduce((acc, p) => acc + p.specialties.filter(s => s.status === "pendente").length, 0),
+    finalizado: patients.filter(p => p.status === "finalizado").length,
   };
 
   const statuses = [
@@ -3263,20 +3293,47 @@ function TimeTargetsScreen({ targets, onChange }: {
 
 // ─── Coordination Dashboard ───────────────────────────────────────────────────
 
-function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: Patient) => void; targets: SpecTarget[] }) {
+function CoordinationDashboard({ onOpenPatient, targets, patients: patientsProp }: { onOpenPatient: (p: Patient) => void; targets: SpecTarget[]; patients?: Patient[] }) {
+  const patients = patientsProp ?? PATIENTS;
   const counts = {
-    total: PATIENTS.length,
-    em: PATIENTS.filter(p => p.status === "em-atendimento").length,
-    aguardando: PATIENTS.filter(p => p.status === "aguardando").length,
-    finalizado: PATIENTS.filter(p => p.status === "finalizado").length,
-    pendente: PATIENTS.filter(p => p.status === "pendente").length,
+    total: patients.length,
+    em: patients.filter(p => p.status === "em-atendimento").length,
+    aguardando: patients.filter(p => p.status === "aguardando").length,
+    finalizado: patients.filter(p => p.status === "finalizado").length,
+    pendente: patients.filter(p => p.status === "pendente").length,
   };
+  // "Pacientes Ativos" = jornadas do dia que ainda não terminaram (nem finalizadas, nem canceladas).
+  const pacientesAtivos = counts.total - counts.finalizado;
 
   const specBottlenecks = SPEC_NAMES.slice(1).map((name, i) => ({
     name,
-    pending: PATIENTS.filter(p => p.specialties[i + 1]?.status === "pendente").length,
-    active: PATIENTS.filter(p => p.specialties[i + 1]?.status === "em-atendimento").length,
+    pending: patients.filter(p => p.specialties[i + 1]?.status === "pendente").length,
+    active: patients.filter(p => p.specialties[i + 1]?.status === "em-atendimento").length,
   })).sort((a, b) => b.pending - a.pending);
+
+  // Indicadores agregados vindos do backend (GET /dashboard/coordenacao), que já
+  // calcula o tempo médio de espera do dia — métrica que não dá pra derivar
+  // corretamente só com o que a lista de pacientes expõe no front.
+  const [coordStats, setCoordStats] = useState<DashboardCoordenacaoResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCoordStats() {
+      try {
+        const data = await api.getDashboardCoordenacao();
+        if (!cancelled) setCoordStats(data);
+      } catch {
+        // Silenciosamente ignora erro de rede — mantém o último valor conhecido
+      }
+    }
+    fetchCoordStats();
+    const interval = setInterval(fetchCoordStats, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  const tempoMedioEsperaLabel = coordStats?.tempo_medio_espera_minutos != null
+    ? `${Math.round(coordStats.tempo_medio_espera_minutos)} min`
+    : "—";
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -3286,11 +3343,12 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <StatCard label="Pacientes ativos" value={pacientesAtivos} color="text-[#1B6CA8]" />
+        <StatCard label="Tempo de espera médio" value={tempoMedioEsperaLabel} color="text-[#2DB5A3]" />
         <StatCard label="Total do dia" value={counts.total} color="text-[#1A2332]" />
         <StatCard label="Aguardando" value={counts.aguardando} color="text-sky-600" />
         <StatCard label="Em atendimento" value={counts.em} color="text-[#1B6CA8]" />
-        <StatCard label="Pendentes" value={counts.pendente} color="text-amber-600" />
         <StatCard label="Finalizados" value={counts.finalizado} color="text-emerald-600" />
       </div>
 
@@ -3312,7 +3370,7 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
                 </div>
                 <div className="w-full bg-[#F4F7FB] rounded-full h-1.5">
                   <div className={`h-1.5 rounded-full ${s.pending > 2 ? "bg-amber-400" : "bg-[#1B6CA8]"}`}
-                    style={{ width: `${(s.pending / PATIENTS.length) * 100}%` }} />
+                    style={{ width: `${patients.length > 0 ? (s.pending / patients.length) * 100 : 0}%` }} />
                 </div>
               </div>
             ))}
@@ -3358,7 +3416,7 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
             <Activity size={14} className="text-[#1B6CA8]" /> Andamento geral
           </h3>
           <div className="space-y-3">
-            {PATIENTS.map(p => {
+            {patients.map(p => {
               const done = p.specialties.filter(s => s.status === "atendido").length;
               const total = p.specialties.filter(s => s.status !== "nao-se-aplica").length;
               const pct = Math.round((done / total) * 100);
@@ -3419,6 +3477,70 @@ function CoordinationDashboard({ onOpenPatient, targets }: { onOpenPatient: (p: 
   );
 }
 
+// ─── Dashboard API helpers (Issue 5) ─────────────────────────────────────────
+
+function calcIdade(dataNasc?: string | null): number {
+  if (!dataNasc) return 0;
+  const nasc = new Date(dataNasc);
+  const hoje = new Date();
+  let idade = hoje.getFullYear() - nasc.getFullYear();
+  const m = hoje.getMonth() - nasc.getMonth();
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
+  return idade;
+}
+
+function mapEtapaStatus(s: string): SpecStatus {
+  switch (s) {
+    case "EM_ATENDIMENTO": return "em-atendimento";
+    case "ATENDIDO": return "atendido";
+    case "NAO_SE_APLICA": return "nao-se-aplica";
+    default: return "pendente";
+  }
+}
+
+function mapJornadaStatus(s: string): Patient["status"] {
+  switch (s) {
+    case "EM_ATENDIMENTO": return "em-atendimento";
+    case "FINALIZADA":     return "finalizado";
+    case "CANCELADA":      return "finalizado";
+    default:               return "aguardando";
+  }
+}
+
+function apiItemToPaciente(item: DashboardJornadaItem): Patient {
+  const etapas = [...item.etapas].sort((a, b) => a.ordem - b.ordem);
+  const specialties: Specialty[] = etapas.map(e => ({
+    id:            e.area_id,
+    name:          e.nome_area,
+    status:        mapEtapaStatus(e.status),
+    professional:  e.profissional_nome ?? undefined,
+    startTime:     e.iniciada_em ? new Date(e.iniciada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : undefined,
+    completedTime: e.finalizada_em ? new Date(e.finalizada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : undefined,
+  }));
+
+  const chegadaStr = item.chegada_em
+    ? new Date(item.chegada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  return {
+    id:          item.jornada_id,
+    name:        item.paciente_nome,
+    age:         calcIdade(item.paciente_data_nascimento),
+    cpf:         item.paciente_cpf,
+    cid:         "",
+    diagnosis:   item.diagnostico ?? "",
+    status:      mapJornadaStatus(item.jornada_status),
+    arrivalTime: chegadaStr,
+    specialties,
+    weight:      "",
+    height:      "",
+    // legado
+    email:       "",
+    phone:       "",
+    address:     "",
+  } as Patient;
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -3429,6 +3551,26 @@ export default function App() {
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
+
+  // ─── Polling em tempo real: busca jornadas do dia a cada 30s ──────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchDashboard() {
+      try {
+        const items = await api.getDashboardJornadas();
+        if (!cancelled && items.length > 0) {
+          setPatientsList(items.map(apiItemToPaciente));
+        }
+      } catch {
+        // Silenciosamente ignora erros de rede — mantém dados locais
+      }
+    }
+
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
   const baseNotifications = buildNotifications(patientsList);
@@ -3585,17 +3727,17 @@ export default function App() {
     >
       {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} />}
       {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => [p, ...prev]); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
-      {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} />}
+      {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} patients={patientsList} />}
 
 
-      {screen === "coordination-dashboard" && <CoordinationDashboard onOpenPatient={openPatient} targets={targets} />}
+      {screen === "coordination-dashboard" && <CoordinationDashboard onOpenPatient={openPatient} targets={targets} patients={patientsList} />}
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
       {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
-      
+
       {/* Global Critical Alert */}
       {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (
         <GlobalCriticalAlert alerts={filterAlertsForRole(selectedPatient.alerts || [], role)} />

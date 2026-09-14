@@ -1,10 +1,64 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+# Auth ─────────────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+# Dashboard ────────────────────────────────────────────────────────────────
+
+class EtapaDashboardItem(BaseModel):
+    area_id: str
+    nome_area: str
+    status: str          # PENDENTE | EM_ATENDIMENTO | ATENDIDO | NAO_SE_APLICA
+    ordem: int
+    profissional_nome: Optional[str] = None
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+
+
+class DashboardJornadaItem(BaseModel):
+    jornada_id: str
+    jornada_codigo: str
+    jornada_status: str  # AGUARDANDO | EM_ATENDIMENTO | PENDENTE | FINALIZADA | CANCELADA
+    data_acolhimento: date
+    chegada_em: Optional[datetime] = None
+    paciente_id: str
+    paciente_nome: str
+    paciente_cpf: str
+    paciente_codigo_publico: str
+    paciente_data_nascimento: Optional[date] = None
+    diagnostico: Optional[str] = None
+    etapas: List[EtapaDashboardItem] = []
+
+
+class GargaloEspecialidade(BaseModel):
+    nome_area: str
+    pendentes: int
+    em_atendimento: int
+
+
+class TempoMedioEspecialidade(BaseModel):
+    nome_area: str
+    tempo_medio_minutos: float
+
+
+class DashboardCoordenacaoResponse(BaseModel):
+    total_dia: int
+    por_status: Dict[str, int]
+    tempo_medio_espera_minutos: Optional[float] = None
+    gargalos: List[GargaloEspecialidade] = []
+    tempo_medio_por_especialidade: List[TempoMedioEspecialidade] = []
+
+
+# Schema base para Perfil ──────────────────────────────────────────────────
 
 # Schema base para Perfil
 class PerfilBase(BaseModel):
@@ -459,11 +513,6 @@ class RegistroAuditoriaResponse(RegistroAuditoriaBase):
 # Novas Request Schemas
 
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
-
 class JourneyCreateRequest(BaseModel):
     paciente_id: UUID
     criado_por_id: UUID
@@ -499,6 +548,8 @@ class ASGPPPRequest(BaseModel):
     adicionais_estresse: int = 0
 
 
+# Schemas para Formulários e Resumo Consolidado (Issue 7)
+
 class RespostaCriacaoAuxiliar(BaseModel):
     campo_formulario_id: UUID
     valor_texto: Optional[str] = None
@@ -506,15 +557,18 @@ class RespostaCriacaoAuxiliar(BaseModel):
     valor_booleano: Optional[bool] = None
     valor_data: Optional[date] = None
 
+
 class PreenchimentoCreate(BaseModel):
     formulario_versao_id: UUID
     profissional_id: UUID
     respostas: List[RespostaCriacaoAuxiliar]
 
+
 class ResumoCampoResponse(BaseModel):
     campo: str
     valor: str
     pontuacao: Optional[int] = None
+
 
 class ResumoEspecialidadeResponse(BaseModel):
     area_atendimento_nome: str
@@ -523,8 +577,10 @@ class ResumoEspecialidadeResponse(BaseModel):
     imc_calculado: Optional[float] = None
     respostas: List[ResumoCampoResponse]
 
+
 class ResumoConsolidadoResponse(BaseModel):
     jornada_id: UUID
     paciente_nome: str
     idade_exata: str
     especialidades: List[ResumoEspecialidadeResponse]
+

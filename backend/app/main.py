@@ -232,7 +232,7 @@ def update_journey_step(id: UUID, step_id: UUID, req: schemas.JourneyStepUpdate,
     return step
 
 
-# ─── Aliases em português e Consulta Pública ──────────────────────────────────
+# Aliases em português e Consulta Pública ──────────────────────────────────
 
 
 @app.get("/pacientes", response_model=List[schemas.PatientResponse])
@@ -347,7 +347,7 @@ def create_jornada(req: schemas.JornadaCreate, db: Session = Depends(get_db)):
     return create_journey(req=req, db=db)
 
 
-# ─── Endpoints de Cálculos Clínicos (Issue 8) ─────────────────────────────────
+# Endpoints de Cálculos Clínicos (Issue 8) ─────────────────────────────────
 
 
 @app.post("/calculos/imc")
@@ -380,6 +380,9 @@ def calcular_asg_ppp_endpoint(req: schemas.ASGPPPRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
 
+# Endpoints de Formulários e Resumo Consolidado (Issue 7) ─────────────────
+
+
 @app.post("/journeys/{id}/forms/{id_especialidade}", status_code=status.HTTP_201_CREATED)
 def submit_form(
     id: uuid.UUID,
@@ -390,14 +393,14 @@ def submit_form(
     journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
     if not journey:
         raise HTTPException(status_code=404, detail="Jornada não encontrada.")
-    
+
     step = db.query(models.EtapaJornada).filter(
         models.EtapaJornada.jornada_id == id,
         models.EtapaJornada.area_atendimento_id == id_especialidade
     ).first()
     if not step:
         raise HTTPException(status_code=404, detail="Especialidade/Etapa não encontrada nesta jornada.")
-        
+
     preenchimento = models.PreenchimentoFormulario(
         etapa_jornada_id=step.id,
         formulario_versao_id=req.formulario_versao_id,
@@ -406,7 +409,7 @@ def submit_form(
     )
     db.add(preenchimento)
     db.flush()
-    
+
     for r in req.respostas:
         nova_resposta = models.Resposta(
             preenchimento_id=preenchimento.id,
@@ -417,22 +420,23 @@ def submit_form(
             valor_data=r.valor_data
         )
         db.add(nova_resposta)
-        
+
     db.commit()
     return {"message": "Formulário salvo com sucesso.", "preenchimento_id": str(preenchimento.id)}
+
 
 def _processar_respostas(respostas):  # noqa: C901
     pontuacao_total = 0
     peso = None
     altura = None
     resumo_respostas = []
-    
+
     for resposta in respostas:
         campo = resposta.campo_formulario
-        
+
         valor_exibicao = ""
         pontuacao_item = None
-        
+
         if resposta.valor_texto is not None:
             valor_exibicao = resposta.valor_texto
             for opcao in campo.opcoes:
@@ -445,10 +449,10 @@ def _processar_respostas(respostas):  # noqa: C901
             valor_exibicao = "Sim" if resposta.valor_booleano else "Não"
         elif resposta.valor_data is not None:
             valor_exibicao = resposta.valor_data.strftime("%Y-%m-%d")
-            
+
         if pontuacao_item is not None:
             pontuacao_total += pontuacao_item
-            
+
         nome_lower = campo.nome.lower().strip()
         if nome_lower in ("peso", "peso (kg)", "peso kg") and resposta.valor_numero is not None:
             peso = float(resposta.valor_numero)
@@ -456,45 +460,46 @@ def _processar_respostas(respostas):  # noqa: C901
             altura = float(resposta.valor_numero)
             if altura > 3.0:
                 altura = altura / 100.0
-            
+
         resumo_respostas.append(schemas.ResumoCampoResponse(
             campo=campo.nome,
             valor=valor_exibicao,
             pontuacao=pontuacao_item
         ))
-        
+
     return pontuacao_total, peso, altura, resumo_respostas
+
 
 @app.get("/journeys/{id}/consolidated", response_model=schemas.ResumoConsolidadoResponse)
 def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
     journey = db.query(models.Jornada).filter(models.Jornada.id == id).first()
     if not journey:
         raise HTTPException(status_code=404, detail="Jornada não encontrada.")
-        
+
     paciente = journey.patient
     hoje = datetime.now(timezone.utc).date()
     delta = relativedelta(hoje, paciente.data_nascimento)
     idade_exata = f"{delta.years} anos, {delta.months} meses e {delta.days} dias"
-    
+
     # Busca preenchimentos da jornada
     preenchimentos = db.query(models.PreenchimentoFormulario).join(
         models.EtapaJornada
     ).filter(
         models.EtapaJornada.jornada_id == id
     ).all()
-    
+
     especialidades_list = []
-    
+
     for p in preenchimentos:
         area_nome = p.etapa_jornada.area_atendimento.nome
         prof_nome = p.profissional.nome if p.profissional else None
-        
+
         pontuacao_total, peso, altura, resumo_respostas = _processar_respostas(p.respostas)
-            
+
         imc_calc = None
         if peso is not None and altura is not None and altura > 0:
             imc_calc = round(peso / (altura ** 2), 2)
-            
+
         especialidades_list.append(schemas.ResumoEspecialidadeResponse(
             area_atendimento_nome=area_nome,
             profissional_nome=prof_nome,
@@ -502,7 +507,7 @@ def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
             imc_calculado=imc_calc,
             respostas=resumo_respostas
         ))
-        
+
     return schemas.ResumoConsolidadoResponse(
         jornada_id=journey.id,
         paciente_nome=paciente.nome_completo,
@@ -510,25 +515,26 @@ def get_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
         especialidades=especialidades_list
     )
 
+
 @app.get("/journeys/{id}/print", response_class=HTMLResponse)
 def print_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
     data = get_consolidated_resume(id, db)
-    
+
     paciente_escaped = html.escape(str(data.paciente_nome))
     idade_escaped = html.escape(str(data.idade_exata))
-    
+
     html_content = f"<html><head><title>Resumo Clínico - {paciente_escaped}</title>"
     html_content += "<style>body { font-family: Arial, sans-serif; padding: 20px; } h1 { border-bottom: 2px solid #333; } .especialidade { margin-top: 20px; padding: 10px; border: 1px solid #ddd; } .especialidade h2 { margin-top: 0; } table { width: 100%; border-collapse: collapse; margin-top: 10px; } th, td { border: 1px solid #ccc; padding: 8px; text-align: left; } th { background-color: #f9f9f9; } @media print { body { padding: 0; } .especialidade { page-break-inside: avoid; } }</style></head>"
     html_content += f"<body><h1>Resumo Consolidado - Jornada</h1><p><strong>Paciente:</strong> {paciente_escaped}</p><p><strong>Idade:</strong> {idade_escaped}</p><hr>"
-    
+
     for esp in data.especialidades:
         area_escaped = html.escape(str(esp.area_atendimento_nome))
         prof_escaped = html.escape(str(esp.profissional_nome)) if esp.profissional_nome else "Não informado"
-        
+
         html_content += f"<div class='especialidade'><h2>{area_escaped}</h2><p><strong>Profissional:</strong> {prof_escaped}</p><p><strong>Pontuação Total (Score/Risco):</strong> {esp.pontuacao_total}</p>"
         if esp.imc_calculado:
             html_content += f"<p><strong>IMC Calculado:</strong> {esp.imc_calculado}</p>"
-            
+
         html_content += "<table><tr><th>Campo</th><th>Resposta</th><th>Pontuação</th></tr>"
         for resp in esp.respostas:
             pont_str = str(resp.pontuacao) if resp.pontuacao is not None else "-"
@@ -536,7 +542,135 @@ def print_consolidated_resume(id: uuid.UUID, db: Session = Depends(get_db)):
             valor_escaped = html.escape(str(resp.valor))
             html_content += f"<tr><td>{campo_escaped}</td><td>{valor_escaped}</td><td>{pont_str}</td></tr>"
         html_content += "</table></div>"
-        
+
     html_content += "</body><script>window.onload = function() { window.print(); }</script></html>"
     return HTMLResponse(content=html_content)
 
+
+# Endpoints de Dashboard de Atendimento (Issue 5) ──────────────────────────
+
+
+@app.get("/dashboard/jornadas-hoje", response_model=List[schemas.DashboardJornadaItem])
+def get_dashboard_jornadas_hoje(db: Session = Depends(get_db)):
+    """Retorna todas as jornadas de hoje com dados completos de paciente e etapas."""
+    hoje = datetime.now(timezone.utc).date()
+    jornadas = (
+        db.query(models.Jornada)
+        .filter(models.Jornada.data_acolhimento == hoje)
+        .order_by(models.Jornada.chegada_em.asc().nullslast())
+        .all()
+    )
+
+    result = []
+    for j in jornadas:
+        paciente = j.patient
+        if not paciente:
+            continue
+
+        etapas_sorted = sorted(j.etapas, key=lambda e: e.ordem)
+        etapas_out = []
+        for etapa in etapas_sorted:
+            nome_area = etapa.area_atendimento.nome if etapa.area_atendimento else "Especialidade"
+            prof_nome = None
+            if etapa.profissional_responsavel:
+                prof_nome = etapa.profissional_responsavel.nome
+            etapas_out.append(
+                schemas.EtapaDashboardItem(
+                    area_id=str(etapa.area_atendimento_id),
+                    nome_area=nome_area,
+                    status=etapa.status,
+                    ordem=etapa.ordem,
+                    profissional_nome=prof_nome,
+                    iniciada_em=etapa.iniciada_em,
+                    finalizada_em=etapa.finalizada_em,
+                )
+            )
+
+        result.append(
+            schemas.DashboardJornadaItem(
+                jornada_id=str(j.id),
+                jornada_codigo=j.codigo or "",
+                jornada_status=j.status,
+                data_acolhimento=j.data_acolhimento,
+                chegada_em=j.chegada_em,
+                paciente_id=str(paciente.id),
+                paciente_nome=paciente.nome_completo,
+                paciente_cpf=paciente.cpf,
+                paciente_codigo_publico=paciente.codigo_publico,
+                paciente_data_nascimento=paciente.data_nascimento,
+                diagnostico=j.diagnostico_principal or paciente.diagnosis,
+                etapas=etapas_out,
+            )
+        )
+
+    return result
+
+
+@app.get("/dashboard/coordenacao", response_model=schemas.DashboardCoordenacaoResponse)
+def get_dashboard_coordenacao(db: Session = Depends(get_db)):
+    """Retorna indicadores agregados do dia para a coordenação."""
+    from collections import defaultdict
+
+    hoje = datetime.now(timezone.utc).date()
+    jornadas = db.query(models.Jornada).filter(models.Jornada.data_acolhimento == hoje).all()
+
+    total_dia = len(jornadas)
+    por_status: dict = defaultdict(int)
+    tempos_espera = []
+    gargalos: dict = defaultdict(lambda: {"pendentes": 0, "em_atendimento": 0})
+    tempos_por_area: dict = defaultdict(list)
+
+    agora = datetime.now(timezone.utc)
+
+    for j in jornadas:
+        por_status[j.status] += 1
+
+        # Tempo de espera: chegada até início do primeiro atendimento ou agora
+        if j.chegada_em:
+            referencia = j.iniciada_em or agora
+            delta = (referencia - j.chegada_em).total_seconds() / 60.0
+            if delta >= 0:
+                tempos_espera.append(delta)
+
+        # Gargalos e tempos por especialidade
+        for etapa in j.etapas:
+            nome_area = etapa.area_atendimento.nome if etapa.area_atendimento else "Desconhecida"
+            if etapa.status == "PENDENTE":
+                gargalos[nome_area]["pendentes"] += 1
+            elif etapa.status == "EM_ATENDIMENTO":
+                gargalos[nome_area]["em_atendimento"] += 1
+            elif etapa.status == "ATENDIDO" and etapa.iniciada_em and etapa.finalizada_em:
+                minutos = (etapa.finalizada_em - etapa.iniciada_em).total_seconds() / 60.0
+                if minutos >= 0:
+                    tempos_por_area[nome_area].append(minutos)
+
+    tempo_medio_espera = (sum(tempos_espera) / len(tempos_espera)) if tempos_espera else None
+
+    gargalos_list = [
+        schemas.GargaloEspecialidade(
+            nome_area=nome,
+            pendentes=dados["pendentes"],
+            em_atendimento=dados["em_atendimento"],
+        )
+        for nome, dados in gargalos.items()
+        if dados["pendentes"] > 0 or dados["em_atendimento"] > 0
+    ]
+    gargalos_list.sort(key=lambda g: g.pendentes + g.em_atendimento, reverse=True)
+
+    tempo_medio_list = [
+        schemas.TempoMedioEspecialidade(
+            nome_area=nome,
+            tempo_medio_minutos=sum(tempos) / len(tempos),
+        )
+        for nome, tempos in tempos_por_area.items()
+        if tempos
+    ]
+    tempo_medio_list.sort(key=lambda t: t.tempo_medio_minutos, reverse=True)
+
+    return schemas.DashboardCoordenacaoResponse(
+        total_dia=total_dia,
+        por_status=dict(por_status),
+        tempo_medio_espera_minutos=tempo_medio_espera,
+        gargalos=gargalos_list,
+        tempo_medio_por_especialidade=tempo_medio_list,
+    )
