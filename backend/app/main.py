@@ -229,7 +229,7 @@ def update_journey_step(id: UUID, step_id: UUID, req: schemas.JourneyStepUpdate,
     return step
 
 
-# ─── Aliases em português e Consulta Pública ──────────────────────────────────
+# Aliases em português e Consulta Pública ──────────────────────────────────
 
 
 @app.get("/pacientes", response_model=List[schemas.PatientResponse])
@@ -344,7 +344,7 @@ def create_jornada(req: schemas.JornadaCreate, db: Session = Depends(get_db)):
     return create_journey(req=req, db=db)
 
 
-# ─── Endpoints de Cálculos Clínicos (Issue 8) ─────────────────────────────────
+# Endpoints de Cálculos Clínicos (Issue 8) ─────────────────────────────────
 
 
 @app.post("/calculos/imc")
@@ -377,7 +377,7 @@ def calcular_asg_ppp_endpoint(req: schemas.ASGPPPRequest):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from None
 
 
-# ─── Endpoints de Dashboard de Atendimento (Issue 5) ──────────────────────────
+# Endpoints de Dashboard de Atendimento (Issue 5) ──────────────────────────
 
 
 @app.get("/dashboard/jornadas-hoje", response_model=List[schemas.DashboardJornadaItem])
