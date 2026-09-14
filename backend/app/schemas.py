@@ -1,10 +1,65 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+
+# ─── Auth ─────────────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+# ─── Dashboard ────────────────────────────────────────────────────────────────
+
+class EtapaDashboardItem(BaseModel):
+    area_id: str
+    nome_area: str
+    status: str          # PENDENTE | EM_ATENDIMENTO | ATENDIDO | NAO_SE_APLICA
+    ordem: int
+    profissional_nome: Optional[str] = None
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+
+
+class DashboardJornadaItem(BaseModel):
+    jornada_id: str
+    jornada_codigo: str
+    jornada_status: str  # AGUARDANDO | EM_ATENDIMENTO | PENDENTE | FINALIZADA | CANCELADA
+    data_acolhimento: date
+    chegada_em: Optional[datetime] = None
+    paciente_id: str
+    paciente_nome: str
+    paciente_cpf: str
+    paciente_codigo_publico: str
+    paciente_data_nascimento: Optional[date] = None
+    diagnostico: Optional[str] = None
+    etapas: List[EtapaDashboardItem] = []
+
+
+class GargaloEspecialidade(BaseModel):
+    nome_area: str
+    pendentes: int
+    em_atendimento: int
+
+
+class TempoMedioEspecialidade(BaseModel):
+    nome_area: str
+    tempo_medio_minutos: float
+
+
+class DashboardCoordenacaoResponse(BaseModel):
+    total_dia: int
+    por_status: Dict[str, int]
+    tempo_medio_espera_minutos: Optional[float] = None
+    gargalos: List[GargaloEspecialidade] = []
+    tempo_medio_por_especialidade: List[TempoMedioEspecialidade] = []
+
+
+# ─── Schema base para Perfil ──────────────────────────────────────────────────
 
 # Schema base para Perfil
 class PerfilBase(BaseModel):
@@ -142,7 +197,6 @@ class JornadaBase(BaseModel):
 
 class JornadaCreate(JornadaBase):
     pass
-
 
 
 class JornadaResponse(JornadaBase):
@@ -459,6 +513,7 @@ class RegistroAuditoriaResponse(RegistroAuditoriaBase):
 
 # Novas Request Schemas
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -477,3 +532,23 @@ class JourneyStepUpdate(BaseModel):
     motivo_nao_aplicavel: Optional[str] = None
     ordem: Optional[int] = None
     area_atendimento_id: Optional[UUID] = None
+
+
+# Schemas para Cálculos Clínicos (Issue 8)
+
+
+class IMCRequest(BaseModel):
+    peso_kg: float
+    altura_m: float
+
+
+class IRPORequest(BaseModel):
+    respostas: dict[int, int]
+
+
+class ASGPPPRequest(BaseModel):
+    bloco1_peso: int = 0
+    bloco2_ingestao: int = 0
+    bloco3_sintomas: int = 0
+    bloco4_capacidade: int = 0
+    adicionais_estresse: int = 0
