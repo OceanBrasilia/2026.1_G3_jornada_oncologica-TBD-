@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-
 # Auth ─────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
@@ -512,11 +511,6 @@ class RegistroAuditoriaResponse(RegistroAuditoriaBase):
 
 
 # Novas Request Schemas
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
 
 
 class JourneyCreateRequest(BaseModel):
