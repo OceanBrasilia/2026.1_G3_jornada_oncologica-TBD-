@@ -8,5 +8,6 @@
 export function nomeExibicaoPorPerfil(role: string | null): string {
   if (role === "recepcao") return "Carla Santos";
   if (role === "profissional") return "Dr. Rafael Costa";
+  if (role === "administrador") return "Admin Sistema";
   return "Ana Lima";
 }

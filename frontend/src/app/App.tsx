@@ -57,7 +57,7 @@ type Screen =
   | "time-targets"
   | "forms-list";
 
-type Role = "recepcao" | "profissional" | "coordenacao";
+type Role = "recepcao" | "profissional" | "coordenacao" | "administrador";
 type SpecStatus = "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica";
 type PatStatus = "aguardando" | "em-atendimento" | "pendente" | "finalizado";
 
@@ -405,14 +405,21 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
         { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
         { icon: <ClipboardList size={18} />, label: "Formulários", screen: "forms-list" },
       ]
-      : [
-        { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
-        { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
-        { icon: <UserPlus size={18} />, label: "Profissionais", screen: "professionals-management" },
-        { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
-      ];
+      : role === "coordenacao"
+        ? [
+          { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
+          { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
+          { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
+        ]
+        : [
+          { icon: <UserPlus size={18} />, label: "Gestão de Profissionais", screen: "professionals-management" },
+          { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
+          { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
+          { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
+          { icon: <ClipboardList size={18} />, label: "Formulários", screen: "forms-list" },
+        ];
 
-  const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : "Coordenação";
+  const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : role === "coordenacao" ? "Coordenação" : "Administração";
   const userName = nomeExibicaoPorPerfil(role);
 
   return (
@@ -643,7 +650,8 @@ function LoginScreen({ onLogin, onPublicJourney }: {
   const roles: { id: Role; label: string; defaultEmail: string }[] = [
     { id: "recepcao", label: "Recepção", defaultEmail: "recepcao@hospital.com.br" },
     { id: "profissional", label: "Profissional", defaultEmail: "felipe@hospital.com.br" },
-    { id: "coordenacao", label: "Coordenação", defaultEmail: "admin@hospital.com.br" },
+    { id: "coordenacao", label: "Coordenação", defaultEmail: "coordenacao@hospital.com.br" },
+    { id: "administrador", label: "Administração", defaultEmail: "admin@hospital.com.br" },
   ];
 
   const currentRoleConfig = roles.find(r => r.id === role) || roles[1];
@@ -3598,7 +3606,15 @@ export default function App() {
 
   function handleLogin(r: Role) {
     setRole(r);
-    setScreen(r === "recepcao" ? "reception-dashboard" : r === "coordenacao" ? "coordination-dashboard" : "professional-dashboard");
+    setScreen(
+      r === "recepcao"
+        ? "reception-dashboard"
+        : r === "administrador"
+          ? "professionals-management"
+          : r === "coordenacao"
+            ? "coordination-dashboard"
+            : "professional-dashboard"
+    );
   }
 
   function handleLogout() {
@@ -3720,11 +3736,11 @@ export default function App() {
     "patient-registration": "reception-dashboard",
     "specialty-form": "patient-record",
     "consolidated-record": "patient-record",
-    "professionals-management": "coordination-dashboard",
+    "professionals-management": role === "administrador" ? "professionals-management" : "coordination-dashboard",
     "time-targets": "coordination-dashboard",
     "patient-record": role === "recepcao"
       ? "reception-dashboard"
-      : role === "coordenacao"
+      : role === "coordenacao" || role === "administrador"
         ? "coordination-dashboard"
         : "professional-dashboard",
   };
