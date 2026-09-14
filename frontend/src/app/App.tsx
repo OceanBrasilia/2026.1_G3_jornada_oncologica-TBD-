@@ -3,13 +3,35 @@ import { api, type DashboardJornadaItem, type DashboardCoordenacaoResponse } fro
 import {
   Activity, AlertCircle, ArrowLeft, BarChart3, Bell, Check,
   CheckCircle, ClipboardList, Clock, Download, Eye, FileText,
-  Filter, Heart, Home, LogOut, Menu, Phone, Plus, Save,
-  Search, Stethoscope, TrendingUp, Upload, User, Users, X,
-  ChevronRight, Calendar, MapPin, Paperclip, Layers,
+  Filter, Heart, Home, LogOut, Menu, Plus, Save,
+  Search, Stethoscope, Upload, User, Users, X,
+  MapPin, Paperclip, Layers,
   AlertTriangle, Clipboard, UserPlus, Shield, Pencil, Trash2,
   SlidersHorizontal, RotateCcw
 } from "lucide-react";
-
+import { EnfermagemForm } from "./components/forms/EnfermagemForm";
+import { NutricaoForm } from "./components/forms/NutricaoForm";
+import { FisioterapiaForm } from "./components/forms/FisioterapiaForm";
+import { TerapiaOcupacionalForm } from "./components/forms/TerapiaOcupacionalForm";
+import { MedicinaForm } from "./components/forms/MedicinaForm";
+import { PsicologiaForm } from "./components/forms/PsicologiaForm";
+import { ServicoSocialForm } from "./components/forms/ServicoSocialForm";
+import { DefaultForm } from "./components/forms/DefaultForm";
+import { OdontologiaForm } from "./components/forms/OdontologiaForm";
+import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
+import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
+import { AlertBadge } from "./components/ui/AlertBadge";
+import { Level2Banner } from "./components/ui/Level2Banner";
+import { PendencyList } from "./components/ui/PendencyList";
+import { mockPatientAlerts } from "./mocks/patientAlertsMock";
+import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
+import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
+import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts";
+import {
+  buildDadosGerais, buildDetalhesEspecialidade, buildInformacoesCompartilhadas, buildResumoNutricao, buildResumoPsicologia, statusLabel,
+} from "./consolidado/buildConsolidatedView";
+import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
+import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,14 +93,15 @@ interface Patient {
   religion?: string;
   raceColor?: string;
   formAnswers?: Record<string, Record<string, string>>;
+  alerts?: PatientAlert[];
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const SPEC_NAMES = ["Recepção","Enfermagem","Medicina","Nutrição","Fisioterapia","Serviço Social","Psicologia","Odontologia","Fonoaudiologia","Terapia Ocupacional"];
-const SPEC_IDS   = ["recepcao","enfermagem","medicina","nutricao","fisioterapia","servico-social","psicologia","odontologia","fonoaudiologia","terapia-ocupacional"];
-const SPEC_PROFS = ["Carla Santos","Enfª. Patrícia Lima","Dr. Rafael Costa","Nutr. Fernanda Alves","Fisio. Pedro Nunes","AS Lívia Souza","Psic. Marcos Vidal","CD João Melo","Fga. Sônia Reis","TO Amanda Borges"];
-const SPEC_TIMES = ["08:20","09:05","09:55","11:00","11:45","12:30","13:20","14:10","15:00","15:45"];
+const SPEC_NAMES = ["Recepção", "Enfermagem", "Medicina", "Nutrição", "Fisioterapia", "Serviço Social", "Psicologia", "Odontologia", "Fonoaudiologia", "Terapia Ocupacional"];
+const SPEC_IDS = ["recepcao", "enfermagem", "medicina", "nutricao", "fisioterapia", "servico-social", "psicologia", "odontologia", "fonoaudiologia", "terapia-ocupacional"];
+const SPEC_PROFS = ["Carla Santos", "Enfª. Patrícia Lima", "Dr. Rafael Costa", "Nutr. Fernanda Alves", "Fisio. Pedro Nunes", "AS Lívia Souza", "Psic. Marcos Vidal", "CD João Melo", "Fga. Sônia Reis", "TO Amanda Borges"];
+const SPEC_TIMES = ["08:20", "09:05", "09:55", "11:00", "11:45", "12:30", "13:20", "14:10", "15:00", "15:45"];
 
 function mkSpecs(statuses: SpecStatus[]): Specialty[] {
   return SPEC_NAMES.map((name, i) => ({
@@ -102,11 +125,15 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Temperatura": "36,8°C",
     "Saturação O₂": "97%",
     "Frequência cardíaca": "78 bpm",
-    "Peso": "68 kg",
-    "Altura": "1,63 m",
-    "Alergias": "Dipirona",
-    "Comorbidades": "Hipertensão controlada",
-    "Hábitos (tabagismo, etilismo)": "Ex-tabagista (parou há 5 anos), etilismo social",
+    "peso": "68",
+    "altura": "1.63",
+    "Alergia": "Sim",
+    "Reação alergica": "Dipirona",
+    "comorbidades_lista": "Hipertensão Arterial",
+    "tabagismo": "Ex-tabagista",
+    "tabagismo_detalhes": "parou há 5 anos",
+    "etilismo": "Sim",
+    "etilismo_detalhes": "social",
     "Queixas principais": "Dor moderada no local da cirurgia. Relata cansaço frequente.",
   },
   medicina: {
@@ -117,11 +144,11 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Conduta proposta": "Quimioterapia neoadjuvante",
     "Encaminhamentos": "Oncologia clínica, Radioterapia",
     "Observações": "Paciente orientada sobre plano terapêutico. Exames complementares solicitados.",
-    "Peso": "70 kg"
+    "peso": "70"
   },
   nutricao: {
-    "Peso": "68 kg",
-    "Altura": "1,63 m",
+    "peso": "68",
+    "altura": "1.63",
     "IMC": "25,6",
     "Risco nutricional": "Moderado",
     "Uso de sonda/gastrostomia": "Não",
@@ -197,7 +224,8 @@ const PATIENTS: Patient[] = [
       recepcao: MOCK_FORM_ANSWERS.recepcao,
       enfermagem: MOCK_FORM_ANSWERS.enfermagem,
     },
-    specialties: mkSpecs(["atendido","atendido","em-atendimento","pendente","pendente","pendente","pendente","nao-se-aplica","nao-se-aplica","pendente"]),
+    alerts: mockPatientAlerts,
+    specialties: mkSpecs(["atendido", "atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "nao-se-aplica", "nao-se-aplica", "pendente"]),
   },
   {
     id: "CAO-2024-0002",
@@ -213,7 +241,7 @@ const PATIENTS: Patient[] = [
     status: "aguardando",
     arrivalTime: "09:00",
     date: "03/07/2024",
-    specialties: mkSpecs(["atendido","pendente","pendente","pendente","pendente","pendente","pendente","pendente","nao-se-aplica","pendente"]),
+    specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "nao-se-aplica", "pendente"]),
   },
   {
     id: "CAO-2024-0003",
@@ -239,7 +267,7 @@ const PATIENTS: Patient[] = [
       psicologia: MOCK_FORM_ANSWERS.psicologia,
       "terapia-ocupacional": MOCK_FORM_ANSWERS["terapia-ocupacional"],
     },
-    specialties: mkSpecs(["atendido","atendido","atendido","atendido","atendido","atendido","atendido","nao-se-aplica","nao-se-aplica","atendido"]),
+    specialties: mkSpecs(["atendido", "atendido", "atendido", "atendido", "atendido", "atendido", "atendido", "nao-se-aplica", "nao-se-aplica", "atendido"]),
   },
   {
     id: "CAO-2024-0004",
@@ -255,7 +283,7 @@ const PATIENTS: Patient[] = [
     status: "pendente",
     arrivalTime: "10:20",
     date: "03/07/2024",
-    specialties: mkSpecs(["atendido","atendido","pendente","pendente","pendente","pendente","pendente","nao-se-aplica","nao-se-aplica","pendente"]),
+    specialties: mkSpecs(["atendido", "atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "nao-se-aplica", "nao-se-aplica", "pendente"]),
   },
   {
     id: "CAO-2024-0005",
@@ -282,7 +310,7 @@ const PATIENTS: Patient[] = [
       enfermagem: MOCK_FORM_ANSWERS.enfermagem,
       medicina: MOCK_FORM_ANSWERS.medicina,
     },
-    specialties: mkSpecs(["atendido","atendido","atendido","em-atendimento","pendente","pendente","pendente","nao-se-aplica","pendente","pendente"]),
+    specialties: mkSpecs(["atendido", "atendido", "atendido", "em-atendimento", "pendente", "pendente", "pendente", "nao-se-aplica", "pendente", "pendente"]),
   },
 ];
 
@@ -290,12 +318,12 @@ const PATIENTS: Patient[] = [
 
 function StatusBadge({ status }: { status: SpecStatus | PatStatus }) {
   const cfg: Record<string, { label: string; cls: string }> = {
-    atendido:         { label: "Atendido",        cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-    pendente:         { label: "Pendente",         cls: "bg-amber-50 text-amber-700 border-amber-200" },
-    "em-atendimento": { label: "Em atendimento",   cls: "bg-blue-50 text-blue-700 border-blue-200" },
-    "nao-se-aplica":  { label: "Não se aplica",    cls: "bg-gray-50 text-gray-400 border-gray-200" },
-    aguardando:       { label: "Aguardando",        cls: "bg-sky-50 text-sky-700 border-sky-200" },
-    finalizado:       { label: "Finalizado",        cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    atendido: { label: "Atendido", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    pendente: { label: "Pendente", cls: "bg-amber-50 text-amber-700 border-amber-200" },
+    "em-atendimento": { label: "Em atendimento", cls: "bg-blue-50 text-blue-700 border-blue-200" },
+    "nao-se-aplica": { label: "Não se aplica", cls: "bg-gray-50 text-gray-400 border-gray-200" },
+    aguardando: { label: "Aguardando", cls: "bg-sky-50 text-sky-700 border-sky-200" },
+    finalizado: { label: "Finalizado", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   };
   const c = cfg[status] ?? { label: status, cls: "bg-gray-100 text-gray-500 border-gray-200" };
   return (
@@ -361,15 +389,15 @@ interface SidebarProps {
 function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarProps) {
   const navItems: { icon: React.ReactNode; label: string; screen: Screen }[] = role === "recepcao"
     ? [
-        { icon: <Home size={18} />, label: "Dashboard", screen: "reception-dashboard" },
-        { icon: <Plus size={18} />, label: "Novo Paciente", screen: "patient-registration" },
-      ]
+      { icon: <Home size={18} />, label: "Dashboard", screen: "reception-dashboard" },
+      { icon: <Plus size={18} />, label: "Novo Paciente", screen: "patient-registration" },
+    ]
     : role === "profissional"
-    ? [
+      ? [
         { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
         { icon: <ClipboardList size={18} />, label: "Formulários", screen: "forms-list" },
       ]
-    : [
+      : [
         { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
         { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
         { icon: <UserPlus size={18} />, label: "Profissionais", screen: "professionals-management" },
@@ -377,12 +405,12 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
       ];
 
   const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : "Coordenação";
-  const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
+  const userName = nomeExibicaoPorPerfil(role);
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/30 z-20 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed top-0 left-0 h-full w-60 bg-white border-r border-[rgba(27,108,168,0.12)] z-30 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+      {open && <div className="fixed inset-0 bg-black/30 z-20 lg:hidden print:hidden" onClick={onClose} />}
+      <aside className={`print:hidden fixed top-0 left-0 h-full w-60 bg-white border-r border-[rgba(27,108,168,0.12)] z-30 flex flex-col transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
         style={{ fontFamily: "'Nunito', sans-serif" }}>
         {/* Logo */}
         <div className="px-5 py-5 border-b border-[rgba(27,108,168,0.1)] flex items-center gap-3">
@@ -407,11 +435,10 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
             <button
               key={item.label}
               onClick={() => { onNavigate(item.screen); onClose(); }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${
-                screen === item.screen
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150 ${screen === item.screen
                   ? "bg-[#1B6CA8] text-white shadow-md"
                   : "text-[#6B7A8D] hover:bg-[#F4F7FB] hover:text-[#1A2332]"
-              }`}
+                }`}
             >
               {item.icon}
               {item.label}
@@ -505,11 +532,11 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
   const unread = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB] flex" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-[#F4F7FB] flex print:bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 lg:ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
         {/* Top bar */}
-        <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3">
+        <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3 print:hidden">
           <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)}>
             <Menu size={20} className="text-[#6B7A8D]" />
           </button>
@@ -553,9 +580,8 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
                     ) : notifications.map(n => (
                       <div key={n.id} className={`px-4 py-3 hover:bg-[#F9FBFE] transition-colors ${n.read ? "opacity-60" : ""}`}>
                         <div className="flex gap-3 items-start">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                            n.type === "new-patient" ? "bg-[#E8F4FD]" : "bg-emerald-50"
-                          }`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${n.type === "new-patient" ? "bg-[#E8F4FD]" : "bg-emerald-50"
+                            }`}>
                             {n.type === "new-patient"
                               ? <User size={14} className="text-[#1B6CA8]" />
                               : <CheckCircle size={14} className="text-emerald-600" />
@@ -717,22 +743,22 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
         // Mapeia etapas retornadas pelo backend
         const mappedSpecs: Specialty[] = data.jornada?.etapas?.length
           ? data.jornada.etapas.map(et => {
-              let st: SpecStatus = "pendente";
-              if (et.status === "ATENDIDO") st = "atendido";
-              else if (et.status === "EM_ATENDIMENTO") st = "em-atendimento";
-              else if (et.status === "NAO_SE_APLICA") st = "nao-se-aplica";
+            let st: SpecStatus = "pendente";
+            if (et.status === "ATENDIDO") st = "atendido";
+            else if (et.status === "EM_ATENDIMENTO") st = "em-atendimento";
+            else if (et.status === "NAO_SE_APLICA") st = "nao-se-aplica";
 
-              const compTime = et.finalizada_em
-                ? new Date(et.finalizada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
-                : undefined;
+            const compTime = et.finalizada_em
+              ? new Date(et.finalizada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+              : undefined;
 
-              return {
-                id: et.area_id || et.id,
-                name: et.nome,
-                status: st,
-                completedTime: compTime,
-              };
-            })
+            return {
+              id: et.area_id || et.id,
+              name: et.nome,
+              status: st,
+              completedTime: compTime,
+            };
+          })
           : mkSpecs(["atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]);
 
         const publicPatient: Patient = {
@@ -1070,7 +1096,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEF2F7]">
-                {["Paciente","ID","Diagnóstico","Chegada","Presença","Status","Ações"].map(h => (
+                {["Paciente", "ID", "Diagnóstico", "Chegada", "Presença", "Status", "Ações"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-[#9AAABB] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -1141,8 +1167,8 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   {ck.departed
                     ? <span className="text-xs text-gray-500 font-semibold bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full flex items-center gap-1"><LogOut size={10} />Saiu {ck.departedAt}</span>
                     : ck.arrived
-                    ? <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1"><Check size={10} />Presente {ck.arrivedAt}</span>
-                    : <span className="text-xs text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1"><Clock size={10} />Aguardando</span>}
+                      ? <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1"><Check size={10} />Presente {ck.arrivedAt}</span>
+                      : <span className="text-xs text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1"><Clock size={10} />Aguardando</span>}
                 </div>
                 <button onClick={() => onOpenPatient(p)}
                   className="w-full py-2 bg-[#E8F4FD] text-[#1B6CA8] rounded-xl text-sm font-bold hover:bg-[#1B6CA8] hover:text-white transition flex items-center justify-center gap-2">
@@ -1195,11 +1221,10 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                 {modalPatients.map(p => {
                   const ck = checkins[p.id] ?? { arrived: false, departed: false };
                   return (
-                    <div key={p.id} className={`rounded-xl border px-4 py-3.5 transition-colors ${
-                      ck.departed ? "bg-gray-50 border-gray-200" :
-                      ck.arrived ? "bg-emerald-50 border-emerald-200" :
-                      "bg-white border-[#D5E6F3]"
-                    }`}>
+                    <div key={p.id} className={`rounded-xl border px-4 py-3.5 transition-colors ${ck.departed ? "bg-gray-50 border-gray-200" :
+                        ck.arrived ? "bg-emerald-50 border-emerald-200" :
+                          "bg-white border-[#D5E6F3]"
+                      }`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm text-[#1A2332] truncate">{p.name}</p>
@@ -1292,13 +1317,12 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                       const f = e.dataTransfer.files[0];
                       if (f) handleUploadFile(f);
                     }}
-                    className={`rounded-2xl border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-3 py-10 cursor-pointer ${
-                      uploadDragging
+                    className={`rounded-2xl border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-3 py-10 cursor-pointer ${uploadDragging
                         ? "border-[#1B6CA8] bg-[#E8F4FD]"
                         : uploadFile
-                        ? "border-emerald-400 bg-emerald-50"
-                        : "border-[#D5E6F3] bg-[#F9FBFE] hover:border-[#1B6CA8] hover:bg-[#E8F4FD]"
-                    }`}
+                          ? "border-emerald-400 bg-emerald-50"
+                          : "border-[#D5E6F3] bg-[#F9FBFE] hover:border-[#1B6CA8] hover:bg-[#E8F4FD]"
+                      }`}
                     onClick={() => {
                       const inp = document.createElement("input");
                       inp.type = "file";
@@ -1360,11 +1384,10 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   <button
                     onClick={proceedToConfirm}
                     disabled={!uploadFile || !uploadPatientId}
-                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
-                      uploadFile && uploadPatientId
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${uploadFile && uploadPatientId
                         ? "bg-[#1B6CA8] text-white hover:bg-[#155a90] shadow-md shadow-[#1B6CA8]/20"
                         : "bg-[#EEF2F7] text-[#9AAABB] cursor-not-allowed"
-                    }`}>
+                      }`}>
                     Continuar
                   </button>
                 </div>
@@ -1513,7 +1536,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       maritalStatus: form.maritalStatus || undefined,
       raceColor: form.raceColor || undefined,
       religion: form.religion || undefined,
-      specialties: mkSpecs(["atendido","pendente","pendente","pendente","pendente","pendente","pendente","pendente","pendente","pendente"]),
+      specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]),
     };
 
     setGeneratedId(assignedId);
@@ -1578,7 +1601,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
             <select value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
-              {["Solteiro(a)","Casado(a)","União estável","Separado(a)","Divorciado(a)","Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
+              {["Solteiro(a)", "Casado(a)", "União estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
 
@@ -1587,7 +1610,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
             <select value={form.raceColor} onChange={e => setForm(f => ({ ...f, raceColor: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
-              {["Branca","Preta","Parda","Amarela","Indígena","Não declarada"].map(o => <option key={o}>{o}</option>)}
+              {["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não declarada"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
 
@@ -1596,7 +1619,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
             <select value={form.religion} onChange={e => setForm(f => ({ ...f, religion: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
-              {["Católica","Evangélica","Espírita","Umbanda / Candomblé","Budista","Judaica","Islâmica","Sem religião","Outra","Prefere não informar"].map(o => <option key={o}>{o}</option>)}
+              {["Católica", "Evangélica", "Espírita", "Umbanda / Candomblé", "Budista", "Judaica", "Islâmica", "Sem religião", "Outra", "Prefere não informar"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
         </div>
@@ -1740,7 +1763,7 @@ function FormsListScreen({ onOpenPatient }: { onOpenPatient: (p: Patient) => voi
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEF2F7]">
-                {["Paciente","Diagnóstico / CID","Especialidade","Responsável","Horário","Status","Ação"].map(h => (
+                {["Paciente", "Diagnóstico / CID", "Especialidade", "Responsável", "Horário", "Status", "Ação"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-[#9AAABB] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -1894,7 +1917,7 @@ function ProfessionalDashboard({ onOpenPatient, patients: patientsProp }: { onOp
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEF2F7]">
-                {["Paciente","ID","Diagnóstico / CID","Tempo total","Concluídas","Pendentes","Status","Ação"].map(h => (
+                {["Paciente", "ID", "Diagnóstico / CID", "Tempo total", "Concluídas", "Pendentes", "Status", "Ação"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-[#9AAABB] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -1982,20 +2005,28 @@ function ProfessionalDashboard({ onOpenPatient, patients: patientsProp }: { onOp
 
 // ─── Patient Record ───────────────────────────────────────────────────────────
 
-function AnswerCard({ answers, specName, professional, completedTime, onEdit, onExport }: {
-  answers: Record<string, string>;
+function AnswerCard({ answers, specId, role, professional, completedTime, onEdit, onExport }: {
+  answers: Record<string, any>;
+  specId: string;
   specName: string;
+  role: Role | null;
   professional?: string;
   completedTime?: string;
   onEdit: () => void;
   onExport: () => void;
 }) {
+  const temAcessoConfidencial = podeVerConfidencial(role);
+  const detalhes = buildDetalhesEspecialidade(specId, answers, temAcessoConfidencial);
+  const resumoNutricao = specId === "nutricao" ? buildResumoNutricao(answers) : null;
+  const resumoPsicologia = specId === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null;
+  const horario = answers["_updatedAt"];
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-emerald-700 font-medium flex-1">
           <CheckCircle size={15} />
-          Concluído por <span className="font-bold">{professional}</span>{completedTime ? ` às ${completedTime}` : ""}
+          Concluído por <span className="font-bold">{professional}</span>{(horario || completedTime) ? ` às ${horario || completedTime}` : ""}
         </div>
         <div className="flex gap-2 shrink-0">
           <button onClick={onEdit}
@@ -2009,27 +2040,59 @@ function AnswerCard({ answers, specName, professional, completedTime, onEdit, on
         </div>
       </div>
 
-      <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-0 bg-[#F9FBFE] rounded-xl border border-[#EEF2F7] overflow-hidden">
-        {Object.entries(answers).map(([k, v], i) => (
-          <div key={k} className={`px-4 py-3 border-b border-[#EEF2F7] ${i % 2 === 1 ? "sm:border-l" : ""}`}>
-            <dt className="text-[10px] font-bold text-[#9AAABB] uppercase tracking-wider mb-0.5">{k}</dt>
-            <dd className="text-sm font-semibold text-[#1A2332]">{v}</dd>
+      {resumoNutricao && (
+        <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-2">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">IMC</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
           </div>
-        ))}
-      </dl>
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+          </div>
+          <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+        </div>
+      )}
+      {resumoPsicologia && (
+        <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-1">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-bold text-[#1A2332]">IRPO — Índice Global de Risco</span>
+            <span className="font-bold text-[#1B6CA8]">{resumoPsicologia.irpoTotal} pontos ({resumoPsicologia.respondidas}/27 questões)</span>
+          </div>
+          {resumoPsicologia.irpoRisk && (
+            <p className="text-xs text-[#3A4354]">{resumoPsicologia.irpoRisk.level} — {resumoPsicologia.irpoRisk.indication}</p>
+          )}
+        </div>
+      )}
+
+      {detalhes.length === 0 ? (
+        <p className="text-sm text-gray-500 italic px-1">Sem registros detalhados.</p>
+      ) : (
+        <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-0 bg-[#F9FBFE] rounded-xl border border-[#EEF2F7] overflow-hidden">
+          {detalhes.map((d, i) => (
+            <div key={d.campo} className={`px-4 py-3 border-b border-[#EEF2F7] ${i % 2 === 1 ? "sm:border-l" : ""}`}>
+              <dt className="text-[10px] font-bold text-[#9AAABB] uppercase tracking-wider mb-0.5">{d.label}</dt>
+              <dd className="text-sm font-semibold text-[#1A2332]">{d.valor}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </div>
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
   docs: PatientDocument[];
   onDeleteDoc: (id: string) => void;
+  role: Role | null;
+  onAcknowledgeAlert: (alertId: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
+  const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
 
   // Password-protected delete state
   const [deleteTarget, setDeleteTarget] = useState<PatientDocument | null>(null);
@@ -2055,9 +2118,40 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   ];
   const activeSpec = patient.specialties.find(s => s.id === activeTab);
 
-  function handleExport(specName: string) {
-    setExportMsg(`Exportando avaliação de ${specName}...`);
-    setTimeout(() => setExportMsg(""), 2500);
+  const [exportError, setExportError] = useState("");
+
+  async function handleExport() {
+    setExportError("");
+    setExportMsg("Gerando PDF...");
+    const temAcessoConfidencial = podeVerConfidencial(role);
+    const agora = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const geradoEm = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
+    const infosCompartilhadas = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+
+    try {
+      // Import dinâmico: só baixa a biblioteca de PDF quando alguém realmente exporta.
+      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const resultado = await exportarFichaConsolidadaPdf({
+        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+        geradoEm,
+        exportadoPor: nomeExibicaoPorPerfil(role),
+        dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
+        divergencias: infosCompartilhadas.filter(i => i.divergente),
+        especialidades: buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial),
+      });
+      if (resultado.ok) {
+        setExportMsg("Ficha exportada em PDF.");
+      } else {
+        setExportMsg("");
+        setExportError(resultado.erro);
+      }
+    } catch (erro) {
+      console.error("Falha ao carregar o gerador de PDF:", erro);
+      setExportMsg("");
+      setExportError("Não foi possível gerar o PDF agora. Tente novamente em instantes.");
+    }
+    setTimeout(() => { setExportMsg(""); setExportError(""); }, 3000);
   }
 
   return (
@@ -2067,13 +2161,27 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
           <Download size={15} /> {exportMsg}
         </div>
       )}
+      {exportError && (
+        <div className="fixed bottom-4 right-4 z-50 bg-red-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 max-w-xs">
+          <AlertTriangle size={15} className="shrink-0" /> {exportError}
+        </div>
+      )}
 
       {/* Patient header */}
       <div className="bg-gradient-to-r from-[#1B6CA8] to-[#2287c5] rounded-2xl shadow-md p-5 text-white">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex-1">
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">{patient.id}</p>
-            <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
+            <div className="flex items-center gap-3 mb-1">
+              <h2 className="text-2xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
+              {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+                <div className="flex items-center gap-1">
+                  {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                    <AlertBadge key={alert.id} category={alert.category} alert={alert} />
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-blue-100">
               <span>{patient.age} anos</span>
               <span>{patient.diagnosis}</span>
@@ -2087,7 +2195,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
                 <FileText size={13} /> Ficha consolidada
               </button>
-              <button onClick={() => handleExport("Ficha")}
+              <button onClick={() => handleExport()}
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
                 <Download size={13} /> PDF
               </button>
@@ -2101,6 +2209,9 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
           <div><p className="text-blue-200">Acompanhante</p><p className="font-semibold">{patient.companion ?? "Não"}</p></div>
         </div>
       </div>
+
+      <Level2Banner alerts={visibleAlerts} onAcknowledge={onAcknowledgeAlert} />
+      <PendencyList alerts={visibleAlerts} />
 
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-4">
@@ -2190,52 +2301,41 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   <h4 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Informações Compartilhadas</h4>
                   <span className="text-[10px] text-[#2DB5A3] font-bold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20">Histórico unificado</span>
                 </div>
-                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { key: "Peso", label: "Peso", fallback: patient.weight ?? "—", source: "Enfermagem às 09:25" },
-                    { key: "Altura", label: "Altura", fallback: patient.height ?? "—", source: "Enfermagem às 09:25" },
-                    { key: "Alergias", label: "Alergias", fallback: "Dipirona", source: "Enfermagem às 09:25" },
-                    { key: "Comorbidades", label: "Comorbidades", fallback: "Hipertensão controlada", source: "Enfermagem às 09:25" },
-                    { key: "Hábitos (tabagismo, etilismo)", label: "Hábitos", fallback: "Ex-tabagista", source: "Enfermagem às 09:25" }
-                  ].map(info => {
-                    // Check conflicts
-                    const vals = new Map<string, { val: string, time: string }>(); // specName -> {val, time}
-                    let lastSpec = "";
-                    let lastTime = "";
-                    if (patient.formAnswers) {
-                      Object.entries(patient.formAnswers).forEach(([specKey, answers]) => {
-                        const v = answers[info.key];
-                        if (v && v !== "—" && info.key !== "_updatedAt") {
-                          const specObj = patient.specialties.find(s => s.id === specKey);
-                          const specName = specObj?.name || specKey;
-                          const t = answers["_updatedAt"] || specObj?.completedTime || "recente";
-                          vals.set(specName, { val: v, time: t });
-                          lastSpec = specName;
-                          lastTime = t;
-                        }
-                      });
-                    }
-                    const distinctVals = new Set(Array.from(vals.values()).map(x => x.val));
-                    const hasConflict = distinctVals.size > 1;
-                    const value = hasConflict 
-                      ? Array.from(vals.entries()).map(([s, obj]) => `${obj.val} (${s} às ${obj.time})`).join(" vs ") 
-                      : (Array.from(vals.values())[0]?.val ?? patient.formAnswers?.enfermagem?.[info.key] ?? info.fallback);
-                    const dynamicSource = vals.size > 0 ? `${lastSpec} às ${lastTime}` : info.source;
-                    
-                    return (
-                      <div key={info.label} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${hasConflict ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
-                        <div>
-                          <div className="flex items-start justify-between gap-1 mb-0.5">
-                            <p className={`text-xs font-bold ${hasConflict ? "text-amber-700" : "text-[#6B7A8D]"}`}>{info.label}</p>
-                            {hasConflict && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-bold" title="Dados divergentes registrados por outras especialidades"><AlertCircle size={10}/> divergência</span>}
+                {(() => {
+                  const infos = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+                  if (infos.length === 0) {
+                    return <p className="text-sm text-gray-500">Nenhuma especialidade preencheu dados compartilhados ainda.</p>;
+                  }
+                  return (
+                    <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3">
+                      {infos.map(info => (
+                        <div key={info.campo} className={`border rounded-xl p-3 flex flex-col justify-between h-full ${info.divergente ? "bg-amber-50/50 border-amber-300/50" : "bg-[#F0FBF9] border-[#2DB5A3]/30"}`}>
+                          <div>
+                            <div className="flex items-start justify-between gap-1 mb-0.5">
+                              <p className={`text-xs font-bold ${info.divergente ? "text-amber-700" : "text-[#6B7A8D]"}`}>{info.label}</p>
+                              {info.divergente && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded flex items-center gap-0.5 font-bold" title="Dados divergentes registrados por outras especialidades"><AlertCircle size={10} /> divergência</span>}
+                            </div>
+                            {info.divergente ? (
+                              <div className="space-y-1.5 mt-2">
+                                <p className="text-xs text-amber-900 leading-tight">
+                                  <span className="font-bold">Origem:</span> {info.valor} <span className="opacity-75">({info.origem})</span>
+                                </p>
+                                {info.outrasRespostas.map((d, idx) => (
+                                  <p key={idx} className="text-xs text-amber-900 leading-tight">
+                                    <span className="font-bold">Divergência:</span> {d.valor} <span className="opacity-75">({d.especialidades.join(", ")})</span>
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm font-semibold mb-2 mt-1 leading-tight text-[#1A2332]">{info.valor}</p>
+                            )}
                           </div>
-                          <p className={`text-sm font-semibold mb-2 leading-tight ${hasConflict ? "text-amber-900" : "text-[#1A2332]"}`}>{value}</p>
+                          {!info.divergente && <span className="text-[10px] font-semibold mt-auto text-[#2DB5A3]">↩ {info.origem}</span>}
                         </div>
-                        <span className={`text-[10px] font-semibold mt-auto ${hasConflict ? "text-amber-600" : "text-[#2DB5A3]"}`}>↩ {dynamicSource}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : activeTab === "documentos" ? (
@@ -2301,11 +2401,13 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                 return (
                   <AnswerCard
                     answers={answers ?? {}}
+                    specId={activeSpec.id}
                     specName={activeSpec.name}
+                    role={role}
                     professional={activeSpec.professional}
                     completedTime={activeSpec.completedTime}
                     onEdit={() => onOpenSpecialty(activeSpec.id, "edit")}
-                    onExport={() => handleExport(activeSpec.name)}
+                    onExport={() => handleExport()}
                   />
                 );
               })() : activeSpec.status === "nao-se-aplica" ? (
@@ -2359,11 +2461,10 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   onKeyDown={e => e.key === "Enter" && submitDelete()}
                   placeholder="Digite a senha"
                   autoFocus
-                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-[#1A2332] focus:outline-none focus:ring-2 transition ${
-                    deleteError
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-sm text-[#1A2332] focus:outline-none focus:ring-2 transition ${deleteError
                       ? "border-red-400 bg-red-50 focus:ring-red-200"
                       : "border-[#D5E6F3] bg-white focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8]"
-                  }`}
+                    }`}
                 />
                 {deleteError && (
                   <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
@@ -2391,245 +2492,65 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-const SharedField = ({ label, value, from, onChange }: { label: string; value?: string; from?: string; onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void }) => (
-  <div>
-    <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-    {from
-      ? <div className="relative">
-          <input type="text" value={value ?? ""} onChange={onChange}
-            className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-[#2DB5A3]/50 bg-[#F0FBF9] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#2DB5A3]/30 transition" />
-          <span className="absolute right-3 top-3 text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] pl-2">↩ {from}</span>
-        </div>
-      : <input type="text" value={value ?? ""} onChange={onChange}
-          className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 transition" />}
-  </div>
-);
-
-function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
+function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
   onBack: () => void;
   onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
-  const isEdit = mode === "edit";
   const spec = patient.specialties.find(s => s.id === specId);
   const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
-  const [weight, setWeight] = useState(patient.formAnswers?.[specId]?.Peso ?? patient.formAnswers?.enfermagem?.Peso ?? patient.weight ?? "");
-  const [height, setHeight] = useState(patient.formAnswers?.[specId]?.Altura ?? patient.formAnswers?.enfermagem?.Altura ?? patient.height ?? "");
-  const [comorbidities, setComorbidities] = useState(patient.formAnswers?.[specId]?.Comorbidades ?? patient.formAnswers?.enfermagem?.Comorbidades ?? "");
-  const [habits, setHabits] = useState(patient.formAnswers?.[specId]?.["Hábitos (tabagismo, etilismo)"] ?? patient.formAnswers?.enfermagem?.["Hábitos (tabagismo, etilismo)"] ?? "");
-  const [alergias, setAlergias] = useState(patient.formAnswers?.[specId]?.Alergias ?? patient.formAnswers?.enfermagem?.Alergias ?? "");
-  const [queixas, setQueixas] = useState(patient.formAnswers?.[specId]?.["Queixas principais"] ?? patient.formAnswers?.enfermagem?.["Queixas principais"] ?? "");
-  const [diag, setDiag] = useState(patient.formAnswers?.[specId]?.["Diagnóstico oncológico"] ?? "");
-  const [estad, setEstad] = useState(patient.formAnswers?.[specId]?.Estadiamento ?? "");
-  const [conduta, setConduta] = useState(patient.formAnswers?.[specId]?.["Conduta proposta"] ?? "");
+  const inheritedData: Record<string, string> = {};
+  const origins: Record<string, string> = {};
 
-  const getAnswers = () => ({
-    Peso: weight, Altura: height, Comorbidades: comorbidities, "Hábitos (tabagismo, etilismo)": habits, Alergias: alergias, "Queixas principais": queixas, 
-    "Diagnóstico oncológico": diag, Estadiamento: estad, "Conduta proposta": conduta, "Observações": obs
+  if (patient.formAnswers) {
+    for (let i = 0; i < patient.specialties.length; i++) {
+      const s = patient.specialties[i];
+      if (s.id === specId) continue;
+      const answers = patient.formAnswers[s.id];
+      if (answers) {
+        for (const [key, val] of Object.entries(answers)) {
+          if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
+          if (val && val !== "—") {
+            inheritedData[key] = val;
+            origins[key] = s.name;
+          }
+        }
+      }
+    }
+  }
+
+  const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({
+    ...(patient.formAnswers?.[specId] || {})
   });
 
-  const imc = weight && height
+  const handleDynamicAnswer = (key: string, value: string) => {
+    setDynamicAnswers(prev => ({ ...prev, [key]: value }));
+  };
+
+  const getAnswers = () => ({
+    ...dynamicAnswers,
+    "Observações": obs
+  });
+
+  const mergedData = { ...inheritedData, ...dynamicAnswers };
 
   return (
     <div className="max-w-2xl space-y-5">
-      {/* Patient mini-header */}
-      <div className="bg-[#E8F4FD] rounded-xl px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-xs text-[#1B6CA8] font-bold">{patient.id}</p>
-          <p className="text-sm font-bold text-[#1A2332]">{patient.name}</p>
-        </div>
-        <span className="text-xs font-semibold text-[#1B6CA8] bg-white px-2.5 py-1 rounded-full border border-[#D5E6F3]">{isEdit ? "Editar – " : ""}{spec?.name}</span>
-      </div>
-
-      {/* Shared fields */}
-      <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-[#2DB5A3]" />
-          <h3 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Campos compartilhados</h3>
-          <span className="text-[10px] text-[#2DB5A3] font-bold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20">Reaproveitados</span>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <SharedField label="Nome completo" value={patient.name} />
-          <SharedField label="Diagnóstico" value={patient.diagnosis} />
-          <SharedField label="CID" value={patient.cid} />
-          <SharedField label="Telefone" value={patient.phone} />
-        </div>
-      </div>
-
       {/* Specialty-specific */}
-      {specId === "nutricao" && (
-        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Nutricional</h3>
-          <div className="grid sm:grid-cols-3 gap-3 mb-4">
-            <div>
-              <SharedField 
-                label="Peso (kg)" 
-                value={weight} 
-                from={patient.formAnswers?.enfermagem?.Peso ? "Enfermagem" : undefined}
-                onChange={e => setWeight(e.target.value)} 
-              />
-            </div>
-            <div>
-              <SharedField 
-                label="Altura (m)" 
-                value={height} 
-                from={patient.formAnswers?.enfermagem?.Altura ? "Enfermagem" : undefined}
-                onChange={e => setHeight(e.target.value)} 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">IMC</label>
-              <div className="px-3 py-2.5 rounded-xl bg-[#E8F4FD] border border-[#D5E6F3] text-sm text-[#1B6CA8] font-bold">{imc}</div>
-            </div>
-          </div>
-          {[
-            { label: "Risco nutricional", opts: ["Baixo","Moderado","Alto"] },
-            { label: "Uso de sonda/gastrostomia", opts: ["Não","Sonda nasogástrica","Gastrostomia","Jejunostomia"] },
-          ].map(({ label, opts }) => (
-            <div key={label} className="mb-3">
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-              <select className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20">
-                <option value="">Selecione...</option>
-                {opts.map(o => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
+      {specId === "nutricao" && <NutricaoForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "fisioterapia" && <FisioterapiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "terapia-ocupacional" && <TerapiaOcupacionalForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "enfermagem" && <EnfermagemForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "medicina" && <MedicinaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "psicologia" && <PsicologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "servico-social" && <ServicoSocialForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "odontologia" && <OdontologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {specId === "fonoaudiologia" && <FonoaudiologiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
+      {(specId !== "nutricao" && specId !== "fisioterapia" && specId !== "terapia-ocupacional" && specId !== "enfermagem" && specId !== "medicina" && specId !== "psicologia" && specId !== "servico-social" && specId !== "odontologia" && specId !== "fonoaudiologia") && (
+        <DefaultForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={{ ...patient, specName: spec?.name }} />
       )}
-
-      {specId === "fisioterapia" && (
-        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Fisioterapêutica</h3>
-          {[
-            { label: "Nível de dor (0–10)", opts: ["0 – Sem dor","1–3 – Leve","4–6 – Moderada","7–10 – Intensa"] },
-            { label: "Mobilidade", opts: ["Preservada","Limitada","Dependente"] },
-            { label: "Limitação funcional", opts: ["Ausente","Leve","Moderada","Grave"] },
-            { label: "Necessidade de reabilitação", opts: ["Não","Sim – ambulatorial","Sim – internação"] },
-          ].map(({ label, opts }) => (
-            <div key={label} className="mb-3">
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-              <select className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20">
-                <option value="">Selecione...</option>
-                {opts.map(o => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {specId === "terapia-ocupacional" && (
-        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação de Terapia Ocupacional</h3>
-          {[
-            { label: "Independência nas AVDs", opts: ["Independente","Parcialmente dependente","Totalmente dependente"] },
-            { label: "Capacidade de autocuidado", opts: ["Preservada","Preservada com auxílio","Comprometida"] },
-            { label: "Uso de órtese/prótese", opts: ["Não","Sim – membro superior","Sim – membro inferior","Sim – outros"] },
-            { label: "Atividades de lazer/trabalho", opts: ["Mantidas","Reduzidas","Interrompidas"] },
-            { label: "Adaptações no domicílio", opts: ["Não necessárias","Orientadas","Em execução"] },
-            { label: "Fadiga oncológica", opts: ["Ausente","Leve","Moderada","Grave"] },
-          ].map(({ label, opts }) => (
-            <div key={label} className="mb-3">
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
-              <select className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20">
-                <option value="">Selecione...</option>
-                {opts.map(o => <option key={o}>{o}</option>)}
-              </select>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {specId === "enfermagem" && (
-        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação de Enfermagem</h3>
-          <div className="grid sm:grid-cols-2 gap-3 mb-4">
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Peso (kg)</label>
-              <input type="text" value={weight} onChange={e => setWeight(e.target.value)}
-                placeholder="Ex.: 68"
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Altura (m)</label>
-              <input type="text" value={height} onChange={e => setHeight(e.target.value)}
-                placeholder="Ex.: 1,63"
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-          </div>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Comorbidades</label>
-              <input type="text" placeholder="Ex.: Hipertensão, Diabetes" value={comorbidities} onChange={e => setComorbidities(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Hábitos (tabagismo, etilismo)</label>
-              <input type="text" placeholder="Ex.: Ex-tabagista, etilismo social" value={habits} onChange={e => setHabits(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Alergias</label>
-              <input type="text" value={alergias} onChange={e => setAlergias(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-[#1A2332] mb-1">Queixas principais</label>
-              <input type="text" value={queixas} onChange={e => setQueixas(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {specId === "medicina" && (
-        <div className="space-y-5">
-          <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-            <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Dados Compartilhados (Enfermagem)</h3>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <SharedField label="Peso" value={weight} onChange={e => setWeight(e.target.value)} from="Enfermagem" />
-              <SharedField label="Altura" value={height} onChange={e => setHeight(e.target.value)} from="Enfermagem" />
-              <SharedField label="Comorbidades" value={comorbidities} onChange={e => setComorbidities(e.target.value)} from="Enfermagem" />
-              <SharedField label="Hábitos" value={habits} onChange={e => setHabits(e.target.value)} from="Enfermagem" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-            <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Avaliação Médica</h3>
-            <div className="space-y-3">
-              {[
-                { label: "Diagnóstico oncológico", val: diag, setter: setDiag },
-                { label: "Estadiamento", val: estad, setter: setEstad },
-                { label: "Conduta proposta", val: conduta, setter: setConduta }
-              ].map(f => (
-                <div key={f.label}>
-                  <label className="block text-xs font-bold text-[#1A2332] mb-1">{f.label}</label>
-                  <input type="text" value={f.val} onChange={e => f.setter(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(specId !== "nutricao" && specId !== "fisioterapia" && specId !== "terapia-ocupacional" && specId !== "enfermagem" && specId !== "medicina") && (
-        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Campos específicos – {spec?.name}</h3>
-          <div className="space-y-3">
-            {["Avaliação geral","Queixas principais","Conduta","Encaminhamentos"].map(f => (
-              <div key={f}>
-                <label className="block text-xs font-bold text-[#1A2332] mb-1">{f}</label>
-                <select className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332]">
-                  <option>Selecione...</option>
-                </select>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Observations */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
         <h3 className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
@@ -2639,22 +2560,22 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
       </div>
 
       {/* Actions */}
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button onClick={onBack}
-          className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+          className="flex items-center justify-center gap-2 px-6 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-full text-sm font-bold hover:bg-[#F4F7FB] transition">
           <ArrowLeft size={15} /> Voltar
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "em-atendimento")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl text-sm font-semibold hover:bg-[#F4F7FB] transition">
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-full text-sm font-bold hover:bg-[#F4F7FB] transition">
           <Save size={15} /> Salvar rascunho
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "nao-se-aplica")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#D5E6F3] rounded-xl text-sm font-semibold text-[#6B7A8D] hover:bg-[#F4F7FB] transition">
+          className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#FCD34D] bg-white text-[#D97706] rounded-full text-sm font-bold hover:bg-[#FFFBEB] transition">
           <X size={15} /> Não se aplica
         </button>
         <button onClick={() => onSave(specId, getAnswers(), "atendido")}
-          className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition shadow-md">
-          <CheckCircle size={15} /> Finalizar atendimento
+          className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#0F9E62] text-white rounded-full text-sm font-bold hover:bg-[#0B7A4B] transition shadow-sm">
+          <CheckCircle size={15} /> Finalizar avaliação
         </button>
       </div>
     </div>
@@ -2663,8 +2584,15 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
-function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBack: () => void }) {
-  const now = "03/07/2024 às 11:24";
+function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient; onBack: () => void; role: Role | null }) {
+  const agora = new Date();
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
+  const visibleAlerts = filterAlertsForRole(patient.alerts || [], role);
+  const temAcessoConfidencial = podeVerConfidencial(role);
+  const infosCompartilhadas = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+  const dadosCompartilhados = infosCompartilhadas.filter(i => !i.divergente);
+  const divergencies = infosCompartilhadas.filter(i => i.divergente);
   const blocks = [
     {
       title: "Dados gerais",
@@ -2697,73 +2625,214 @@ function ConsolidatedRecordScreen({ patient, onBack }: { patient: Patient; onBac
     },
   ];
 
-  const atendidos = patient.specialties.filter(s => s.status === "atendido");
-  const pendentes = patient.specialties.filter(s => s.status === "pendente");
+  const especialidadesParaPdf = buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial);
+
+  const [exportando, setExportando] = useState(false);
+  const [erroExportacao, setErroExportacao] = useState("");
+
+  const handleExportPDF = async () => {
+    setErroExportacao("");
+    setExportando(true);
+    const exportadoPor = nomeExibicaoPorPerfil(role);
+    try {
+      // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
+      // não pesa o carregamento inicial do app para quem nunca usa essa tela.
+      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const resultado = await exportarFichaConsolidadaPdf({
+        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+        geradoEm: now,
+        exportadoPor,
+        dadosCompartilhados,
+        divergencias: divergencies,
+        especialidades: especialidadesParaPdf,
+      });
+      if (!resultado.ok) setErroExportacao(resultado.erro);
+    } catch (erro) {
+      console.error("Falha ao carregar o gerador de PDF:", erro);
+      setErroExportacao("Não foi possível carregar o gerador de PDF agora. Tente novamente em instantes.");
+    }
+    setExportando(false);
+  };
 
   return (
-    <div className="max-w-3xl space-y-5">
-      <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm px-6 py-4 flex items-center justify-between">
+    <div className="max-w-4xl mx-auto space-y-5 print:space-y-4 print:max-w-none print:m-0 print:p-0">
+      <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm px-6 py-4 flex items-center justify-between print:border-none print:shadow-none print:px-0 print:py-2 print:border-b-2 print:border-gray-800 print:rounded-none">
         <div>
-          <h2 className="font-bold text-[#1A2332] text-lg" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada</h2>
-          <p className="text-xs text-[#9AAABB]">Gerada em {now} · {patient.id}</p>
+          <div className="flex items-center gap-3">
+            <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
+            {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
+              <div className="flex items-center gap-1 print:hidden">
+                {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
+                  <AlertBadge key={alert.id} category={alert.category} alert={alert} />
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-[#9AAABB] print:text-gray-600">Ficha gerada em {now}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6B7A8D] print:text-gray-700 mt-1">
+            <span><strong className="text-[#1A2332] print:text-black">{patient.name}</strong> ({patient.id})</span>
+            <span>{patient.age} anos</span>
+            <span>{patient.diagnosis} · CID {patient.cid}</span>
+            <span>Chegada: {patient.date} às {patient.arrivalTime}</span>
+          </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md">
-          <Download size={15} /> Exportar PDF
+        <button onClick={handleExportPDF} disabled={exportando} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
+          <Download size={15} /> {exportando ? "Gerando PDF..." : "Exportar PDF"}
         </button>
       </div>
 
+      {erroExportacao && (
+        <div className="print:hidden bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2 text-sm text-red-700">
+          <AlertTriangle size={16} className="shrink-0" /> {erroExportacao}
+        </div>
+      )}
+
       {blocks.map(b => (
-        <div key={b.title} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-          <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
-            <span className="text-[#1B6CA8]">{b.icon}</span> {b.title}
+        <div key={b.title} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 print:border-none print:shadow-none print:p-0 print:mb-6">
+          <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2 text-base print:text-lg print:mb-2 print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <span className="text-[#1B6CA8] print:hidden">{b.icon}</span> {b.title}
           </h3>
-          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5">
+          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 print:grid-cols-2 print:gap-y-1">
             {b.rows.map(([k, v]) => (
-              <div key={k} className="flex gap-2 text-sm border-b border-[#F4F7FB] pb-2.5 last:border-0">
-                <dt className="text-[#9AAABB] font-medium min-w-[140px] shrink-0">{k}</dt>
-                <dd className="text-[#1A2332] font-semibold">{v}</dd>
+              <div key={k} className="flex gap-2 text-sm border-b border-[#F4F7FB] pb-2.5 last:border-0 print:border-b-0 print:pb-1">
+                <dt className="text-[#9AAABB] font-medium min-w-[150px] shrink-0 print:text-gray-700">{k}</dt>
+                <dd className="text-[#1A2332] font-semibold print:text-black">{v}</dd>
               </div>
             ))}
           </dl>
         </div>
       ))}
 
-      {/* Specialties */}
-      <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-        <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
-          <span className="text-[#1B6CA8]"><Layers size={14} /></span> Avaliações por especialidade
-        </h3>
-        <div className="space-y-2">
-          {patient.specialties.map(sp => (
-            <div key={sp.id} className="flex items-center justify-between py-2 border-b border-[#F4F7FB] last:border-0">
-              <div>
-                <p className="text-sm font-semibold text-[#1A2332]">{sp.name}</p>
-                {sp.professional && <p className="text-xs text-[#6B7A8D]">{sp.professional}{sp.completedTime ? ` · ${sp.completedTime}` : ""}</p>}
-              </div>
-              <StatusBadge status={sp.status} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Pending */}
-      {pendentes.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-          <h3 className="font-bold text-amber-800 mb-3 flex items-center gap-2 text-sm">
-            <AlertTriangle size={14} /> Pendências e encaminhamentos
+      {/* Dados compartilhados entre especialidades — cada campo aparece uma única vez, com quem preencheu (RF-006/RF-009) */}
+      {dadosCompartilhados.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5 print:border-none print:shadow-none print:p-0 print:mb-6">
+          <h3 className="font-bold text-[#1A2332] mb-4 flex items-center gap-2 text-base print:text-lg print:mb-2 print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <span className="text-[#1B6CA8] print:hidden"><Layers size={14} /></span> Dados compartilhados entre especialidades
           </h3>
-          <div className="space-y-1.5">
-            {pendentes.map(sp => (
-              <div key={sp.id} className="flex items-center gap-2 text-sm text-amber-700">
-                <Clock size={13} /> <span>{sp.name} – atendimento pendente</span>
+          <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-2.5 print:grid-cols-2 print:gap-y-1">
+            {dadosCompartilhados.map(d => (
+              <div key={d.campo} className="flex gap-2 text-sm border-b border-[#F4F7FB] pb-2.5 last:border-0 print:border-b-0 print:pb-1">
+                <dt className="text-[#9AAABB] font-medium min-w-[150px] shrink-0 print:text-gray-700">{d.label}</dt>
+                <dd className="text-[#1A2332] font-semibold print:text-black">{d.valor} <span className="text-[10px] text-[#8A9EB9] font-normal">({d.origem})</span></dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
+      {/* Divergencies Block */}
+      {divergencies.length > 0 && (
+        <div className="bg-amber-50 rounded-2xl border border-amber-200 shadow-sm p-5 print:border-none print:shadow-none print:p-0 print:mb-6">
+          <h3 className="font-bold text-amber-800 mb-4 flex items-center gap-2 text-base print:text-lg print:mb-2 print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            <span className="text-amber-600 print:hidden"><AlertTriangle size={16} /></span> Alertas de Divergência
+          </h3>
+          <div className="space-y-4">
+            {divergencies.map(d => (
+              <div key={d.campo} className="bg-white rounded-xl border border-amber-200/50 p-4 shadow-sm">
+                <h4 className="text-sm font-bold text-amber-900 mb-3">Divergência detectada em: <span className="font-extrabold">{d.label}</span></h4>
+                <ul className="space-y-2">
+                  <li className="text-sm flex gap-3 items-start">
+                    <span className="text-amber-700 font-semibold min-w-[140px] mt-0.5">{d.origem}:</span>
+                    <span className="text-amber-900 bg-amber-100/50 px-2 py-0.5 rounded-md flex-1 leading-snug">{d.valor}</span>
+                  </li>
+                  {d.outrasRespostas.map((a, i) => (
+                    <li key={i} className="text-sm flex gap-3 items-start">
+                      <span className="text-amber-700 font-semibold min-w-[140px] mt-0.5">{a.especialidades.join(", ")}:</span>
+                      <span className="text-amber-900 bg-amber-100/50 px-2 py-0.5 rounded-md flex-1 leading-snug">{a.valor}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         </div>
       )}
 
+      {/* Specialty Summaries — uma seção por especialidade, com status (Preenchido/Pendente/Não aplicável) */}
+      <div className="space-y-4 print:space-y-6">
+        <h3 className="font-bold text-[#1A2332] flex items-center gap-2 text-base print:text-lg print:border-b print:pb-1" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          <span className="text-[#1B6CA8] print:hidden"><Layers size={16} /></span> Evolução e Conduta por Especialidade
+        </h3>
+
+        {patient.specialties.map(sp => {
+          const preenchido = sp.status === "atendido" || sp.status === "em-atendimento";
+
+          if (!preenchido) {
+            const isPendente = sp.status === "pendente";
+            return (
+              <div key={sp.id} className={`rounded-2xl border p-4 flex items-center justify-between print:break-inside-avoid ${isPendente ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}>
+                <span className={`font-bold text-sm ${isPendente ? "text-amber-900" : "text-gray-600"}`}>{sp.name}</span>
+                <span className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${isPendente ? "bg-amber-100 text-amber-700" : "bg-gray-200 text-gray-600"}`}>
+                  {isPendente && <Clock size={12} />} {statusLabel(sp.status)}
+                </span>
+              </div>
+            );
+          }
+
+          const answers = patient.formAnswers?.[sp.id];
+          const detalhes = buildDetalhesEspecialidade(sp.id, answers, temAcessoConfidencial);
+          const resumoNutricao = sp.id === "nutricao" ? buildResumoNutricao(answers) : null;
+          const resumoPsicologia = sp.id === "psicologia" && temAcessoConfidencial ? buildResumoPsicologia(answers) : null;
+
+          return (
+            <div key={sp.id} className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm overflow-hidden print:border-none print:shadow-none print:rounded-none print:break-inside-avoid">
+              <div className="p-4 bg-gray-50 border-b border-[rgba(27,108,168,0.1)] flex justify-between items-center print:bg-transparent print:p-0 print:border-b print:border-gray-300 print:mb-2">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-[#1A2332] text-sm print:text-base">{sp.name}</h4>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{statusLabel(sp.status)}</span>
+                </div>
+                <div className="text-xs text-[#6B7A8D] print:text-gray-600">
+                  {sp.professional && <span>{sp.professional}</span>}
+                  {sp.completedTime && <span> · {patient.date} às {sp.completedTime}</span>}
+                </div>
+              </div>
+              <div className="p-4 print:p-0 print:pt-2 space-y-4">
+                {resumoNutricao && (
+                  <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">IMC</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+                    </div>
+                    <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                  </div>
+                )}
+                {resumoPsicologia && (
+                  <div className="bg-[#F2FAF9] border border-[#D3EFEA] rounded-xl p-3 space-y-1">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-[#1A2332]">IRPO — Índice Global de Risco</span>
+                      <span className="font-bold text-[#1B6CA8]">{resumoPsicologia.irpoTotal} pontos ({resumoPsicologia.respondidas}/27 questões)</span>
+                    </div>
+                    {resumoPsicologia.irpoRisk && (
+                      <p className="text-xs text-[#3A4354]">{resumoPsicologia.irpoRisk.level} — {resumoPsicologia.irpoRisk.indication}</p>
+                    )}
+                  </div>
+                )}
+                {detalhes.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">Sem registros detalhados.</p>
+                ) : (
+                  <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 print:grid-cols-1 print:gap-y-1">
+                    {detalhes.map(d => (
+                      <div key={d.campo} className="text-sm">
+                        <dt className="text-[#6B7A8D] font-medium print:text-gray-700 print:font-bold">{d.label}</dt>
+                        <dd className="text-[#1A2332] mt-0.5 print:mt-0">{d.valor}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <PendencyList alerts={visibleAlerts} />
+
       <button onClick={onBack}
-        className="flex items-center gap-2 text-sm text-[#6B7A8D] hover:text-[#1A2332] transition font-medium">
+        className="print:hidden flex items-center gap-2 text-sm text-[#6B7A8D] hover:text-[#1A2332] transition font-medium mt-6">
         <ArrowLeft size={15} /> Voltar à ficha do paciente
       </button>
     </div>
@@ -2782,28 +2851,28 @@ interface Professional {
 }
 
 const INITIAL_PROFESSIONALS: Professional[] = [
-  { id: "PRO-001", name: "Carla Santos",        role: "Recepção",       specialty: "—",            email: "carla@hospital.com.br",     status: "ativo" },
-  { id: "PRO-002", name: "Marco Antônio",        role: "Recepção",       specialty: "—",            email: "marco@hospital.com.br",     status: "ativo" },
-  { id: "PRO-003", name: "Enfª. Patrícia Lima",  role: "Profissional",   specialty: "Enfermagem",   email: "patricia@hospital.com.br",  status: "ativo" },
-  { id: "PRO-004", name: "Enfº. Bruno Lima",     role: "Profissional",   specialty: "Enfermagem",   email: "bruno@hospital.com.br",     status: "ativo" },
-  { id: "PRO-005", name: "Dr. Rafael Costa",     role: "Profissional",   specialty: "Medicina",     email: "rafael@hospital.com.br",    status: "ativo" },
-  { id: "PRO-006", name: "Dra. Camila Rocha",    role: "Profissional",   specialty: "Medicina",     email: "camila@hospital.com.br",    status: "ativo" },
-  { id: "PRO-007", name: "Nutr. Fernanda Alves", role: "Profissional",   specialty: "Nutrição",     email: "fernanda@hospital.com.br",  status: "ativo" },
-  { id: "PRO-008", name: "Fisio. Pedro Nunes",   role: "Profissional",   specialty: "Fisioterapia", email: "pedro@hospital.com.br",     status: "ativo" },
-  { id: "PRO-009", name: "AS Lívia Souza",       role: "Profissional",   specialty: "Serviço Social", email: "livia@hospital.com.br",   status: "ativo" },
-  { id: "PRO-010", name: "Psic. Marcos Vidal",   role: "Profissional",   specialty: "Psicologia",    email: "marcos@hospital.com.br",  status: "ativo" },
-  { id: "PRO-011", name: "CD João Melo",         role: "Profissional",   specialty: "Odontologia",   email: "joao@hospital.com.br",    status: "ativo" },
-  { id: "PRO-012", name: "Fga. Sônia Reis",      role: "Profissional",   specialty: "Fonoaudiologia",      email: "sonia@hospital.com.br",   status: "ativo" },
-  { id: "PRO-014", name: "TO Amanda Borges",     role: "Profissional",   specialty: "Terapia Ocupacional", email: "amanda@hospital.com.br",  status: "ativo" },
-  { id: "PRO-013", name: "Ana Lima",             role: "Coordenação",    specialty: "—",                   email: "ana@hospital.com.br",      status: "ativo" },
+  { id: "PRO-001", name: "Carla Santos", role: "Recepção", specialty: "—", email: "carla@hospital.com.br", status: "ativo" },
+  { id: "PRO-002", name: "Marco Antônio", role: "Recepção", specialty: "—", email: "marco@hospital.com.br", status: "ativo" },
+  { id: "PRO-003", name: "Enfª. Patrícia Lima", role: "Profissional", specialty: "Enfermagem", email: "patricia@hospital.com.br", status: "ativo" },
+  { id: "PRO-004", name: "Enfº. Bruno Lima", role: "Profissional", specialty: "Enfermagem", email: "bruno@hospital.com.br", status: "ativo" },
+  { id: "PRO-005", name: "Dr. Rafael Costa", role: "Profissional", specialty: "Medicina", email: "rafael@hospital.com.br", status: "ativo" },
+  { id: "PRO-006", name: "Dra. Camila Rocha", role: "Profissional", specialty: "Medicina", email: "camila@hospital.com.br", status: "ativo" },
+  { id: "PRO-007", name: "Nutr. Fernanda Alves", role: "Profissional", specialty: "Nutrição", email: "fernanda@hospital.com.br", status: "ativo" },
+  { id: "PRO-008", name: "Fisio. Pedro Nunes", role: "Profissional", specialty: "Fisioterapia", email: "pedro@hospital.com.br", status: "ativo" },
+  { id: "PRO-009", name: "AS Lívia Souza", role: "Profissional", specialty: "Serviço Social", email: "livia@hospital.com.br", status: "ativo" },
+  { id: "PRO-010", name: "Psic. Marcos Vidal", role: "Profissional", specialty: "Psicologia", email: "marcos@hospital.com.br", status: "ativo" },
+  { id: "PRO-011", name: "CD João Melo", role: "Profissional", specialty: "Odontologia", email: "joao@hospital.com.br", status: "ativo" },
+  { id: "PRO-012", name: "Fga. Sônia Reis", role: "Profissional", specialty: "Fonoaudiologia", email: "sonia@hospital.com.br", status: "ativo" },
+  { id: "PRO-014", name: "TO Amanda Borges", role: "Profissional", specialty: "Terapia Ocupacional", email: "amanda@hospital.com.br", status: "ativo" },
+  { id: "PRO-013", name: "Ana Lima", role: "Coordenação", specialty: "—", email: "ana@hospital.com.br", status: "ativo" },
 ];
 
-const SPECIALTIES_LIST = ["—","Enfermagem","Medicina","Nutrição","Fisioterapia","Serviço Social","Psicologia","Odontologia","Fonoaudiologia","Terapia Ocupacional"];
-const ROLES_LIST = ["Recepção","Profissional","Coordenação"];
+const SPECIALTIES_LIST = ["—", "Enfermagem", "Medicina", "Nutrição", "Fisioterapia", "Serviço Social", "Psicologia", "Odontologia", "Fonoaudiologia", "Terapia Ocupacional"];
+const ROLES_LIST = ["Recepção", "Profissional", "Coordenação"];
 
 const ROLE_COLORS: Record<string, string> = {
-  "Recepção":    "bg-sky-50 text-sky-700 border-sky-200",
-  "Profissional":"bg-[#E8F4FD] text-[#1B6CA8] border-[#D5E6F3]",
+  "Recepção": "bg-sky-50 text-sky-700 border-sky-200",
+  "Profissional": "bg-[#E8F4FD] text-[#1B6CA8] border-[#D5E6F3]",
   "Coordenação": "bg-purple-50 text-purple-700 border-purple-200",
 };
 
@@ -2890,7 +2959,7 @@ function ProfessionalsManagement() {
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
         </div>
         <div className="flex gap-1 bg-white border border-[#D5E6F3] rounded-xl p-1">
-          {["todos","Recepção","Profissional","Coordenação"].map(r => (
+          {["todos", "Recepção", "Profissional", "Coordenação"].map(r => (
             <button key={r} onClick={() => setFilterRole(r)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${filterRole === r ? "bg-[#1B6CA8] text-white shadow-sm" : "text-[#6B7A8D] hover:text-[#1A2332]"}`}>
               {r === "todos" ? "Todos" : r}
@@ -2905,7 +2974,7 @@ function ProfessionalsManagement() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#EEF2F7]">
-                {["Profissional","Perfil","Especialidade","E-mail","Status","Ações"].map(h => (
+                {["Profissional", "Perfil", "Especialidade", "E-mail", "Status", "Ações"].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-bold text-[#9AAABB] uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -3030,7 +3099,7 @@ function ProfessionalsManagement() {
               <div>
                 <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Status</label>
                 <div className="flex gap-2">
-                  {(["ativo","inativo"] as const).map(s => (
+                  {(["ativo", "inativo"] as const).map(s => (
                     <button key={s} onClick={() => setForm(f => ({ ...f, status: s }))}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-all ${form.status === s ? (s === "ativo" ? "bg-emerald-600 text-white border-emerald-600" : "bg-gray-400 text-white border-gray-400") : "bg-white text-[#6B7A8D] border-[#D5E6F3] hover:bg-[#F4F7FB]"}`}>
                       {s === "ativo" ? "Ativo" : "Inativo"}
@@ -3066,16 +3135,16 @@ interface SpecTarget {
 }
 
 const DEFAULT_TARGETS: SpecTarget[] = [
-  { name: "Recepção",       minutes: 12,  target: 15 },
-  { name: "Enfermagem",     minutes: 28,  target: 30 },
-  { name: "Medicina",       minutes: 47,  target: 40 },
-  { name: "Nutrição",       minutes: 35,  target: 35 },
-  { name: "Fisioterapia",   minutes: 22,  target: 25 },
-  { name: "Serviço Social", minutes: 41,  target: 30 },
-  { name: "Psicologia",     minutes: 38,  target: 40 },
-  { name: "Odontologia",    minutes: 18,  target: 20 },
-  { name: "Fonoaudiologia",      minutes: 26,  target: 25 },
-  { name: "Terapia Ocupacional", minutes: 32,  target: 35 },
+  { name: "Recepção", minutes: 12, target: 15 },
+  { name: "Enfermagem", minutes: 28, target: 30 },
+  { name: "Medicina", minutes: 47, target: 40 },
+  { name: "Nutrição", minutes: 35, target: 35 },
+  { name: "Fisioterapia", minutes: 22, target: 25 },
+  { name: "Serviço Social", minutes: 41, target: 30 },
+  { name: "Psicologia", minutes: 38, target: 40 },
+  { name: "Odontologia", minutes: 18, target: 20 },
+  { name: "Fonoaudiologia", minutes: 26, target: 25 },
+  { name: "Terapia Ocupacional", minutes: 32, target: 35 },
 ];
 
 // ─── Time Targets Screen ──────────────────────────────────────────────────────
@@ -3170,11 +3239,11 @@ function TimeTargetsScreen({ targets, onChange }: {
                 <div className="shrink-0 w-20 text-right">
                   {over
                     ? <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
-                        <AlertTriangle size={10} /> acima
-                      </span>
+                      <AlertTriangle size={10} /> acima
+                    </span>
                     : <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        <Check size={10} /> ok
-                      </span>}
+                      <Check size={10} /> ok
+                    </span>}
                 </div>
               </div>
 
@@ -3533,12 +3602,12 @@ export default function App() {
 
   function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const userName = role === "recepcao" ? "Carla Santos" : role === "profissional" ? "Dr. Rafael Costa" : "Ana Lima";
-    
+    const userName = nomeExibicaoPorPerfil(role);
+
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
       if (pIndex === -1) return prev;
-      
+
       const p = prev[pIndex];
       const newSpecialties = p.specialties.map(s => {
         if (s.id !== specId) return s;
@@ -3559,19 +3628,51 @@ export default function App() {
         }
       };
 
-      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers };
+      // Recalcula a lista inteira de alertas a partir das respostas de todas
+      // as especialidades (fonte única — ver frontend/src/app/alerts).
+      // Preserva o status ("ciente"/"resolvido") que o profissional já tiver
+      // registrado para um alerta que continua valendo.
+      const previousAlerts = p.alerts || [];
+      const freshAlerts = generatePatientAlerts(newFormAnswers, () => new Date().toLocaleString('pt-BR'));
+      const newAlerts = freshAlerts.map(fresh => {
+        const prev = previousAlerts.find(a => a.id === fresh.id);
+        if (prev?.status && prev.status !== 'aberto') {
+          return { ...fresh, status: prev.status, createdAt: prev.createdAt ?? fresh.createdAt };
+        }
+        return fresh;
+      });
+
+      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
       if (answers.Altura) updatedPatient.height = answers.Altura;
-      
+
       setSelectedPatient(updatedPatient);
       // mutate global PATIENTS as well so other components reading it pick it up if they aren't fully migrated
       PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
-      
+
       const newList = [...prev];
       newList[pIndex] = updatedPatient;
       return newList;
     });
     setScreen("patient-record");
+  }
+
+  function handleAcknowledgeAlert(alertId: string) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'ciente' as const } : a);
+      const updatedPatient = { ...p, alerts: newAlerts };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      return newList;
+    });
   }
 
   const getScreenTitle = () => {
@@ -3594,16 +3695,16 @@ export default function App() {
   if (screen === "public-journey") return <PublicJourneyScreen onBack={() => setScreen("login")} />;
 
   const BACK_MAP: Partial<Record<Screen, Screen>> = {
-    "patient-registration":   "reception-dashboard",
-    "specialty-form":         "patient-record",
-    "consolidated-record":    "patient-record",
+    "patient-registration": "reception-dashboard",
+    "specialty-form": "patient-record",
+    "consolidated-record": "patient-record",
     "professionals-management": "coordination-dashboard",
-    "time-targets":           "coordination-dashboard",
+    "time-targets": "coordination-dashboard",
     "patient-record": role === "recepcao"
       ? "reception-dashboard"
       : role === "coordenacao"
-      ? "coordination-dashboard"
-      : "professional-dashboard",
+        ? "coordination-dashboard"
+        : "professional-dashboard",
   };
 
   const goBack = () => {
@@ -3633,9 +3734,14 @@ export default function App() {
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
-      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} />}
+      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
+
+      {/* Global Critical Alert */}
+      {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (
+        <GlobalCriticalAlert alerts={filterAlertsForRole(selectedPatient.alerts || [], role)} />
+      )}
     </AppLayout>
   );
 }
