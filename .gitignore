@@ -69,3 +69,6 @@ branches*.txt
 models_diff_utf8.txt
 app_diff_utf8.txt
 
+# Material de apoio da extração de perguntas dos formulários
+frontend/perguntas_formularios.pdf
+
