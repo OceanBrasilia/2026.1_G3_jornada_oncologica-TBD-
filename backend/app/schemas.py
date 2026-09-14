@@ -6,14 +6,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
-# ─── Auth ─────────────────────────────────────────────────────────────────────
+# Auth ─────────────────────────────────────────────────────────────────────
 
 class LoginRequest(BaseModel):
     email: str
     password: str
 
 
-# ─── Dashboard ────────────────────────────────────────────────────────────────
+# Dashboard ────────────────────────────────────────────────────────────────
 
 class EtapaDashboardItem(BaseModel):
     area_id: str
@@ -59,7 +59,7 @@ class DashboardCoordenacaoResponse(BaseModel):
     tempo_medio_por_especialidade: List[TempoMedioEspecialidade] = []
 
 
-# ─── Schema base para Perfil ──────────────────────────────────────────────────
+# Schema base para Perfil ──────────────────────────────────────────────────
 
 # Schema base para Perfil
 class PerfilBase(BaseModel):
