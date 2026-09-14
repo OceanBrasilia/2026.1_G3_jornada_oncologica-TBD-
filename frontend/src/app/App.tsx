@@ -32,6 +32,14 @@ import {
 } from "./consolidado/buildConsolidatedView";
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
+import {
+  loadStoredPatients,
+  saveStoredPatients,
+  saveFormDraft,
+  loadFormDraft,
+  clearFormDraft,
+  resetStoredPatients,
+} from "./services/patientStorage";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -2492,7 +2500,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
+function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
@@ -2500,7 +2508,8 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
   onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
   const spec = patient.specialties.find(s => s.id === specId);
-  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
+  const storedDraft = loadFormDraft(patient.id, specId);
+  const [obs, setObs] = useState(storedDraft?.["Observações"] ?? patient.formAnswers?.[specId]?.["Observações"] ?? "");
   const inheritedData: Record<string, string> = {};
   const origins: Record<string, string> = {};
 
@@ -2522,11 +2531,21 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
   }
 
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({
-    ...(patient.formAnswers?.[specId] || {})
+    ...(patient.formAnswers?.[specId] || {}),
+    ...(storedDraft || {})
   });
 
   const handleDynamicAnswer = (key: string, value: string) => {
-    setDynamicAnswers(prev => ({ ...prev, [key]: value }));
+    setDynamicAnswers(prev => {
+      const next = { ...prev, [key]: value };
+      saveFormDraft(patient.id, specId, { ...next, "Observações": obs });
+      return next;
+    });
+  };
+
+  const handleObsChange = (value: string) => {
+    setObs(value);
+    saveFormDraft(patient.id, specId, { ...dynamicAnswers, "Observações": value });
   };
 
   const getAnswers = () => ({
@@ -2554,7 +2573,7 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
       {/* Observations */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
         <h3 className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
-        <textarea value={obs} onChange={e => setObs(e.target.value)}
+        <textarea value={obs} onChange={e => handleObsChange(e.target.value)}
           rows={4} placeholder="Registre observações, condutas ou evolução da especialidade..."
           className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none" />
       </div>
@@ -3544,10 +3563,10 @@ function apiItemToPaciente(item: DashboardJornadaItem): Patient {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [patientsList, setPatientsList] = useState<Patient[]>(PATIENTS);
+  const [patientsList, setPatientsList] = useState<Patient[]>(() => loadStoredPatients(PATIENTS));
   const [screen, setScreen] = useState<Screen>("login");
   const [role, setRole] = useState<Role | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<Patient>(patientsList[0]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient>(() => loadStoredPatients(PATIENTS)[0] || PATIENTS[0]);
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
@@ -3635,9 +3654,9 @@ export default function App() {
       const previousAlerts = p.alerts || [];
       const freshAlerts = generatePatientAlerts(newFormAnswers, () => new Date().toLocaleString('pt-BR'));
       const newAlerts = freshAlerts.map(fresh => {
-        const prev = previousAlerts.find(a => a.id === fresh.id);
-        if (prev?.status && prev.status !== 'aberto') {
-          return { ...fresh, status: prev.status, createdAt: prev.createdAt ?? fresh.createdAt };
+        const prevAlert = previousAlerts.find(a => a.id === fresh.id);
+        if (prevAlert?.status && prevAlert.status !== 'aberto') {
+          return { ...fresh, status: prevAlert.status, createdAt: prevAlert.createdAt ?? fresh.createdAt };
         }
         return fresh;
       });
@@ -3652,6 +3671,8 @@ export default function App() {
 
       const newList = [...prev];
       newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      clearFormDraft(p.id, specId);
       return newList;
     });
     setScreen("patient-record");
@@ -3671,6 +3692,7 @@ export default function App() {
 
       const newList = [...prev];
       newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
       return newList;
     });
   }
@@ -3726,7 +3748,7 @@ export default function App() {
       onMarkAllRead={markAllRead}
     >
       {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} />}
-      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => [p, ...prev]); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
+      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => { const next = [p, ...prev]; saveStoredPatients(next); return next; }); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
       {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} patients={patientsList} />}
 
 
