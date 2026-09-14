@@ -157,9 +157,7 @@ class JornadaAcompanhante(Base):
 
 class EtapaJornada(Base):
     __tablename__ = "etapa_jornada"
-    __table_args__ = (
-        UniqueConstraint("jornada_id", "area_atendimento_id", name="uq_jornada_area"),
-    )
+    __table_args__ = (UniqueConstraint("jornada_id", "area_atendimento_id", name="uq_jornada_area"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     jornada_id = Column(UUID(as_uuid=True), ForeignKey("jornada.id"), nullable=False)
@@ -255,9 +253,7 @@ class PreenchimentoFormulario(Base):
 
 class Resposta(Base):
     __tablename__ = "resposta"
-    __table_args__ = (
-        UniqueConstraint("preenchimento_id", "campo_formulario_id", name="uq_preenchimento_campo"),
-    )
+    __table_args__ = (UniqueConstraint("preenchimento_id", "campo_formulario_id", name="uq_preenchimento_campo"),)
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     preenchimento_id = Column(UUID(as_uuid=True), ForeignKey("preenchimento_formulario.id"), nullable=False)

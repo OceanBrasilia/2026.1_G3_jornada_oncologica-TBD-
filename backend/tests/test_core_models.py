@@ -25,7 +25,7 @@ def test_unique_perfil_codigo(db_session):
 
     perfil2 = Perfil(codigo="ADMIN")
     db_session.add(perfil2)
-    
+
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
@@ -33,12 +33,7 @@ def test_unique_perfil_codigo(db_session):
 
 def test_create_area_atendimento(db_session):
     # Test creating AreaAtendimento
-    area = AreaAtendimento(
-        nome="Quimioterapia",
-        tipo="ASSISTENCIAL",
-        ordem_padrao=1,
-        meta_tempo_minutos=60
-    )
+    area = AreaAtendimento(nome="Quimioterapia", tipo="ASSISTENCIAL", ordem_padrao=1, meta_tempo_minutos=60)
     db_session.add(area)
     db_session.commit()
 
@@ -58,11 +53,7 @@ def test_create_usuario(db_session):
     db_session.commit()
 
     # Test creating a user linked to profile and area
-    usuario = Usuario(
-        nome="Ana Silva",
-        perfil_id=perfil.id,
-        area_atendimento_id=area.id
-    )
+    usuario = Usuario(nome="Ana Silva", perfil_id=perfil.id, area_atendimento_id=area.id)
     db_session.add(usuario)
     db_session.commit()
 
@@ -82,7 +73,7 @@ def test_usuario_missing_perfil(db_session):
     # Test that creating a user without a profile raises IntegrityError
     usuario = Usuario(nome="Sem Perfil")
     db_session.add(usuario)
-    
+
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
@@ -93,7 +84,7 @@ def test_usuario_invalid_perfil_uuid(db_session):
     # (requires foreign key constraints to be active)
     usuario = Usuario(nome="Perfil Invalido", perfil_id=uuid.uuid4())
     db_session.add(usuario)
-    
+
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()

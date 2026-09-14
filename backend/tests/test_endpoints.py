@@ -13,6 +13,7 @@ from app.main import app
 def anyio_backend():
     return "asyncio"
 
+
 @pytest.fixture
 async def client(db_session):
     def override_get_db():
@@ -27,12 +28,14 @@ async def client(db_session):
         yield ac
     app.dependency_overrides.clear()
 
+
 @pytest.mark.anyio
 async def test_health_check(client):
     response = await client.get("/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
+
 
 @pytest.mark.anyio
 async def test_patients_crud(client):
@@ -50,7 +53,7 @@ async def test_patients_crud(client):
         "name": "Paciente de Teste Endpoints",
         "email": "testepaciente@email.com",
         "diagnosis": "Câncer de Teste",
-        "treatment_stage": "Diagnóstico"
+        "treatment_stage": "Diagnóstico",
     }
     response = await client.post("/patients", json=patient_data)
     assert response.status_code == 201
@@ -73,22 +76,23 @@ async def test_patients_crud(client):
     assert response.status_code == 400
     assert "CPF" in response.json()["detail"]
 
+
 @pytest.mark.anyio
 async def test_journeys_endpoints(client, db_session):
     # Criar um perfil de profissional para associar ao usuario criador
     perfil = models.Perfil(id=uuid.uuid4(), codigo="PROFISSIONAL")
     db_session.add(perfil)
-    
+
     # Criar usuário criador
     usuario = models.Usuario(
         id=uuid.uuid4(),
         nome="Médico Teste",
         email="medicoteste@hospital.com.br",
         senha_hash="dummy",
-        perfil_id=perfil.id
+        perfil_id=perfil.id,
     )
     db_session.add(usuario)
-    
+
     # Criar paciente
     paciente = models.Patient(
         id=uuid.uuid4(),
@@ -98,7 +102,7 @@ async def test_journeys_endpoints(client, db_session):
         cpf="555.666.777-88",
         name="Paciente de Jornada Teste",
         email="pacientejornada@email.com",
-        diagnosis="Tumor de Teste"
+        diagnosis="Tumor de Teste",
     )
     db_session.add(paciente)
     db_session.commit()
@@ -117,7 +121,7 @@ async def test_journeys_endpoints(client, db_session):
         "diagnostico_principal": "Tumor de Teste",
         "fase_tratamento": "Acolhimento",
         "origem": "Consultório do Teste",
-        "observacao_geral": "Iniciando testes"
+        "observacao_geral": "Iniciando testes",
     }
     response = await client.post("/journeys", json=journey_data)
     assert response.status_code == 201
@@ -154,6 +158,7 @@ async def test_journeys_endpoints(client, db_session):
     assert response.status_code == 400
     assert "já existe" in response.json()["detail"].lower() or "integridade" in response.json()["detail"].lower()
 
+
 @pytest.mark.anyio
 async def test_pagination_endpoints(client, db_session):
     # Criar múltiplos pacientes
@@ -166,7 +171,7 @@ async def test_pagination_endpoints(client, db_session):
             cpf=f"999.888.777-{i:02d}",
             name=f"Paciente Paginado {i}",
             email=f"page{i}@email.com",
-            diagnosis="Diagnóstico Paginado"
+            diagnosis="Diagnóstico Paginado",
         )
         db_session.add(patient)
     db_session.commit()
@@ -186,3 +191,45 @@ async def test_pagination_endpoints(client, db_session):
     assert response.status_code == 200
     assert len(response.json()) == 1
 
+
+@pytest.mark.anyio
+async def test_portuguese_aliases_and_public_journey(client, db_session):
+    # Criar paciente via /pacientes
+    paciente_payload = {
+        "codigo_publico": "CAO-PUB-001",
+        "nome_completo": "Paciente Publico Teste",
+        "data_nascimento": "1985-10-20",
+        "cpf": "123.456.789-00",
+        "name": "Paciente Publico Teste",
+        "email": "publico@email.com",
+        "diagnosis": "Câncer de Teste",
+    }
+    res_post = await client.post("/pacientes", json=paciente_payload)
+    assert res_post.status_code == 201
+    paciente_id = res_post.json()["id"]
+
+    # Listar via /pacientes
+    res_list = await client.get("/pacientes")
+    assert res_list.status_code == 200
+    assert any(p["id"] == paciente_id for p in res_list.json())
+
+    # Obter via /pacientes/{id}
+    res_get = await client.get(f"/pacientes/{paciente_id}")
+    assert res_get.status_code == 200
+    assert res_get.json()["nome_completo"] == "Paciente Publico Teste"
+
+    # Consulta pública por código público
+    res_pub = await client.get("/pacientes/CAO-PUB-001/jornada")
+    assert res_pub.status_code == 200
+    pub_data = res_pub.json()
+    assert pub_data["paciente"]["nome_completo"] == "Paciente Publico Teste"
+    assert pub_data["paciente"]["codigo_publico"] == "CAO-PUB-001"
+
+    # Consulta pública por CPF
+    res_pub_cpf = await client.get("/pacientes/123.456.789-00/jornada")
+    assert res_pub_cpf.status_code == 200
+    assert res_pub_cpf.json()["paciente"]["id"] == paciente_id
+
+    # Consulta pública inexistente
+    res_pub_404 = await client.get("/pacientes/INEXISTENTE/jornada")
+    assert res_pub_404.status_code == 404
