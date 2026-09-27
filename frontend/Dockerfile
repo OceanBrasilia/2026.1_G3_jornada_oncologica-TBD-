@@ -3,10 +3,10 @@ FROM node:20-slim
 WORKDIR /app
 
 # Copia apenas o arquivo de dependências do frontend
-COPY package.json ./
+COPY package.json package-lock.json ./
 
 # Instala as dependências usando o npm (mais estável para ambientes dockerizados com Vite)
-RUN npm install
+RUN npm ci
 
 # Copia o restante dos arquivos do frontend
 COPY . .
