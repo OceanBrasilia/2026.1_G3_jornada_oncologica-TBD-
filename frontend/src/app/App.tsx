@@ -775,7 +775,7 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
               completedTime: compTime,
             };
           })
-          : mkSpecs(["atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]);
+          : [];
 
         const publicPatient: Patient = {
           id: data.paciente.codigo_publico || data.paciente.id,
@@ -788,8 +788,8 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
           diagnosis: "Acompanhamento Oncológico",
           cid: "",
           origin: "Recepção Central",
-          status: (data.jornada?.status === "FINALIZADO" ? "finalizado" : "em-atendimento") as PatStatus,
-          arrivalTime: data.jornada?.data_acolhimento || "Hoje",
+          status: (!data.jornada ? "aguardando" : data.jornada.status === "FINALIZADO" ? "finalizado" : "em-atendimento") as PatStatus,
+          arrivalTime: data.jornada?.data_acolhimento || "Não registrada",
           date: new Date().toLocaleDateString("pt-BR"),
           specialties: mappedSpecs,
         };
@@ -884,6 +884,9 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
 
             <div className="px-6 py-6">
               <p className="text-xs font-bold text-[#6B7A8D] uppercase tracking-widest mb-5">Etapas do acolhimento</p>
+              {result.specialties.length === 0 && (
+                <p className="text-sm text-[#6B7A8D]">Ainda não há etapas registradas para este acolhimento.</p>
+              )}
               <div className="space-y-1">
                 {result.specialties.map((sp, i) => (
                   <div key={sp.id} className="flex items-start gap-3">
