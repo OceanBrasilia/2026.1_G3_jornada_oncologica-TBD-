@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { AccessibilityNetworkIcon, IvBagIcon } from './alertCategoryIcons';
 import { AlertCategory, PatientAlert } from '../../types/alerts';
+import { AlertMeta } from './AlertMeta';
 
 interface AlertBadgeProps {
   category: AlertCategory;
@@ -76,6 +77,8 @@ export const AlertBadge: React.FC<AlertBadgeProps> = ({ category, alert, classNa
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={alert?.title ? `${config.tooltip}: ${alert.title}` : config.tooltip}
+        aria-expanded={isOpen}
         className={`flex items-center justify-center w-6 h-6 rounded-full ${config.bgColor} text-black shrink-0 ${className} shadow-sm border border-black/5 hover:scale-110 transition-transform`}
       >
         <Icon size={13} strokeWidth={2.5} />
@@ -83,16 +86,21 @@ export const AlertBadge: React.FC<AlertBadgeProps> = ({ category, alert, classNa
       
       {/* Click Popup */}
       {isOpen && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-[#1A2332] text-white rounded-xl shadow-xl z-50 w-max max-w-[240px] text-left animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-[#1A2332] text-white rounded-xl shadow-xl z-50 w-max max-w-[280px] text-left animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between gap-3 mb-1">
             <span className="text-xs font-bold">{config.tooltip}</span>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white transition">
+            <button onClick={() => setIsOpen(false)} aria-label="Fechar" className="text-gray-400 hover:text-white transition">
               <X size={12} />
             </button>
           </div>
+          {alert?.title && <p className="text-[11px] font-semibold text-white leading-tight mb-0.5">{alert.title}</p>}
           {alert?.description && (
             <p className="text-[11px] text-gray-300 leading-tight whitespace-pre-wrap">{alert.description}</p>
           )}
+          {alert?.recommendedAction && (
+            <p className="text-[11px] text-gray-300 leading-tight mt-1"><strong className="text-white">Ação sugerida:</strong> {alert.recommendedAction}</p>
+          )}
+          {alert && <AlertMeta alert={alert} compacto className="text-gray-300 mt-1.5" />}
           {/* Arrow */}
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px border-4 border-transparent border-b-[#1A2332]" />
         </div>

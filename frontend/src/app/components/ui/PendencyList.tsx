@@ -1,6 +1,7 @@
 import React from 'react';
 import { ClipboardList } from 'lucide-react';
 import { PatientAlert, AlertLevel } from '../../types/alerts';
+import { AlertMeta } from './AlertMeta';
 
 interface PendencyListProps {
   alerts: PatientAlert[];
@@ -25,15 +26,13 @@ export const PendencyList: React.FC<PendencyListProps> = ({ alerts }) => {
       </h3>
       <div className="space-y-3">
         {pendencies.map(p => (
-          <div key={p.id} className="border border-[#EEF2F7] rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-semibold text-[#1A2332]">{p.title}</p>
-              <p className="text-xs text-[#6B7A8D]">{p.description}</p>
-            </div>
-            <div className="text-xs text-left sm:text-right shrink-0">
-              {p.responsible && <div className="font-bold text-[#1B6CA8]">{p.responsible}</div>}
-              {p.dueDate && <div className="text-[#8A9EB9]">{p.dueDate}</div>}
-            </div>
+          <div key={p.id} className="border border-[#EEF2F7] rounded-xl p-3">
+            <p className="text-sm font-semibold text-[#1A2332]">{p.title}</p>
+            <p className="text-xs text-[#6B7A8D]">{p.description}</p>
+            {p.recommendedAction && (
+              <p className="text-xs text-[#3A4354] mt-1"><strong>Ação sugerida:</strong> {p.recommendedAction}</p>
+            )}
+            <AlertMeta alert={p} className="text-[#6B7A8D] mt-2" />
           </div>
         ))}
       </div>

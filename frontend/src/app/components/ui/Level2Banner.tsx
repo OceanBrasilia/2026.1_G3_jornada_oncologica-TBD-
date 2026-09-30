@@ -32,7 +32,7 @@ export const Level2Banner: React.FC<Level2BannerProps> = ({ alerts, onAcknowledg
               {alert.recommendedAction && (
                 <p className="text-xs text-amber-700 mt-1"><strong>Ação sugerida:</strong> {alert.recommendedAction}</p>
               )}
-              <AlertMeta alert={alert} nivel={AlertLevel.LEVEL_2} className="text-amber-800 mt-1.5" />
+              <AlertMeta alert={alert} className="text-amber-800 mt-1.5" />
             </div>
           </div>
           <button
