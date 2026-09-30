@@ -13,6 +13,11 @@ describe("nomeArquivoFichaPdf", () => {
     expect(nome).toMatch(/^ficha_CAO-2024-0099_\d{8}-\d{4}\.pdf$/);
   });
 
+  it("inclui a versão quando informada: ficha_[id]_v[N]_[AAAAMMDD-HHMM].pdf", () => {
+    const data = new Date(2026, 8, 30, 9, 56);
+    expect(nomeArquivoFichaPdf("E96XXMCC", data, 2)).toBe("ficha_E96XXMCC_v2_20260930-0956.pdf");
+  });
+
   it("preenche com zero à esquerda horas/minutos/dia/mês de um dígito", () => {
     const data = new Date(2026, 0, 5, 3, 7); // 05/01/2026 03:07
     expect(nomeArquivoFichaPdf("ID1", data)).toBe("ficha_ID1_20260105-0307.pdf");

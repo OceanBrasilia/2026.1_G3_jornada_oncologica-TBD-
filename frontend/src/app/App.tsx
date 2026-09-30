@@ -104,6 +104,8 @@ interface Patient {
   raceColor?: string;
   formAnswers?: Record<string, Record<string, string>>;
   alerts?: PatientAlert[];
+  /** Exportações em PDF da ficha consolidada (RF-018): a próxima recebe a versão seguinte. */
+  pdfExports?: PdfExportRecord[];
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -2108,7 +2110,7 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario, onPdfExported }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
@@ -2118,6 +2120,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   onAcknowledgeAlert: (alertId: string) => void;
   onResolvePendency: (alertId: string) => void;
   equipeUsuario: string | null;
+  onPdfExported: (registro: PdfExportRecord) => void;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
@@ -2161,16 +2164,20 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
     try {
       // Import dinâmico: só baixa a biblioteca de PDF quando alguém realmente exporta.
       const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const versao = proximaVersaoPdf(patient);
+      const exportadoPor = nomeExibicaoPorPerfil(role);
       const resultado = await exportarFichaConsolidadaPdf({
         patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
         geradoEm,
-        exportadoPor: nomeExibicaoPorPerfil(role),
+        versao,
+        exportadoPor,
         dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
         divergencias: infosCompartilhadas.filter(i => i.divergente),
         especialidades: buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial),
       });
       if (resultado.ok) {
-        setExportMsg("Ficha exportada em PDF.");
+        onPdfExported({ versao, geradoEm, exportadoPor });
+        setExportMsg(`Ficha exportada em PDF (versão ${versao}).`);
       } else {
         setExportMsg("");
         setExportError(resultado.erro);
@@ -2514,6 +2521,13 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   );
 }
 
+type PdfExportRecord = { versao: number; geradoEm: string; exportadoPor: string };
+
+/** Número da próxima exportação em PDF deste paciente (1 na primeira). */
+function proximaVersaoPdf(patient: Patient): number {
+  return (patient.pdfExports?.length ?? 0) + 1;
+}
+
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
 function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
@@ -2619,7 +2633,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
-function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient; onBack: () => void; role: Role | null }) {
+function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported }: { patient: Patient; onBack: () => void; role: Role | null; onPdfExported: (registro: PdfExportRecord) => void }) {
   const agora = new Date();
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
@@ -2669,6 +2683,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
     setErroExportacao("");
     setExportando(true);
     const exportadoPor = nomeExibicaoPorPerfil(role);
+    const versao = proximaVersaoPdf(patient);
     try {
       // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
       // não pesa o carregamento inicial do app para quem nunca usa essa tela.
@@ -2676,12 +2691,14 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
       const resultado = await exportarFichaConsolidadaPdf({
         patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
         geradoEm: now,
+        versao,
         exportadoPor,
         dadosCompartilhados,
         divergencias: divergencies,
         especialidades: especialidadesParaPdf,
       });
-      if (!resultado.ok) setErroExportacao(resultado.erro);
+      if (resultado.ok) onPdfExported({ versao, geradoEm: now, exportadoPor });
+      else setErroExportacao(resultado.erro);
     } catch (erro) {
       console.error("Falha ao carregar o gerador de PDF:", erro);
       setErroExportacao("Não foi possível carregar o gerador de PDF agora. Tente novamente em instantes.");
@@ -3709,6 +3726,24 @@ export default function App() {
   // enquanto for null, resolver pendência pede confirmação de equipe.
   const equipeUsuario: string | null = null;
 
+  function handlePdfExported(registro: PdfExportRecord) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const updatedPatient = { ...p, pdfExports: [...(p.pdfExports || []), registro] };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
   function handleResolvePendency(alertId: string) {
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
@@ -3789,9 +3824,9 @@ export default function App() {
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} onPdfExported={handlePdfExported} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
-      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
+      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} onPdfExported={handlePdfExported} />}
 
       {/* Global Critical Alert */}
       {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (
