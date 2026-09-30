@@ -17,26 +17,25 @@ const ESTADO: Record<AlertStatus, string> = {
 interface AlertMetaProps {
   alert: PatientAlert;
   className?: string;
-  /** Sempre em uma coluna (para espaços estreitos, como o balão do chip). */
+  /** Sempre em uma coluna (para espaços estreitos). */
   compacto?: boolean;
+  /** Mostra o prazo, quando o alerta tiver um (usado no cartão de pendência, Nível 4). */
+  mostrarPrazo?: boolean;
 }
 
 /**
- * Campos que todo alerta deve mostrar (Nota Técnica): gravidade, responsável,
- * prazo, data/hora, autor e estado. Título, motivo e ação recomendada ficam
- * com cada componente de nível, porque cada um os destaca de um jeito.
- *
- * [CONFIRMAR COM A EQUIPE] O prazo vem do próprio alerta; quando não houver,
- * aparece "Não definido" (o sistema não inventa prazo clínico).
+ * Dados do alerta exibidos junto ao título, motivo e ação recomendada:
+ * gravidade, responsável, data/hora, autor e estado. O prazo só aparece no
+ * cartão de pendência (Nível 4), e só quando o alerta tiver um.
  */
-export function AlertMeta({ alert, className = '', compacto = false }: AlertMetaProps) {
+export function AlertMeta({ alert, className = '', compacto = false, mostrarPrazo = false }: AlertMetaProps) {
   // Um alerta pode disparar vários níveis (ex.: Nível 1 + chip de Nível 3); a
   // gravidade é a do nível mais alto, para ser a mesma em qualquer lugar da tela.
   const nivelMaisAlto = Math.min(...alert.level) as AlertLevel;
   const itens: [string, string][] = [
     ['Gravidade', GRAVIDADE_POR_NIVEL[nivelMaisAlto] ?? 'Não definida'],
     ['Responsável', alert.responsible || 'Não definido'],
-    ['Prazo', alert.dueDate || 'Não definido'],
+    ...(mostrarPrazo && alert.dueDate ? [['Prazo', alert.dueDate] as [string, string]] : []),
     ['Gerado em', alert.createdAt || 'Não registrado'],
     ['Autor', alert.author || 'Não registrado'],
     ['Estado', ESTADO[alert.status ?? 'aberto']],

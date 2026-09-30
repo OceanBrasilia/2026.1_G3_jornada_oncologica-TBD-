@@ -32,7 +32,7 @@ export const PendencyList: React.FC<PendencyListProps> = ({ alerts }) => {
             {p.recommendedAction && (
               <p className="text-xs text-[#3A4354] mt-1"><strong>Ação sugerida:</strong> {p.recommendedAction}</p>
             )}
-            <AlertMeta alert={p} className="text-[#6B7A8D] mt-2" />
+            <AlertMeta alert={p} mostrarPrazo className="text-[#6B7A8D] mt-2" />
           </div>
         ))}
       </div>

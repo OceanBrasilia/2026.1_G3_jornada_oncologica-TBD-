@@ -3,7 +3,8 @@ import { AlertTriangle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
 import { GlobalCriticalAlert } from "../ui/GlobalCriticalAlert";
-import { AlertCategory, AlertLevel, PatientAlert } from "../../types/alerts";
+import { generatePatientAlerts } from "../../alerts/generatePatientAlerts";
+import { AlertLevel, PatientAlert } from "../../types/alerts";
 
 export interface PsicologiaFormProps {
   data: Record<string, string>;
@@ -115,18 +116,12 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
   // Só ideação suicida ativa dispara o Modal Crítico (Nível 1). IGR alto
   // sozinho (sem ideação) passa a ser Nível 2 — ver frontend/src/app/alerts
   // e frontend/src/app/config/alertThresholds.ts.
+  // Usa o mesmo gerador da ficha, para o modal ao vivo trazer os mesmos dados
+  // (responsável, autor, data/hora) do alerta que fica registrado ao salvar.
   const liveAlerts: PatientAlert[] = useMemo(() => {
     if (!hasSuicidalIdeation) return [];
-    return [{
-      id: "alert-irpo-ideacao-live",
-      category: AlertCategory.PSYCHOSOCIAL_RISK,
-      level: [AlertLevel.LEVEL_1],
-      title: "Ideação suicida ativa",
-      description: "Paciente relatou ideação suicida no IRPO (questão 28).",
-      recommendedAction: "Avaliação psicológica/psiquiátrica prioritária e registro de conduta.",
-      active: true,
-      confidential: true,
-    }];
+    return generatePatientAlerts({ psicologia: { IdeacaoSuicida: "Sim" } })
+      .filter(a => a.level.includes(AlertLevel.LEVEL_1));
   }, [hasSuicidalIdeation]);
 
   const answeredQuestionsCount = irpoQuestions.filter(q => data[`IRPO_${q.id}`]).length;
