@@ -4,6 +4,7 @@ import {
   calculateBox4Score, calculateBoxBScore, calculateBoxCScore, calculateBoxDScore
 } from "../../calculos/asgPpp";
 import { calculateIMC, IMC_FORMULA } from "../../calculos/imc";
+import { calcularIdade } from "../../utils/idade";
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
 import {
@@ -94,14 +95,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
   const dob = getVal("data_nasc");
   let computedAge = getVal("idade", "age");
   if (!computedAge && dob) {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    computedAge = age.toString();
+    computedAge = calcularIdade(dob).toString();
   }
 
   const weight = getVal("peso", "weight");

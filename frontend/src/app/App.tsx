@@ -32,6 +32,7 @@ import {
 } from "./consolidado/buildConsolidatedView";
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
+import { calcularIdade } from "./utils/idade";
 import {
   loadStoredPatients,
   saveStoredPatients,
@@ -1533,8 +1534,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       // Se a API estiver offline, mantém o fluxo cadastrando em memória
     }
 
-    const birthYear = parseInt(form.birth.split("-")[0], 10);
-    const calculatedAge = isNaN(birthYear) ? 0 : Math.max(0, new Date().getFullYear() - birthYear);
+    const calculatedAge = calcularIdade(form.birth);
 
     const newPatient: Patient = {
       id: assignedId,
@@ -3509,16 +3509,6 @@ function CoordinationDashboard({ onOpenPatient, targets, patients: patientsProp 
 
 // ─── Dashboard API helpers (Issue 5) ─────────────────────────────────────────
 
-function calcIdade(dataNasc?: string | null): number {
-  if (!dataNasc) return 0;
-  const nasc = new Date(dataNasc);
-  const hoje = new Date();
-  let idade = hoje.getFullYear() - nasc.getFullYear();
-  const m = hoje.getMonth() - nasc.getMonth();
-  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-  return idade;
-}
-
 function mapEtapaStatus(s: string): SpecStatus {
   switch (s) {
     case "EM_ATENDIMENTO": return "em-atendimento";
@@ -3555,7 +3545,7 @@ function apiItemToPaciente(item: DashboardJornadaItem): Patient {
   return {
     id:          item.jornada_id,
     name:        item.paciente_nome,
-    age:         calcIdade(item.paciente_data_nascimento),
+    age:         calcularIdade(item.paciente_data_nascimento),
     cpf:         item.paciente_cpf,
     cid:         "",
     diagnosis:   item.diagnostico ?? "",
