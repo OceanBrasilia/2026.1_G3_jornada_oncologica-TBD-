@@ -44,7 +44,7 @@ export function MedicinaForm({ data, onChange, patient, inheritedData, origins }
   return (
     <div>
       <PatientHeader 
-        id="CAO-2024-0002"
+        id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
         diagnosis={patient?.diagnosis}

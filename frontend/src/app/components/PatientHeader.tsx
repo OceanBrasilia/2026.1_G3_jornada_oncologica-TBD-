@@ -13,7 +13,7 @@ export interface PatientHeaderProps {
 }
 
 export function PatientHeader({
-  id = 'CAO-2024-0002',
+  id,
   name,
   age,
   diagnosis,

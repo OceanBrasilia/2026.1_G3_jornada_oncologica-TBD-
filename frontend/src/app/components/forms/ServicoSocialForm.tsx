@@ -70,11 +70,11 @@ export function ServicoSocialForm({ data, onChange, patient, inheritedData, orig
   return (
     <div className="space-y-6 pb-20">
       <PatientHeader 
-        id="CAO-2024-0002"
-        name={patient?.name || "Roberto Ferreira Silva"}
-        age={patient?.age || "68 anos"}
-        diagnosis={patient?.diagnosis || "Câncer de Próstata"}
-        cid={patient?.cid || "CID C61"}
+        id={patient?.id}
+        name={patient?.name || ""}
+        age={patient?.age}
+        diagnosis={patient?.diagnosis}
+        cid={patient?.cid}
         specialty="Serviço Social"
         status="Pendente"
         alerts={patient?.alerts}
@@ -83,9 +83,9 @@ export function ServicoSocialForm({ data, onChange, patient, inheritedData, orig
       <ReusedDataAccordion
         title="I – Identificação (reaproveitada)"
         fields={[
-          { label: "NOME", value: patient?.name || "Roberto Ferreira Silva", origin: "Cadastro" },
-          { label: "DIAGNÓSTICO", value: patient?.diagnosis || "Câncer de Próstata", origin: "Recepção" },
-          { label: "CID", value: patient?.cid || "C61", origin: "Recepção" },
+          { label: "NOME", value: patient?.name || "", origin: "Cadastro" },
+          { label: "DIAGNÓSTICO", value: patient?.diagnosis || "", origin: "Recepção" },
+          { label: "CID", value: patient?.cid || "", origin: "Recepção" },
         ]}
         data={data}
         onChange={onChange}

@@ -105,7 +105,7 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
   return (
     <div className="space-y-6">
       <PatientHeader 
-        id="CAO-2024-0002"
+        id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
         diagnosis={patient?.diagnosis}
