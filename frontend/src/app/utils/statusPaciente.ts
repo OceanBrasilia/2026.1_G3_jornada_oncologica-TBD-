@@ -25,9 +25,3 @@ export function statusGeralDoPaciente(
   if (semRecepcao.some(e => e.status === "atendido")) return "pendente";
   return "aguardando";
 }
-
-/** Horário em que a última especialidade foi concluída ("HH:MM"), se houver. */
-export function horarioUltimaConclusao(especialidades: { completedTime?: string }[]): string | undefined {
-  const horarios = especialidades.map(e => e.completedTime).filter((h): h is string => !!h);
-  return horarios.sort().at(-1);
-}

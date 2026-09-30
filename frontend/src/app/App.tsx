@@ -21,6 +21,10 @@ import { OdontologiaForm } from "./components/forms/OdontologiaForm";
 import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
 import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
 import { Level3Chips } from "./components/ui/Level3Chips";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "./components/ui/alert-dialog";
 import { Level2Banner } from "./components/ui/Level2Banner";
 import { PendencyList } from "./components/ui/PendencyList";
 import { mockPatientAlerts } from "./mocks/patientAlertsMock";
@@ -33,7 +37,7 @@ import {
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 import { calcularIdade } from "./utils/idade";
-import { statusGeralDoPaciente, horarioUltimaConclusao } from "./utils/statusPaciente";
+import { statusGeralDoPaciente } from "./utils/statusPaciente";
 import {
   loadStoredPatients,
   saveStoredPatients,
@@ -106,6 +110,8 @@ interface Patient {
   alerts?: PatientAlert[];
   /** Exportações em PDF da ficha consolidada (RF-018): a próxima recebe a versão seguinte. */
   pdfExports?: PdfExportRecord[];
+  /** Chegada/saída registradas pela Recepção. A saída só é dada na Recepção. */
+  checkin?: CheckinRecord;
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -933,19 +939,21 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
 
 type CheckinRecord = { arrived: boolean; arrivedAt?: string; departed: boolean; departedAt?: string };
 
-function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PATIENTS }: {
+function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PATIENTS, onCheckinChange }: {
   onNavigate: (s: Screen) => void;
   onOpenPatient: (p: Patient) => void;
   onAddDoc: (doc: PatientDocument) => void;
   patients?: Patient[];
+  onCheckinChange?: (patientId: string, registro: CheckinRecord) => void;
 }) {
   const [search, setSearch] = useState("");
 
-  // Deriva o check-in "padrão" de um paciente a partir do status que veio da API.
+  // Usa o registro de chegada/saída salvo no paciente; sem registro, deriva a
+  // chegada do status. A saída nunca é deduzida: mesmo com a jornada
+  // finalizada, o paciente só sai quando a Recepção registra a saída.
   function deriveCheckin(p: Patient): CheckinRecord {
-    return p.status === "finalizado"
-      ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: horarioUltimaConclusao(p.specialties) ?? "—" }
-      : p.status !== "aguardando"
+    if (p.checkin) return p.checkin;
+    return p.status !== "aguardando"
       ? { arrived: true, arrivedAt: p.arrivalTime, departed: false }
       : { arrived: false, departed: false };
   }
@@ -959,9 +967,8 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
   const [checkins, setCheckins] = useState<Record<string, CheckinRecord>>(initCheckins);
 
   // A cada atualização de `patients` (polling da API a cada 30s), sincroniza a fila:
-  // adiciona pacientes novos e avança o status de quem a API já confirmou como
-  // "em atendimento" ou "finalizado" — sem nunca reverter uma marcação manual
-  // (chegada/saída) que a recepção já tenha feito na tela.
+  // adiciona pacientes novos e marca a chegada de quem já entrou em atendimento,
+  // sem nunca reverter uma marcação manual (chegada/saída) da recepção.
   useEffect(() => {
     setCheckins(prev => {
       let changed = false;
@@ -1030,18 +1037,23 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
 
   const uploadSelectedPatient = patients.find(p => p.id === uploadPatientId);
 
+  const horaAtual = () => new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  function registrarCheckin(id: string, registro: CheckinRecord) {
+    setCheckins(c => ({ ...c, [id]: registro }));
+    onCheckinChange?.(id, registro);
+  }
+
   function confirmArrival(id: string) {
-    const now = MOCK_NOW;
-    setCheckins(c => ({ ...c, [id]: { ...c[id], arrived: true, arrivedAt: now } }));
+    registrarCheckin(id, { ...checkins[id], departed: checkins[id]?.departed ?? false, arrived: true, arrivedAt: horaAtual() });
   }
 
   function confirmDeparture(id: string) {
-    const now = MOCK_NOW;
-    setCheckins(c => ({ ...c, [id]: { ...c[id], departed: true, departedAt: now } }));
+    registrarCheckin(id, { ...checkins[id], arrived: checkins[id]?.arrived ?? true, departed: true, departedAt: horaAtual() });
   }
 
   function undoArrival(id: string) {
-    setCheckins(c => ({ ...c, [id]: { arrived: false, departed: false } }));
+    registrarCheckin(id, { arrived: false, departed: false });
   }
 
   const filtered = patients.filter(p =>
@@ -2110,7 +2122,7 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario, onPdfExported }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario, onPdfExported, onSetAplicavel }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
@@ -2121,6 +2133,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   onResolvePendency: (alertId: string) => void;
   equipeUsuario: string | null;
   onPdfExported: (registro: PdfExportRecord) => void;
+  onSetAplicavel: (specId: string, aplicavel: boolean) => void;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
@@ -2442,8 +2455,12 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   />
                 );
               })() : activeSpec.status === "nao-se-aplica" ? (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-500 text-center">
-                  Esta especialidade foi marcada como não aplicável a este paciente.
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-500 text-center space-y-3">
+                  <p>Esta especialidade foi marcada como não aplicável a este paciente.</p>
+                  <BotaoAplicabilidade specName={activeSpec.name} aplicavel onConfirm={() => onSetAplicavel(activeSpec.id, true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-[#D5E6F3] bg-white rounded-xl text-sm text-[#1B6CA8] hover:bg-[#F4F7FB] transition font-semibold">
+                    <RotateCcw size={15} /> Tornar aplicável novamente
+                  </BotaoAplicabilidade>
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -2451,9 +2468,10 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                     className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
                     <Clipboard size={16} /> {activeSpec.status === "em-atendimento" ? "Continuar formulário" : "Preencher formulário"}
                   </button>
-                  <button className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] rounded-xl text-sm text-[#6B7A8D] hover:bg-[#F4F7FB] transition font-medium">
+                  <BotaoAplicabilidade specName={activeSpec.name} aplicavel={false} onConfirm={() => onSetAplicavel(activeSpec.id, false)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] rounded-xl text-sm text-[#6B7A8D] hover:bg-[#F4F7FB] transition font-medium">
                     <X size={15} /> Não se aplica
-                  </button>
+                  </BotaoAplicabilidade>
                 </div>
               )}
             </div>
@@ -2522,6 +2540,39 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
 }
 
 type PdfExportRecord = { versao: number; geradoEm: string; exportadoPor: string };
+
+/** Botão "Não se aplica" / "Tornar aplicável novamente" da ficha, sempre com confirmação. */
+function BotaoAplicabilidade({ specName, aplicavel, onConfirm, className, children }: {
+  specName: string;
+  /** true = vai tornar aplicável de novo; false = vai marcar como não se aplica. */
+  aplicavel: boolean;
+  onConfirm: () => void;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setAberto(true)} className={className}>{children}</button>
+      <AlertDialog open={aberto} onOpenChange={setAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{aplicavel ? `Tornar ${specName} aplicável novamente?` : `Marcar ${specName} como "não se aplica"?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {aplicavel
+                ? `${specName} volta a ficar pendente para este paciente. As respostas já registradas continuam guardadas.`
+                : `${specName} deixa de contar para a finalização da jornada. Dá para desfazer depois em "Tornar aplicável novamente".`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirm}>{aplicavel ? "Tornar aplicável" : "Marcar como não se aplica"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
 
 /** Número da próxima exportação em PDF deste paciente (1 na primeira). */
 function proximaVersaoPdf(patient: Patient): number {
@@ -3726,6 +3777,42 @@ export default function App() {
   // enquanto for null, resolver pendência pede confirmação de equipe.
   const equipeUsuario: string | null = null;
 
+  function handleSetAplicavel(specId: string, aplicavel: boolean) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const newSpecialties = p.specialties.map(s => s.id !== specId ? s : {
+        ...s,
+        status: (aplicavel ? "pendente" : "nao-se-aplica") as SpecStatus,
+        completedTime: undefined,
+      });
+      const updatedPatient = { ...p, specialties: newSpecialties, status: statusGeralDoPaciente(newSpecialties) };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  function handleCheckinChange(patientId: string, registro: CheckinRecord) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === patientId);
+      if (pIndex === -1) return prev;
+      const updatedPatient = { ...prev[pIndex], checkin: registro };
+      PATIENTS[PATIENTS.findIndex(px => px.id === patientId)] = updatedPatient;
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
   function handlePdfExported(registro: PdfExportRecord) {
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
@@ -3815,7 +3902,7 @@ export default function App() {
       notifications={notifications}
       onMarkAllRead={markAllRead}
     >
-      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} />}
+      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} onCheckinChange={handleCheckinChange} />}
       {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => { const next = [p, ...prev]; saveStoredPatients(next); return next; }); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
       {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} patients={patientsList} />}
 
@@ -3824,7 +3911,7 @@ export default function App() {
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} onPdfExported={handlePdfExported} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} onPdfExported={handlePdfExported} onSetAplicavel={handleSetAplicavel} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} onPdfExported={handlePdfExported} />}
 

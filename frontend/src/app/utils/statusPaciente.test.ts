@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { horarioUltimaConclusao, statusGeralDoPaciente } from "./statusPaciente";
+import { statusGeralDoPaciente } from "./statusPaciente";
 
 type S = "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica";
 const esp = (enfermagem: S, nutricao: S = "pendente") => [
@@ -33,15 +33,5 @@ describe("statusGeralDoPaciente", () => {
 
   it("volta a em atendimento se um formulário concluído for reaberto como rascunho", () => {
     expect(statusGeralDoPaciente(esp("em-atendimento", "atendido"))).toBe("em-atendimento");
-  });
-});
-
-describe("horarioUltimaConclusao", () => {
-  it("retorna o horário mais tarde entre as especialidades concluídas", () => {
-    expect(horarioUltimaConclusao([{ completedTime: "08:10" }, {}, { completedTime: "10:45" }, { completedTime: "09:30" }])).toBe("10:45");
-  });
-
-  it("retorna undefined quando nenhuma foi concluída", () => {
-    expect(horarioUltimaConclusao([{}, {}])).toBeUndefined();
   });
 });
