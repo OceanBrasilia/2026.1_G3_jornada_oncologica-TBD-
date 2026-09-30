@@ -2102,7 +2102,7 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
@@ -2110,6 +2110,8 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   onDeleteDoc: (id: string) => void;
   role: Role | null;
   onAcknowledgeAlert: (alertId: string) => void;
+  onResolvePendency: (alertId: string) => void;
+  equipeUsuario: string | null;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
@@ -2232,7 +2234,8 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
       </div>
 
       <Level2Banner alerts={visibleAlerts} onAcknowledge={onAcknowledgeAlert} />
-      <PendencyList alerts={visibleAlerts} />
+      {/* [CONFIRMAR COM A EQUIPE] Só o perfil Profissional vê o botão de resolver pendência. */}
+      <PendencyList alerts={visibleAlerts} onResolve={role === "profissional" ? onResolvePendency : undefined} equipeUsuario={equipeUsuario} />
 
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-4">
@@ -3667,7 +3670,7 @@ export default function App() {
       const newAlerts = freshAlerts.map(fresh => {
         const prevAlert = previousAlerts.find(a => a.id === fresh.id);
         if (prevAlert?.status && prevAlert.status !== 'aberto') {
-          return { ...fresh, status: prevAlert.status, createdAt: prevAlert.createdAt ?? fresh.createdAt };
+          return { ...fresh, status: prevAlert.status, createdAt: prevAlert.createdAt ?? fresh.createdAt, resolvedBy: prevAlert.resolvedBy, resolvedAt: prevAlert.resolvedAt };
         }
         return fresh;
       });
@@ -3696,6 +3699,31 @@ export default function App() {
 
       const p = prev[pIndex];
       const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'ciente' as const } : a);
+      const updatedPatient = { ...p, alerts: newAlerts };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  // Equipe do usuário logado (ex.: "Nutrição"). O login ainda não informa;
+  // enquanto for null, resolver pendência pede confirmação de equipe.
+  const equipeUsuario: string | null = null;
+
+  function handleResolvePendency(alertId: string) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const resolvedAt = new Date().toLocaleString('pt-BR');
+      const resolvedBy = nomeExibicaoPorPerfil(role);
+      const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'resolvido' as const, resolvedBy, resolvedAt } : a);
       const updatedPatient = { ...p, alerts: newAlerts };
 
       setSelectedPatient(updatedPatient);
@@ -3767,7 +3795,7 @@ export default function App() {
       {screen === "professionals-management" && <ProfessionalsManagement />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
       {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
 

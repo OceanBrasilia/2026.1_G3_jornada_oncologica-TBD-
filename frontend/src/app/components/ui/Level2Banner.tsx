@@ -32,7 +32,14 @@ export const Level2Banner: React.FC<Level2BannerProps> = ({ alerts, onAcknowledg
               {alert.recommendedAction && (
                 <p className="text-xs text-amber-700 mt-1"><strong>Ação sugerida:</strong> {alert.recommendedAction}</p>
               )}
-              <AlertMeta alert={alert} className="text-amber-800 mt-1.5" />
+              {alert.level.includes(AlertLevel.LEVEL_4) ? (
+                // Os detalhes ficam no cartão de pendência, para não repetir.
+                <p className="text-xs text-amber-800 mt-1">
+                  <strong>Pendência criada para:</strong> {alert.responsible || 'equipe responsável'} (detalhes em "Pendências geradas por alertas")
+                </p>
+              ) : (
+                <AlertMeta alert={alert} className="text-amber-800 mt-1.5" />
+              )}
             </div>
           </div>
           <button

@@ -38,4 +38,8 @@ export interface PatientAlert {
   confidential?: boolean;
   /** Estado do acompanhamento do alerta — usado principalmente no Nível 2 ("fica até registrar ciência ou plano") e no Nível 4. */
   status?: AlertStatus;
+  /** Quem marcou a pendência como resolvida (Nível 4). */
+  resolvedBy?: string;
+  /** Quando a pendência foi marcada como resolvida. */
+  resolvedAt?: string;
 }
