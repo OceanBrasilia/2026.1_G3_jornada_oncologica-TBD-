@@ -2,23 +2,32 @@ type StatusEspecialidade = "atendido" | "pendente" | "em-atendimento" | "nao-se-
 type StatusPaciente = "aguardando" | "em-atendimento" | "pendente" | "finalizado";
 
 /**
- * Status geral do paciente depois que uma especialidade salva o formulário.
+ * Status geral do paciente a partir do status de cada especialidade.
+ * Regras definidas pela equipe em 30/09/2026:
+ * - "pendente" (na especialidade) = o paciente ainda não passou por ela;
+ * - a jornada finaliza quando todas as especialidades aplicáveis terminam
+ *   ("não se aplica" não conta).
  *
- * Regra atual: sai de "aguardando" para "em-atendimento" assim que alguma
- * especialidade (fora a Recepção) estiver atendida ou em atendimento. Nunca
- * volta atrás e nunca muda um status que já não seja "aguardando".
- *
- * [CONFIRMAR COM A EQUIPE] "finalizado" e "pendente" não são calculados aqui:
- * falta definir se a jornada termina sozinha quando todas as especialidades
- * concluem ou se alguém a encerra, e o que "pendente" significa para o paciente.
+ * - aguardando:     só a Recepção atendeu;
+ * - em-atendimento: alguma especialidade está em atendimento (rascunho salvo);
+ * - pendente:       já passou por alguma, nenhuma em andamento, e ainda faltam
+ *                   especialidades aplicáveis;
+ * - finalizado:     todas as especialidades aplicáveis estão atendidas.
  */
-export function statusGeralAposAtendimento(
-  statusAtual: StatusPaciente,
+export function statusGeralDoPaciente(
   especialidades: { id: string; status: StatusEspecialidade }[],
 ): StatusPaciente {
-  if (statusAtual !== "aguardando") return statusAtual;
-  const comecou = especialidades.some(
-    e => e.id !== "recepcao" && (e.status === "atendido" || e.status === "em-atendimento"),
-  );
-  return comecou ? "em-atendimento" : statusAtual;
+  const aplicaveis = especialidades.filter(e => e.status !== "nao-se-aplica");
+  const semRecepcao = aplicaveis.filter(e => e.id !== "recepcao");
+
+  if (aplicaveis.length > 0 && aplicaveis.every(e => e.status === "atendido")) return "finalizado";
+  if (semRecepcao.some(e => e.status === "em-atendimento")) return "em-atendimento";
+  if (semRecepcao.some(e => e.status === "atendido")) return "pendente";
+  return "aguardando";
+}
+
+/** Horário em que a última especialidade foi concluída ("HH:MM"), se houver. */
+export function horarioUltimaConclusao(especialidades: { completedTime?: string }[]): string | undefined {
+  const horarios = especialidades.map(e => e.completedTime).filter((h): h is string => !!h);
+  return horarios.sort().at(-1);
 }

@@ -1,31 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { statusGeralAposAtendimento } from "./statusPaciente";
+import { horarioUltimaConclusao, statusGeralDoPaciente } from "./statusPaciente";
 
-const esp = (enfermagem: "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica") => [
-  { id: "recepcao", status: "atendido" as const },
+type S = "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica";
+const esp = (enfermagem: S, nutricao: S = "pendente") => [
+  { id: "recepcao", status: "atendido" as S },
   { id: "enfermagem", status: enfermagem },
-  { id: "nutricao", status: "pendente" as const },
+  { id: "nutricao", status: nutricao },
 ];
 
-describe("statusGeralAposAtendimento", () => {
-  it("continua aguardando quando só a Recepção atendeu", () => {
-    expect(statusGeralAposAtendimento("aguardando", esp("pendente"))).toBe("aguardando");
+describe("statusGeralDoPaciente", () => {
+  it("aguardando quando só a Recepção atendeu", () => {
+    expect(statusGeralDoPaciente(esp("pendente"))).toBe("aguardando");
   });
 
-  it("passa para em atendimento quando uma especialidade é atendida", () => {
-    expect(statusGeralAposAtendimento("aguardando", esp("atendido"))).toBe("em-atendimento");
+  it("em atendimento quando há especialidade com rascunho salvo", () => {
+    expect(statusGeralDoPaciente(esp("em-atendimento"))).toBe("em-atendimento");
+    expect(statusGeralDoPaciente(esp("atendido", "em-atendimento"))).toBe("em-atendimento");
   });
 
-  it("passa para em atendimento quando há rascunho salvo", () => {
-    expect(statusGeralAposAtendimento("aguardando", esp("em-atendimento"))).toBe("em-atendimento");
+  it("pendente quando já passou por alguma e ainda faltam especialidades", () => {
+    expect(statusGeralDoPaciente(esp("atendido", "pendente"))).toBe("pendente");
   });
 
-  it("'não se aplica' não conta como atendimento", () => {
-    expect(statusGeralAposAtendimento("aguardando", esp("nao-se-aplica"))).toBe("aguardando");
+  it("finalizado quando todas as aplicáveis estão atendidas", () => {
+    expect(statusGeralDoPaciente(esp("atendido", "atendido"))).toBe("finalizado");
   });
 
-  it("nunca muda um status que já não é 'aguardando'", () => {
-    expect(statusGeralAposAtendimento("finalizado", esp("pendente"))).toBe("finalizado");
-    expect(statusGeralAposAtendimento("pendente", esp("atendido"))).toBe("pendente");
+  it("'não se aplica' fica fora da conta", () => {
+    expect(statusGeralDoPaciente(esp("atendido", "nao-se-aplica"))).toBe("finalizado");
+    expect(statusGeralDoPaciente(esp("nao-se-aplica", "pendente"))).toBe("aguardando");
+  });
+
+  it("volta a em atendimento se um formulário concluído for reaberto como rascunho", () => {
+    expect(statusGeralDoPaciente(esp("em-atendimento", "atendido"))).toBe("em-atendimento");
+  });
+});
+
+describe("horarioUltimaConclusao", () => {
+  it("retorna o horário mais tarde entre as especialidades concluídas", () => {
+    expect(horarioUltimaConclusao([{ completedTime: "08:10" }, {}, { completedTime: "10:45" }, { completedTime: "09:30" }])).toBe("10:45");
+  });
+
+  it("retorna undefined quando nenhuma foi concluída", () => {
+    expect(horarioUltimaConclusao([{}, {}])).toBeUndefined();
   });
 });

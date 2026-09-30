@@ -33,7 +33,7 @@ import {
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 import { calcularIdade } from "./utils/idade";
-import { statusGeralAposAtendimento } from "./utils/statusPaciente";
+import { statusGeralDoPaciente, horarioUltimaConclusao } from "./utils/statusPaciente";
 import {
   loadStoredPatients,
   saveStoredPatients,
@@ -942,7 +942,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
   // Deriva o check-in "padrão" de um paciente a partir do status que veio da API.
   function deriveCheckin(p: Patient): CheckinRecord {
     return p.status === "finalizado"
-      ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: "12:30" }
+      ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: horarioUltimaConclusao(p.specialties) ?? "—" }
       : p.status !== "aguardando"
       ? { arrived: true, arrivedAt: p.arrivalTime, departed: false }
       : { arrived: false, departed: false };
@@ -3669,7 +3669,7 @@ export default function App() {
         return fresh;
       });
 
-      const updatedPatient = { ...p, status: statusGeralAposAtendimento(p.status, newSpecialties), specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
+      const updatedPatient = { ...p, status: statusGeralDoPaciente(newSpecialties), specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
       if (answers.Altura) updatedPatient.height = answers.Altura;
 
