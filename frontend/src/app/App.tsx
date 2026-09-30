@@ -2561,7 +2561,7 @@ function BotaoAplicabilidade({ specName, aplicavel, onConfirm, className, childr
             <AlertDialogDescription>
               {aplicavel
                 ? `${specName} volta a ficar pendente para este paciente. As respostas já registradas continuam guardadas.`
-                : `${specName} deixa de contar para a finalização da jornada. Dá para desfazer depois em "Tornar aplicável novamente".`}
+                : `${specName} deixa de contar para a finalização da jornada. Para desfazer, clique em "Tornar aplicável novamente".`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
