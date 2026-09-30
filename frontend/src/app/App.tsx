@@ -33,6 +33,7 @@ import {
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 import { calcularIdade } from "./utils/idade";
+import { statusGeralAposAtendimento } from "./utils/statusPaciente";
 import {
   loadStoredPatients,
   saveStoredPatients,
@@ -1538,6 +1539,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
 
     const calculatedAge = calcularIdade(form.birth);
 
+    const arrivalTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
     const newPatient: Patient = {
       id: assignedId,
       name: form.name.trim() || "Novo Paciente",
@@ -1552,12 +1555,15 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       cid: form.cid.trim() || "Não informado",
       origin: form.origin.trim() || "Recepção Central",
       status: "aguardando",
-      arrivalTime: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      arrivalTime,
       date: new Date().toLocaleDateString("pt-BR"),
       maritalStatus: form.maritalStatus || undefined,
       raceColor: form.raceColor || undefined,
       religion: form.religion || undefined,
-      specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]),
+      // A Recepção fica atendida no próprio cadastro, com o horário real e o
+      // perfil de quem cadastrou (e não o nome/horário fixo dos dados de exemplo).
+      specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"])
+        .map(s => s.id === "recepcao" ? { ...s, professional: nomeExibicaoPorPerfil("recepcao"), completedTime: arrivalTime } : s),
     };
 
     setGeneratedId(assignedId);
@@ -3663,7 +3669,7 @@ export default function App() {
         return fresh;
       });
 
-      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
+      const updatedPatient = { ...p, status: statusGeralAposAtendimento(p.status, newSpecialties), specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
       if (answers.Altura) updatedPatient.height = answers.Altura;
 
