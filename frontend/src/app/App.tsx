@@ -437,7 +437,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
             <p className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider leading-none">Central</p>
             <p className="text-[10px] text-[#6B7A8D] leading-none mt-0.5">Acolhimento Oncológico</p>
           </div>
-          <button className="ml-auto lg:hidden" onClick={onClose}><X size={18} className="text-[#6B7A8D]" /></button>
+          <button className="ml-auto lg:hidden" onClick={onClose} aria-label="Fechar menu"><X size={18} className="text-[#6B7A8D]" /></button>
         </div>
 
         {/* Role badge */}
@@ -553,11 +553,11 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
       <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
         {/* Top bar */}
         <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3 print:hidden">
-          <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)}>
+          <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
             <Menu size={20} className="text-[#6B7A8D]" />
           </button>
           {onBack && (
-            <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+            <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Voltar">
               <ArrowLeft size={20} className="text-[#6B7A8D]" />
             </button>
           )}
@@ -566,6 +566,8 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
             <button
               onClick={() => { setBellOpen(o => !o); if (!bellOpen) onMarkAllRead(); }}
               className="p-2 rounded-xl hover:bg-[#F4F7FB] transition relative"
+              aria-label={unread > 0 ? `Notificações: ${unread} não lidas` : "Notificações"}
+              aria-expanded={bellOpen}
             >
               <Bell size={18} className={unread > 0 ? "text-[#1B6CA8]" : "text-[#9AAABB]"} />
               {unread > 0 && (
@@ -706,14 +708,14 @@ function LoginScreen({ onLogin, onPublicJourney }: {
               </div>
             )}
             <div>
-              <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">E-mail ou usuário</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label htmlFor="login-email" className="block text-sm font-semibold text-[#1A2332] mb-1.5">E-mail ou usuário</label>
+              <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder={currentRoleConfig.defaultEmail}
                 className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Senha</label>
-              <input type="password" value={pwd} onChange={e => setPwd(e.target.value)}
+              <label htmlFor="login-senha" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Senha</label>
+              <input id="login-senha" type="password" value={pwd} onChange={e => setPwd(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
@@ -831,7 +833,7 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8F4FD] to-[#E8F5F0]" style={{ fontFamily: "'Inter', sans-serif" }}>
       <header className="bg-white border-b border-[rgba(27,108,168,0.1)] px-4 py-4 flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Voltar">
           <ArrowLeft size={20} className="text-[#6B7A8D]" />
         </button>
         <div className="flex items-center gap-2">
@@ -1220,7 +1222,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   <span className="text-amber-600 font-semibold">{pendingCount} aguardando</span>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition mt-0.5">
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition mt-0.5" aria-label="Fechar">
                 <X size={18} className="text-[#6B7A8D]" />
               </button>
             </div>
@@ -1320,7 +1322,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                     </h3>
                     <p className="text-xs text-[#9AAABB] mt-0.5">PDF, JPEG, PNG ou DOCX · máx. 20 MB</p>
                   </div>
-                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                     <X size={18} className="text-[#6B7A8D]" />
                   </button>
                 </div>
@@ -1419,7 +1421,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   <h3 className="font-bold text-[#1A2332] text-lg" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     Confirmar anexo
                   </h3>
-                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                     <X size={18} className="text-[#6B7A8D]" />
                   </button>
                 </div>
@@ -1566,8 +1568,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
 
   const field = (label: string, key: keyof typeof form, type = "text", placeholder = "") => (
     <div>
-      <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">{label}</label>
-      <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+      <label htmlFor={`cadastro-${key}`} className="block text-sm font-semibold text-[#1A2332] mb-1.5">{label}</label>
+      <input id={`cadastro-${key}`} type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
     </div>
@@ -1616,8 +1618,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           {field("Acompanhante", "companion", "text", "Nome e grau de parentesco")}
 
           <div>
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Estado civil</label>
-            <select value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
+            <label htmlFor="cadastro-maritalStatus" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Estado civil</label>
+            <select id="cadastro-maritalStatus" value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
               {["Solteiro(a)", "Casado(a)", "União estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
@@ -1625,8 +1627,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Cor/raça (autodeclarada)</label>
-            <select value={form.raceColor} onChange={e => setForm(f => ({ ...f, raceColor: e.target.value }))}
+            <label htmlFor="cadastro-raceColor" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Cor/raça (autodeclarada)</label>
+            <select id="cadastro-raceColor" value={form.raceColor} onChange={e => setForm(f => ({ ...f, raceColor: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
               {["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não declarada"].map(o => <option key={o}>{o}</option>)}
@@ -1634,8 +1636,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Religião / espiritualidade</label>
-            <select value={form.religion} onChange={e => setForm(f => ({ ...f, religion: e.target.value }))}
+            <label htmlFor="cadastro-religion" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Religião / espiritualidade</label>
+            <select id="cadastro-religion" value={form.religion} onChange={e => setForm(f => ({ ...f, religion: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
               {["Católica", "Evangélica", "Espírita", "Umbanda / Candomblé", "Budista", "Judaica", "Islâmica", "Sem religião", "Outra", "Prefere não informar"].map(o => <option key={o}>{o}</option>)}
@@ -2457,7 +2459,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
               <h3 className="font-bold text-[#1A2332]" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 Confirmar remoção
               </h3>
-              <button onClick={() => setDeleteTarget(null)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+              <button onClick={() => setDeleteTarget(null)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                 <X size={16} className="text-[#6B7A8D]" />
               </button>
             </div>
@@ -2583,8 +2585,8 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
       )}
       {/* Observations */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-        <h3 className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
-        <textarea value={obs} onChange={e => handleObsChange(e.target.value)}
+        <h3 id="observacoes-titulo" className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
+        <textarea aria-labelledby="observacoes-titulo" value={obs} onChange={e => handleObsChange(e.target.value)}
           rows={4} placeholder="Registre observações, condutas ou evolução da especialidade..."
           className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none" />
       </div>
@@ -3091,7 +3093,7 @@ function ProfessionalsManagement() {
               <h3 className="font-bold text-[#1A2332] text-lg" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 {editTarget ? "Editar profissional" : "Novo profissional"}
               </h3>
-              <button onClick={() => setShowForm(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+              <button onClick={() => setShowForm(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                 <X size={18} className="text-[#6B7A8D]" />
               </button>
             </div>

@@ -57,8 +57,9 @@ export function ReusedDataAccordion({
             {data && onChange && (
               <div className="mt-4 pt-4 border-t border-[#F1F5F9]">
                 <div className="mb-4">
-                  <label className="block text-xs font-bold text-[#1A2332] mb-1">Religião/Crença</label>
+                  <label htmlFor="reaproveitado-religiao" className="block text-xs font-bold text-[#1A2332] mb-1">Religião/Crença</label>
                   <select
+                    id="reaproveitado-religiao"
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                     value={data["Religião/Crença"] || data["Religião"] || data["religiao"] || ""}
                     onChange={(e) => onChange("Religião/Crença", e.target.value)}
@@ -74,8 +75,9 @@ export function ReusedDataAccordion({
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-bold text-[#1A2332] mb-1">Ocupação/Trabalho</label>
+                  <label htmlFor="reaproveitado-ocupacao" className="block text-xs font-bold text-[#1A2332] mb-1">Ocupação/Trabalho</label>
                   <select
+                    id="reaproveitado-ocupacao"
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                     value={data["Ocupação/Trabalho"] || data["Ocupação"] || data["profissao"] || data["Situação de trabalho"] || ""}
                     onChange={(e) => onChange("Ocupação/Trabalho", e.target.value)}
@@ -92,8 +94,9 @@ export function ReusedDataAccordion({
                 </div>
 
                 <div className="mb-4 pl-4 border-l-2 border-[#1B6CA8]/20">
-                  <label className="block text-xs font-bold text-[#1A2332] mb-1">Qual trabalho exerce/exercia?</label>
+                  <label htmlFor="reaproveitado-trabalho" className="block text-xs font-bold text-[#1A2332] mb-1">Qual trabalho exerce/exercia?</label>
                   <input
+                    id="reaproveitado-trabalho"
                     type="text"
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                     value={data["Trabalho exercido"] || ""}
@@ -103,8 +106,9 @@ export function ReusedDataAccordion({
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-xs font-bold text-[#1A2332] mb-1">Procedência</label>
+                  <label htmlFor="reaproveitado-procedencia" className="block text-xs font-bold text-[#1A2332] mb-1">Procedência</label>
                   <select
+                    id="reaproveitado-procedencia"
                     className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                     value={data["Procedência"] || ""}
                     onChange={(e) => {
@@ -121,8 +125,9 @@ export function ReusedDataAccordion({
 
                 {data["Procedência"] === "Distrito Federal" && (
                   <div className="mb-4 pl-4 border-l-2 border-[#1B6CA8]/20">
-                    <label className="block text-xs font-bold text-[#1A2332] mb-1">RA (Região Administrativa)</label>
+                    <label htmlFor="reaproveitado-ra" className="block text-xs font-bold text-[#1A2332] mb-1">RA (Região Administrativa)</label>
                     <input
+                      id="reaproveitado-ra"
                       type="text"
                       className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                       value={data["Procedência RA"] || ""}
@@ -135,8 +140,9 @@ export function ReusedDataAccordion({
                 {data["Procedência"] === "Outro" && (
                   <div className="mb-4 pl-4 border-l-2 border-[#1B6CA8]/20 flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
-                      <label className="block text-xs font-bold text-[#1A2332] mb-1">Estado (UF)</label>
+                      <label htmlFor="reaproveitado-uf" className="block text-xs font-bold text-[#1A2332] mb-1">Estado (UF)</label>
                       <select
+                        id="reaproveitado-uf"
                         className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                         value={data["Procedência Estado"] || ""}
                         onChange={(e) => onChange("Procedência Estado", e.target.value)}
@@ -171,8 +177,9 @@ export function ReusedDataAccordion({
                       </select>
                     </div>
                     <div className="flex-[2]">
-                      <label className="block text-xs font-bold text-[#1A2332] mb-1">Cidade</label>
+                      <label htmlFor="reaproveitado-cidade" className="block text-xs font-bold text-[#1A2332] mb-1">Cidade</label>
                       <input
+                        id="reaproveitado-cidade"
                         type="text"
                         className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
                         value={data["Procedência Cidade"] || ""}

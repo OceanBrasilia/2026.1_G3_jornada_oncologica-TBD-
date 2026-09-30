@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { X, AlertTriangle } from "lucide-react";
 
 export interface InheritableProps {
@@ -61,16 +61,18 @@ const SuppressButton = ({ onClick }: { onClick: () => void }) => (
 
 export const InheritableInput = ({ label, name, placeholder = "", type = "text", data, onChange, inheritedData, origins, conflictStatus }: InheritableProps & { type?: string, placeholder?: string }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
+  const id = useId();
 
   if (isInheritedActive) {
     return (
       <div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-          <label className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
+          <label htmlFor={id} className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
           <OriginBadge origin={origin} />
           <SuppressButton onClick={() => onChange(`${name}_suppressed`, true)} />
         </div>
         <input
+          id={id}
           type={type}
           readOnly
           value={inheritedValue}
@@ -83,10 +85,11 @@ export const InheritableInput = ({ label, name, placeholder = "", type = "text",
   return (
     <div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-        <label className="block text-xs font-bold text-[#1A2332]">{label}</label>
+        <label htmlFor={id} className="block text-xs font-bold text-[#1A2332]">{label}</label>
       </div>
       <ConflictHint hint={conflictStatus?.hint} onDismiss={conflictStatus?.onDismiss} />
       <input
+        id={id}
         type={type}
         name={name}
         value={data?.[name] ?? ""}
@@ -100,23 +103,26 @@ export const InheritableInput = ({ label, name, placeholder = "", type = "text",
 
 export const InheritableTextarea = ({ label, name, placeholder = "", rows = 3, data, onChange, inheritedData, origins }: InheritableProps & { rows?: number, placeholder?: string }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
+  const id = useId();
 
   if (isInheritedActive) {
     return (
       <div className="sm:col-span-2">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-          <label className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
+          <label htmlFor={id} className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
           <OriginBadge origin={origin} />
           <SuppressButton onClick={() => onChange(`${name}_suppressed`, true)} />
         </div>
         <textarea
+          id={id}
           readOnly
           value={inheritedValue}
           rows={rows}
           className="w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] cursor-not-allowed opacity-80 resize-none mb-2"
         />
-        <label className="block text-[10px] font-bold text-[#1A2332] mb-1 uppercase tracking-wider">Complemento / Anexo</label>
+        <label htmlFor={`${id}-complemento`} className="block text-[10px] font-bold text-[#1A2332] mb-1 uppercase tracking-wider">Complemento / Anexo</label>
         <textarea
+          id={`${id}-complemento`}
           name={`${name}_append`}
           value={data?.[`${name}_append`] ?? ""}
           onChange={(e) => onChange(`${name}_append`, e.target.value)}
@@ -130,8 +136,9 @@ export const InheritableTextarea = ({ label, name, placeholder = "", rows = 3, d
 
   return (
     <div className="sm:col-span-2">
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
+      <label htmlFor={id} className="block text-xs font-bold text-[#1A2332] mb-1">{label}</label>
       <textarea
+        id={id}
         name={name}
         value={data?.[name] ?? ""}
         onChange={(e) => onChange(name, e.target.value)}
@@ -146,12 +153,13 @@ export const InheritableTextarea = ({ label, name, placeholder = "", rows = 3, d
 export const InheritableSelect = ({ label, name, options, data, onChange, inheritedData, origins, hasOther = false, subLabel, sourceName, mapValue }: InheritableProps & { options: string[], hasOther?: boolean, subLabel?: string, sourceName?: string, mapValue?: (value: string) => string }) => {
   const { inheritedValue: rawInheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins, sourceName);
   const inheritedValue = isInheritedActive && mapValue ? mapValue(rawInheritedValue) : rawInheritedValue;
+  const id = useId();
 
   if (isInheritedActive) {
     return (
       <div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1">
-          <label className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
+          <label htmlFor={id} className="block text-xs font-bold text-[#6B7A8D]">{label}</label>
           <OriginBadge origin={origin} />
           <SuppressButton onClick={() => {
             onChange(`${name}_suppressed`, true);
@@ -160,6 +168,7 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
         </div>
         {subLabel && <div className="text-[10px] text-[#8A9EB9] font-normal leading-tight mb-1">{subLabel}</div>}
         <input
+          id={id}
           type="text"
           readOnly
           value={inheritedValue}
@@ -174,11 +183,12 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
 
   return (
     <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-1">
+      <label htmlFor={id} className="block text-xs font-bold text-[#1A2332] mb-1">
         {label}
         {subLabel && <div className="text-[10px] text-[#8A9EB9] font-normal leading-tight mt-0.5">{subLabel}</div>}
       </label>
       <select
+        id={id}
         name={name}
         value={isOther && hasOther ? "Outro" : value}
         onChange={(e) => {
@@ -208,6 +218,7 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
             onChange(`${name}_isOther`, "false");
           }}
           placeholder="Especifique..."
+          aria-label={`${label}: especifique`}
           className="mt-2 w-full px-3 py-2.5 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
         />
       )}
@@ -217,14 +228,15 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
 
 export const InheritableRadioPills = ({ label, name, options, data, onChange, inheritedData, origins, stacked = false, block = false, subLabel }: InheritableProps & { options: string[], stacked?: boolean, block?: boolean, subLabel?: string }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
+  const labelId = useId();
 
   const value = isInheritedActive ? inheritedValue : (data?.[name] || "");
 
   return (
-    <div>
+    <div role="group" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : name}>
       {label && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-          <label className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</label>
+          <span id={labelId} className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</span>
           {isInheritedActive && (
             <>
               <OriginBadge origin={origin} />
@@ -241,6 +253,8 @@ export const InheritableRadioPills = ({ label, name, options, data, onChange, in
             <button
               key={opt}
               type="button"
+              aria-pressed={isSelected}
+              aria-disabled={isInheritedActive || undefined}
               onClick={() => {
                 if (!isInheritedActive) onChange(name, opt);
               }}
@@ -261,13 +275,14 @@ export const InheritableRadioPills = ({ label, name, options, data, onChange, in
 
 export const InheritableRadioGroup = ({ label, name, options, data, onChange, inheritedData, origins }: InheritableProps & { options: string[] }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
+  const labelId = useId();
 
   const value = isInheritedActive ? inheritedValue : (data?.[name] || "");
 
   return (
-    <div>
+    <div role="radiogroup" aria-labelledby={labelId}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-        <label className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</label>
+        <span id={labelId} className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</span>
         {isInheritedActive && (
           <>
             <OriginBadge origin={origin} />
@@ -310,6 +325,7 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
   const selectedOptions = isInheritedActive
     ? getArrayValue(inheritedValue)
     : getArrayValue(data?.[name]);
+  const labelId = useId();
 
   const handleToggle = (opt: string) => {
     if (isInheritedActive) return;
@@ -324,10 +340,10 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
   };
 
   return (
-    <div>
+    <div role="group" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : name}>
       {label && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
-          <label className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</label>
+          <span id={labelId} className={`block text-xs font-bold ${isInheritedActive ? 'text-[#6B7A8D]' : 'text-[#1A2332]'}`}>{label}</span>
           {isInheritedActive && (
             <>
               <OriginBadge origin={origin} />
@@ -340,8 +356,15 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
         {options.map((opt: string) => {
           const isSelected = selectedOptions.includes(opt);
           return (
-            <div key={opt} className={`flex items-start gap-2 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`} onClick={() => handleToggle(opt)}>
-              <div className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors ${
+            <label key={opt} className={`relative flex items-start gap-2 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}>
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isSelected}
+                disabled={isInheritedActive}
+                onChange={() => handleToggle(opt)}
+              />
+              <div aria-hidden="true" className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[#1B6CA8] peer-focus-visible:ring-offset-1 ${
                 isSelected 
                   ? (isInheritedActive ? "bg-[#2DB5A3] border-[#2DB5A3]" : "bg-[#1B6CA8] border-[#1B6CA8]") 
                   : (isInheritedActive ? "border-[#EEF2F7] bg-white opacity-50" : "border-[#D5E6F3] bg-white")
@@ -353,7 +376,7 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
                 )}
               </div>
               <span className={`text-sm leading-snug ${isInheritedActive ? "text-[#6B7A8D]" : "text-[#1A2332]"}`}>{opt}</span>
-            </div>
+            </label>
           );
         })}
       </div>
