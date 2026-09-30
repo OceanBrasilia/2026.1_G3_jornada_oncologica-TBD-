@@ -20,11 +20,11 @@ import { DefaultForm } from "./components/forms/DefaultForm";
 import { OdontologiaForm } from "./components/forms/OdontologiaForm";
 import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
 import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
-import { AlertBadge } from "./components/ui/AlertBadge";
+import { Level3Chips } from "./components/ui/Level3Chips";
 import { Level2Banner } from "./components/ui/Level2Banner";
 import { PendencyList } from "./components/ui/PendencyList";
 import { mockPatientAlerts } from "./mocks/patientAlertsMock";
-import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
+import { PatientAlert, AlertCategory } from "./types/alerts";
 import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
 import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts";
 import {
@@ -2197,13 +2197,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">{patient.id}</p>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-2xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
-              {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
-                <div className="flex items-center gap-1">
-                  {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
-                    <AlertBadge key={alert.id} category={alert.category} alert={alert} />
-                  ))}
-                </div>
-              )}
+              <Level3Chips alerts={visibleAlerts} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-blue-100">
               <span>{patient.age} anos</span>
@@ -2695,13 +2689,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
-            {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
-              <div className="flex items-center gap-1 print:hidden">
-                {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
-                  <AlertBadge key={alert.id} category={alert.category} alert={alert} />
-                ))}
-              </div>
-            )}
+            <Level3Chips alerts={visibleAlerts} className="print:hidden" />
           </div>
           <p className="text-sm text-[#9AAABB] print:text-gray-600">Ficha gerada em {now}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6B7A8D] print:text-gray-700 mt-1">
