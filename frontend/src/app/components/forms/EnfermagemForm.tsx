@@ -43,8 +43,8 @@ const AccordionCard = ({ title, icon: Icon, value, children }: any) => (
 const PainScale = ({ name, data, onChange }: any) => {
   return (
     <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor 0-10</label>
-      <div className="flex flex-col gap-1 overflow-x-auto pb-2">
+      <span id="enf-escala-dor" className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor 0-10</span>
+      <div role="group" aria-labelledby="enf-escala-dor" className="flex flex-col gap-1 overflow-x-auto pb-2">
         <div className="flex gap-1 min-w-max">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((val) => {
             const isSelected = data?.[name] === String(val);
@@ -52,6 +52,7 @@ const PainScale = ({ name, data, onChange }: any) => {
               <button
                 key={val}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => onChange(name, String(val))}
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                   isSelected
