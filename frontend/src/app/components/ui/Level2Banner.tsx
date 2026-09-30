@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
 import { PatientAlert, AlertLevel } from '../../types/alerts';
+import { AlertMeta } from './AlertMeta';
 
 interface Level2BannerProps {
   alerts: PatientAlert[];
@@ -31,9 +32,7 @@ export const Level2Banner: React.FC<Level2BannerProps> = ({ alerts, onAcknowledg
               {alert.recommendedAction && (
                 <p className="text-xs text-amber-700 mt-1"><strong>Ação sugerida:</strong> {alert.recommendedAction}</p>
               )}
-              {alert.responsible && (
-                <p className="text-[11px] text-amber-700 mt-0.5">Responsável: {alert.responsible}</p>
-              )}
+              <AlertMeta alert={alert} nivel={AlertLevel.LEVEL_2} className="text-amber-800 mt-1.5" />
             </div>
           </div>
           <button
