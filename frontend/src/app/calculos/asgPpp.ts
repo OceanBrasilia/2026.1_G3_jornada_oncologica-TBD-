@@ -136,3 +136,37 @@ export function getTriageInfo(total: number) {
     color: "bg-red-100 text-red-800 border-red-200"
   };
 }
+
+/**
+ * Verifica se o questionário ASG-PPP foi efetivamente respondido.
+ * Evita gerar escore 0 e recomendação clínica indevida quando apenas
+ * peso/altura foram informados para IMC (RF-020 e RF-021).
+ */
+export function isAsgPppPreenchido(answers: Record<string, any> | undefined): boolean {
+  if (!answers) return false;
+  const hasBox1 = Boolean(
+    answers.peso_1m || answers["Peso há 1 mês (kg)"] ||
+    answers.peso_6m || answers["Peso há 6 meses (kg)"] ||
+    answers.peso_var_2sem || answers["Mudança de peso nas últimas 2 semanas"]
+  );
+  const hasBox2 = Boolean(
+    answers.ingestao_mudanca || answers.ingestao_atual ||
+    answers["Mudança na alimentação"] || answers["Alimentação atual"]
+  );
+  const hasBox3 = Boolean(
+    (Array.isArray(answers.sintomas) && answers.sintomas.length > 0) ||
+    (Array.isArray(answers["Sintomas"]) && answers["Sintomas"].length > 0)
+  );
+  const hasBox4 = Boolean(answers.atividade || answers["Atividade"] || answers["Atividade e Função"]);
+  const hasBoxB = Boolean(
+    (Array.isArray(answers.doencas) && answers.doencas.length > 0) ||
+    (Array.isArray(answers["Doenças"]) && answers["Doenças"].length > 0)
+  );
+  const hasBoxC = Boolean(
+    answers.febre || answers.duracao_febre || answers.corticoide ||
+    answers["Febre"] || answers["Duração da febre"] || answers["Uso de corticoide"]
+  );
+  const hasBoxD = Boolean(answers.exame_fisico || answers["Exame Físico Subjetivo"]);
+  return hasBox1 || hasBox2 || hasBox3 || hasBox4 || hasBoxB || hasBoxC || hasBoxD;
+}
+

@@ -45,6 +45,7 @@ import {
   loadFormDraft,
   clearFormDraft,
   resetStoredPatients,
+  loadFormDraftWithMeta,
 } from "./services/patientStorage";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -402,9 +403,10 @@ interface SidebarProps {
   onLogout: () => void;
   open: boolean;
   onClose: () => void;
+  userName?: string;
 }
 
-function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarProps) {
+function Sidebar({ role, screen, onNavigate, onLogout, open, onClose, userName }: SidebarProps) {
   const navItems: { icon: React.ReactNode; label: string; screen: Screen }[] = role === "recepcao"
     ? [
       { icon: <Home size={18} />, label: "Dashboard", screen: "reception-dashboard" },
@@ -430,7 +432,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
         ];
 
   const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : role === "coordenacao" ? "Coordenação" : "Administração";
-  const userName = nomeExibicaoPorPerfil(role);
+  const displayName = userName || nomeExibicaoPorPerfil(role);
 
   return (
     <>
@@ -478,7 +480,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
               <User size={14} className="text-[#1B6CA8]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-[#1A2332] truncate">{userName}</p>
+              <p className="text-xs font-bold text-[#1A2332] truncate">{displayName}</p>
               <p className="text-[10px] text-[#9AAABB]">{roleLabel}</p>
             </div>
           </div>
@@ -541,7 +543,7 @@ function buildNotifications(patients: Patient[]): AppNotification[] {
 
 // ─── Authenticated Layout ─────────────────────────────────────────────────────
 
-function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack, notifications, onMarkAllRead }: {
+function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack, notifications, onMarkAllRead, userName }: {
   children: React.ReactNode;
   role: Role;
   screen: Screen;
@@ -551,6 +553,7 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
   onBack?: () => void;
   notifications: AppNotification[];
   onMarkAllRead: () => void;
+  userName?: string;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -558,7 +561,7 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] flex print:bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} />
       <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
         {/* Top bar */}
         <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3 print:hidden">
@@ -650,7 +653,7 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 
 function LoginScreen({ onLogin, onPublicJourney }: {
-  onLogin: (r: Role) => void;
+  onLogin: (r: Role, email?: string) => void;
   onPublicJourney: () => void;
 }) {
   const [role, setRole] = useState<Role>("profissional");
@@ -684,7 +687,7 @@ function LoginScreen({ onLogin, onPublicJourney }: {
       // Se o usuário digitou uma senha inválida no backend ativo, prossegue com aviso ou autentica
     } finally {
       setLoading(false);
-      onLogin(role);
+      onLogin(role, emailToUse);
     }
   }
 
@@ -729,7 +732,7 @@ function LoginScreen({ onLogin, onPublicJourney }: {
                 className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
             <button type="submit" disabled={loading}
-              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1 flex items-center justify-center gap-2 disabled:opacity-75">
+              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1 flex items-center justify-center gap-2 disabled:opacity-75 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1B6CA8]/40 focus-visible:ring-offset-2">
               {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
@@ -2087,11 +2090,20 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
             <span className="font-bold text-[#1A2332]">IMC</span>
             <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
           </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="font-bold text-[#1A2332]">ASG-PPP</span>
-            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
-          </div>
-          <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+          {resumoNutricao.asgPreenchido && resumoNutricao.asgTotal !== null && resumoNutricao.asgTriage ? (
+            <>
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+              </div>
+              <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+            </>
+          ) : (
+            <div className="flex justify-between items-center text-xs text-[#8A9EB9]">
+              <span>ASG-PPP</span>
+              <span className="italic">Não preenchido</span>
+            </div>
+          )}
         </div>
       )}
       {resumoPsicologia && (
@@ -2308,18 +2320,20 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Dados do paciente</h4>
                   <dl className="space-y-2">
                     {[
-                      ["CPF", patient.cpf],
+                      ["CPF", patient.cpf || "—"],
                       ["CNS", patient.cns ?? "—"],
-                      ["Telefone", patient.phone],
+                      ["Telefone", patient.phone || "—"],
                       ["Estado civil", patient.maritalStatus ?? "—"],
                       ["Cor/raça", patient.raceColor ?? "—"],
                       ["Religião", patient.religion ?? "—"],
-                      ["Endereço", patient.address],
-                      ["Emergência", patient.emergencyContact],
+                      ["Endereço", patient.address || "—"],
+                      ["Emergência", patient.emergencyContact || "—"],
+                      ["Origem", patient.origin || "—"],
+                      ["Data de acolhimento", patient.date ? `${patient.date}${patient.arrivalTime ? ` às ${patient.arrivalTime}` : ""}` : "—"],
                     ].map(([k, v]) => (
                       <div key={k} className="flex gap-2 text-sm">
                         <dt className="text-[#9AAABB] font-medium min-w-[90px] shrink-0">{k}</dt>
-                        <dd className="text-[#1A2332] font-medium">{v}</dd>
+                        <dd className="text-[#1A2332] font-medium">{v || "—"}</dd>
                       </div>
                     ))}
                   </dl>
@@ -2465,7 +2479,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button onClick={() => onOpenSpecialty(activeSpec.id, "fill")}
-                    className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
+                    className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1B6CA8]/40 focus-visible:ring-offset-2">
                     <Clipboard size={16} /> {activeSpec.status === "em-atendimento" ? "Continuar formulário" : "Preencher formulário"}
                   </button>
                   <BotaoAplicabilidade specName={activeSpec.name} aplicavel={false} onConfirm={() => onSetAplicavel(activeSpec.id, false)}
@@ -2589,32 +2603,99 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
   const spec = patient.specialties.find(s => s.id === specId);
-  const storedDraft = loadFormDraft(patient.id, specId);
-  const [obs, setObs] = useState(storedDraft?.["Observações"] ?? patient.formAnswers?.[specId]?.["Observações"] ?? "");
+  const storedDraftMeta = loadFormDraftWithMeta(patient.id, specId);
+  const [draftBannerVisible, setDraftBannerVisible] = useState(Boolean(storedDraftMeta));
+  const [obs, setObs] = useState(storedDraftMeta?.answers?.["Observações"] ?? patient.formAnswers?.[specId]?.["Observações"] ?? "");
   const inheritedData: Record<string, string> = {};
   const origins: Record<string, string> = {};
 
+  // 1. Dados cadastrais da Recepção / Acolhimento inicial reaproveitados (RF-006 / RF-009)
+  if (patient.phone) {
+    inheritedData["Telefone"] = patient.phone; origins["Telefone"] = "Cadastro (Recepção)";
+    inheritedData["Telefones de contato"] = patient.phone; origins["Telefones de contato"] = "Cadastro (Recepção)";
+  }
+  if (patient.address) {
+    inheritedData["Endereço"] = patient.address; origins["Endereço"] = "Cadastro (Recepção)";
+    inheritedData["Endereço Rua"] = patient.address; origins["Endereço Rua"] = "Cadastro (Recepção)";
+  }
+  if (patient.maritalStatus) {
+    inheritedData["Estado civil"] = patient.maritalStatus; origins["Estado civil"] = "Cadastro (Recepção)";
+  }
+  if (patient.raceColor) {
+    inheritedData["corRaca"] = patient.raceColor; origins["corRaca"] = "Cadastro (Recepção)";
+    inheritedData["Cor/raça (autodeclarada)"] = patient.raceColor; origins["Cor/raça (autodeclarada)"] = "Cadastro (Recepção)";
+  }
+  if (patient.religion) {
+    inheritedData["Religião"] = patient.religion; origins["Religião"] = "Cadastro (Recepção)";
+  }
+  if (patient.companion) {
+    inheritedData["Acompanhante"] = patient.companion; origins["Acompanhante"] = "Cadastro (Recepção)";
+    inheritedData["acompanhanteNome"] = patient.companion; origins["acompanhanteNome"] = "Cadastro (Recepção)";
+  }
+  if (patient.weight) {
+    const pLimpo = patient.weight.replace(" kg", "").trim();
+    inheritedData["peso"] = pLimpo; origins["peso"] = "Triagem inicial";
+    inheritedData["pesoPonderal"] = pLimpo; origins["pesoPonderal"] = "Triagem inicial";
+  }
+  if (patient.height) {
+    const aLimpo = patient.height.replace(" m", "").trim();
+    inheritedData["altura"] = aLimpo; origins["altura"] = "Triagem inicial";
+  }
+
+  // 2. Respostas já preenchidas por outras especialidades com identificação de autor e horário
   if (patient.formAnswers) {
     for (let i = 0; i < patient.specialties.length; i++) {
       const s = patient.specialties[i];
       if (s.id === specId) continue;
       const answers = patient.formAnswers[s.id];
       if (answers) {
+        const originDesc = s.professional
+          ? `${s.name} (${s.professional}${s.completedTime ? ` · ${s.completedTime}` : ""})`
+          : s.name;
         for (const [key, val] of Object.entries(answers)) {
           if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
           if (val && val !== "—") {
             inheritedData[key] = val;
-            origins[key] = s.name;
+            origins[key] = originDesc;
           }
         }
       }
     }
   }
 
+  // 3. Conexões de campos equivalentes seguros entre especialidades
+  if (patient.formAnswers?.enfermagem?.medicacoes && !inheritedData["MUC"]) {
+    inheritedData["MUC"] = patient.formAnswers.enfermagem.medicacoes;
+    const enfSpec = patient.specialties.find(s => s.id === "enfermagem");
+    origins["MUC"] = `Enfermagem${enfSpec?.professional ? ` (${enfSpec.professional})` : ""}`;
+  }
+  if (patient.formAnswers?.medicina?.["Estadiamento"] && !inheritedData["estadiamento_doenca"]) {
+    inheritedData["estadiamento_doenca"] = patient.formAnswers.medicina["Estadiamento"];
+    const medSpec = patient.specialties.find(s => s.id === "medicina");
+    origins["estadiamento_doenca"] = `Medicina${medSpec?.professional ? ` (${medSpec.professional})` : ""}`;
+  }
+  if (patient.formAnswers?.medicina?.["Tratamento em curso"] && !inheritedData["tratamentosEmCurso"]) {
+    inheritedData["tratamentosEmCurso"] = patient.formAnswers.medicina["Tratamento em curso"];
+    const medSpec = patient.specialties.find(s => s.id === "medicina");
+    origins["tratamentosEmCurso"] = `Medicina${medSpec?.professional ? ` (${medSpec.professional})` : ""}`;
+  }
+  if (patient.formAnswers?.enfermagem?.["Alergia"] && !inheritedData["qs_alergia"]) {
+    inheritedData["qs_alergia"] = patient.formAnswers.enfermagem["Alergia"];
+    const enfSpec = patient.specialties.find(s => s.id === "enfermagem");
+    origins["qs_alergia"] = `Enfermagem${enfSpec?.professional ? ` (${enfSpec.professional})` : ""}`;
+  }
+
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({
     ...(patient.formAnswers?.[specId] || {}),
-    ...(storedDraft || {})
+    ...(storedDraftMeta?.answers || {})
   });
+
+  const handleDiscardDraft = () => {
+    clearFormDraft(patient.id, specId);
+    setDynamicAnswers(patient.formAnswers?.[specId] || {});
+    setObs(patient.formAnswers?.[specId]?.["Observações"] || "");
+    setDraftBannerVisible(false);
+  };
 
   const handleDynamicAnswer = (key: string, value: string) => {
     setDynamicAnswers(prev => {
@@ -2638,6 +2719,36 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 
   return (
     <div className="max-w-2xl space-y-5">
+      {/* Aviso de rascunho recuperado */}
+      {draftBannerVisible && storedDraftMeta && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-bold">Rascunho não salvo restaurado</p>
+              <p className="text-amber-800">
+                Restaurado de {storedDraftMeta.savedAt ? new Date(storedDraftMeta.savedAt).toLocaleString("pt-BR") : "sessão anterior"}.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setDraftBannerVisible(false)}
+              className="px-3 py-1.5 bg-[#1B6CA8] hover:bg-[#155a90] text-white rounded-lg text-xs font-semibold transition"
+            >
+              Continuar
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold transition"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      )}
       {/* Specialty-specific */}
       {specId === "nutricao" && <NutricaoForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
       {specId === "fisioterapia" && <FisioterapiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
@@ -2684,7 +2795,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
 
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
-function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported }: { patient: Patient; onBack: () => void; role: Role | null; onPdfExported: (registro: PdfExportRecord) => void }) {
+function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, currentUser }: { patient: Patient; onBack: () => void; role: Role | null; onPdfExported: (registro: PdfExportRecord) => void; currentUser?: { name: string } | null }) {
   const agora = new Date();
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
@@ -2733,22 +2844,26 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported }: { pa
   const handleExportPDF = async () => {
     setErroExportacao("");
     setExportando(true);
-    const exportadoPor = nomeExibicaoPorPerfil(role);
+    const exportadoPor = currentUser?.name || nomeExibicaoPorPerfil(role);
     const versao = proximaVersaoPdf(patient);
+    const exportDate = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const geradoEmAgora = `${pad2(exportDate.getDate())}/${pad2(exportDate.getMonth() + 1)}/${exportDate.getFullYear()} às ${pad2(exportDate.getHours())}:${pad2(exportDate.getMinutes())}`;
     try {
       // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
       // não pesa o carregamento inicial do app para quem nunca usa essa tela.
       const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
       const resultado = await exportarFichaConsolidadaPdf({
         patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
-        geradoEm: now,
+        geradoEm: geradoEmAgora,
+        exportDate,
         versao,
         exportadoPor,
         dadosCompartilhados,
         divergencias: divergencies,
         especialidades: especialidadesParaPdf,
       });
-      if (resultado.ok) onPdfExported({ versao, geradoEm: now, exportadoPor });
+      if (resultado.ok) onPdfExported({ versao, geradoEm: geradoEmAgora, exportadoPor });
       else setErroExportacao(resultado.erro);
     } catch (erro) {
       console.error("Falha ao carregar o gerador de PDF:", erro);
@@ -2890,11 +3005,20 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported }: { pa
                       <span className="font-bold text-[#1A2332]">IMC</span>
                       <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-bold text-[#1A2332]">ASG-PPP</span>
-                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
-                    </div>
-                    <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                    {resumoNutricao.asgPreenchido && resumoNutricao.asgTotal !== null && resumoNutricao.asgTriage ? (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                          <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+                        </div>
+                        <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                      </>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs text-[#8A9EB9]">
+                        <span>ASG-PPP</span>
+                        <span className="italic">Não preenchido</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {resumoPsicologia && (
@@ -2973,12 +3097,40 @@ const ROLE_COLORS: Record<string, string> = {
   "Coordenação": "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-function ProfessionalsManagement() {
-  const [professionals, setProfessionals] = useState<Professional[]>(INITIAL_PROFESSIONALS);
+const PROFESSIONALS_STORAGE_KEY = "jornada_oncologica_professionals";
+
+function loadStoredProfessionals(defaults: Professional[]): Professional[] {
+  try {
+    const raw = localStorage.getItem(PROFESSIONALS_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function saveStoredProfessionals(pros: Professional[]): void {
+  try {
+    localStorage.setItem(PROFESSIONALS_STORAGE_KEY, JSON.stringify(pros));
+  } catch {
+    // localStorage indisponível
+  }
+}
+
+interface ProfessionalsManagementProps {
+  professionals: Professional[];
+  onSaveProfessional: (pro: Omit<Professional, "id">, editId?: string) => { success: boolean; error?: string };
+  onToggleStatus: (id: string) => void;
+}
+
+function ProfessionalsManagement({ professionals, onSaveProfessional, onToggleStatus }: ProfessionalsManagementProps) {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Professional | null>(null);
+  const [formError, setFormError] = useState("");
+  const [targetToInactivate, setTargetToInactivate] = useState<Professional | null>(null);
 
   const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as "ativo" | "inativo" };
   const [form, setForm] = useState(emptyForm);
@@ -2994,28 +3146,44 @@ function ProfessionalsManagement() {
   function openNew() {
     setEditTarget(null);
     setForm(emptyForm);
+    setFormError("");
     setShowForm(true);
   }
 
   function openEdit(pro: Professional) {
     setEditTarget(pro);
     setForm({ name: pro.name, role: pro.role, specialty: pro.specialty, email: pro.email, status: pro.status });
+    setFormError("");
     setShowForm(true);
   }
 
   function handleSave() {
-    if (!form.name.trim() || !form.email.trim()) return;
-    if (editTarget) {
-      setProfessionals(ps => ps.map(p => p.id === editTarget.id ? { ...p, ...form } : p));
-    } else {
-      const newId = `PRO-${String(professionals.length + 1).padStart(3, "0")}`;
-      setProfessionals(ps => [...ps, { id: newId, ...form }]);
+    setFormError("");
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormError("Preencha todos os campos obrigatórios (nome e e-mail).");
+      return;
+    }
+    const result = onSaveProfessional(form, editTarget?.id);
+    if (!result.success) {
+      setFormError(result.error || "Erro ao salvar profissional.");
+      return;
     }
     setShowForm(false);
   }
 
-  function handleToggleStatus(id: string) {
-    setProfessionals(ps => ps.map(p => p.id === id ? { ...p, status: p.status === "ativo" ? "inativo" : "ativo" } : p));
+  function handleRequestToggleStatus(pro: Professional) {
+    if (pro.status === "ativo") {
+      setTargetToInactivate(pro);
+    } else {
+      onToggleStatus(pro.id);
+    }
+  }
+
+  function confirmInactivate() {
+    if (targetToInactivate) {
+      onToggleStatus(targetToInactivate.id);
+      setTargetToInactivate(null);
+    }
   }
 
   const counts = {
@@ -3098,7 +3266,7 @@ function ProfessionalsManagement() {
                   <td className="px-4 py-3.5 text-sm text-[#6B7A8D]">{pro.specialty}</td>
                   <td className="px-4 py-3.5 text-sm text-[#6B7A8D]">{pro.email}</td>
                   <td className="px-4 py-3.5">
-                    <button onClick={() => handleToggleStatus(pro.id)}
+                    <button onClick={() => handleRequestToggleStatus(pro)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors ${pro.status === "ativo" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"}`}>
                       {pro.status === "ativo" ? <><Check size={11} /> Ativo</> : <><X size={11} /> Inativo</>}
                     </button>
@@ -3136,7 +3304,7 @@ function ProfessionalsManagement() {
               <div className="flex gap-2 flex-wrap">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${ROLE_COLORS[pro.role] ?? ""}`}>{pro.role}</span>
                 {pro.specialty !== "—" && <span className="text-xs text-[#6B7A8D] bg-[#F4F7FB] px-2.5 py-0.5 rounded-full">{pro.specialty}</span>}
-                <button onClick={() => handleToggleStatus(pro.id)}
+                <button onClick={() => handleRequestToggleStatus(pro)}
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${pro.status === "ativo" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"}`}>
                   {pro.status === "ativo" ? <><Check size={10} /> Ativo</> : <><X size={10} /> Inativo</>}
                 </button>
@@ -3162,6 +3330,13 @@ function ProfessionalsManagement() {
                 <X size={18} className="text-[#6B7A8D]" />
               </button>
             </div>
+
+            {formError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
+                <AlertCircle size={15} className="text-red-500 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -3214,6 +3389,44 @@ function ProfessionalsManagement() {
               <button onClick={handleSave}
                 className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold text-sm hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
                 <Save size={15} /> {editTarget ? "Salvar alterações" : "Cadastrar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal to Inactivate Professional (Obs 15) */}
+      {targetToInactivate && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[rgba(27,108,168,0.1)] w-full max-w-md p-6">
+            <div className="flex items-center gap-3 text-amber-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#1A2332] text-base" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                  Confirmar inativação
+                </h3>
+                <p className="text-xs text-[#6B7A8D]">Ação de segurança cadastral</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-[#4A5568] mb-6">
+              Deseja realmente inativar o profissional <strong className="text-[#1A2332]">{targetToInactivate.name}</strong>? Ele perderá o acesso ao sistema.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTargetToInactivate(null)}
+                className="flex-1 py-2.5 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl font-semibold text-sm hover:bg-[#F4F7FB] transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmInactivate}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition shadow-sm"
+              >
+                Confirmar inativação
               </button>
             </div>
           </div>
@@ -3609,22 +3822,29 @@ function apiItemToPaciente(item: DashboardJornadaItem): Patient {
     ? new Date(item.chegada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+  const dataStr = item.chegada_em
+    ? new Date(item.chegada_em).toLocaleDateString("pt-BR")
+    : new Date().toLocaleDateString("pt-BR");
+
   return {
-    id:          item.jornada_id,
-    name:        item.paciente_nome,
-    age:         calcularIdade(item.paciente_data_nascimento),
-    cpf:         item.paciente_cpf,
-    cid:         "",
-    diagnosis:   item.diagnostico ?? "",
-    status:      mapJornadaStatus(item.jornada_status),
-    arrivalTime: chegadaStr,
+    id:               item.jornada_id,
+    name:             item.paciente_nome,
+    age:              calcularIdade(item.paciente_data_nascimento),
+    cpf:              item.paciente_cpf,
+    cid:              "",
+    diagnosis:        item.diagnostico ?? "",
+    status:           mapJornadaStatus(item.jornada_status),
+    arrivalTime:      chegadaStr,
+    date:             dataStr,
+    origin:           "Recepção Central",
+    emergencyContact: "Não informado",
     specialties,
-    weight:      "",
-    height:      "",
+    weight:           "",
+    height:           "",
     // legado
-    email:       "",
-    phone:       "",
-    address:     "",
+    email:            "",
+    phone:            "",
+    address:          "",
   } as Patient;
 }
 
@@ -3634,10 +3854,13 @@ export default function App() {
   const [patientsList, setPatientsList] = useState<Patient[]>(() => loadStoredPatients(PATIENTS));
   const [screen, setScreen] = useState<Screen>("login");
   const [role, setRole] = useState<Role | null>(null);
+  const [originScreen, setOriginScreen] = useState<Screen | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient>(() => loadStoredPatients(PATIENTS)[0] || PATIENTS[0]);
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>(() => loadStoredProfessionals(INITIAL_PROFESSIONALS));
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: Role; email: string; specialty?: string } | null>(null);
 
   // ─── Polling em tempo real: busca jornadas do dia a cada 30s ──────────────
   useEffect(() => {
@@ -3664,8 +3887,32 @@ export default function App() {
   const notifications: AppNotification[] = baseNotifications.map(n => ({ ...n, read: readNotifIds.has(n.id) }));
   function markAllRead() { setReadNotifIds(new Set(baseNotifications.map(n => n.id))); }
 
-  function handleLogin(r: Role) {
+  function handleLogin(r: Role, email?: string) {
     setRole(r);
+    const emailNorm = email?.trim().toLowerCase();
+    let matchedPro = emailNorm ? professionals.find(p => p.email.toLowerCase() === emailNorm) : undefined;
+    if (!matchedPro) {
+      const roleMap: Record<Role, string> = {
+        recepcao: "Recepção",
+        profissional: "Profissional",
+        coordenacao: "Coordenação",
+        administrador: "Coordenação",
+      };
+      matchedPro = professionals.find(p => p.role === roleMap[r]);
+    }
+    const defaultNames: Record<Role, string> = {
+      recepcao: "Carla Santos",
+      profissional: "Enfª. Patrícia Lima",
+      coordenacao: "Ana Lima",
+      administrador: "Administrador HUB",
+    };
+    setCurrentUser({
+      name: matchedPro?.name || defaultNames[r],
+      role: r,
+      email: matchedPro?.email || (email || `${r}@hospital.com.br`),
+      specialty: matchedPro?.specialty !== "—" ? matchedPro?.specialty : undefined,
+    });
+    setOriginScreen(null);
     setScreen(
       r === "recepcao"
         ? "reception-dashboard"
@@ -3679,10 +3926,13 @@ export default function App() {
 
   function handleLogout() {
     setRole(null);
+    setCurrentUser(null);
+    setOriginScreen(null);
     setScreen("login");
   }
 
   function openPatient(p: Patient) {
+    setOriginScreen(screen);
     setSelectedPatient(p);
     setScreen("patient-record");
   }
@@ -3695,9 +3945,34 @@ export default function App() {
     setScreen("specialty-form");
   }
 
+  function handleSaveProfessional(data: Omit<Professional, "id">, editId?: string): { success: boolean; error?: string } {
+    const emailNorm = data.email.trim().toLowerCase();
+    const duplicate = professionals.find(p => p.email.toLowerCase() === emailNorm && p.id !== editId);
+    if (duplicate) {
+      return { success: false, error: "Já existe um profissional cadastrado com este e-mail." };
+    }
+    if (editId) {
+      const updated = professionals.map(p => p.id === editId ? { ...p, ...data } : p);
+      setProfessionals(updated);
+      saveStoredProfessionals(updated);
+    } else {
+      const newId = `PRO-${String(professionals.length + 1).padStart(3, "0")}`;
+      const updated = [...professionals, { id: newId, ...data }];
+      setProfessionals(updated);
+      saveStoredProfessionals(updated);
+    }
+    return { success: true };
+  }
+
+  function handleToggleProfessionalStatus(id: string) {
+    const updated = professionals.map(p => p.id === id ? { ...p, status: (p.status === "ativo" ? "inativo" : "ativo") as "ativo" | "inativo" } : p);
+    setProfessionals(updated);
+    saveStoredProfessionals(updated);
+  }
+
   function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const userName = nomeExibicaoPorPerfil(role);
+    const userName = currentUser?.name || nomeExibicaoPorPerfil(role);
 
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
@@ -3838,7 +4113,7 @@ export default function App() {
 
       const p = prev[pIndex];
       const resolvedAt = new Date().toLocaleString('pt-BR');
-      const resolvedBy = nomeExibicaoPorPerfil(role);
+      const resolvedBy = currentUser?.name || nomeExibicaoPorPerfil(role);
       const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'resolvido' as const, resolvedBy, resolvedAt } : a);
       const updatedPatient = { ...p, alerts: newAlerts };
 
@@ -3875,32 +4150,36 @@ export default function App() {
     "patient-registration": "reception-dashboard",
     "specialty-form": "patient-record",
     "consolidated-record": "patient-record",
-    "professionals-management": role === "administrador" ? "professionals-management" : "coordination-dashboard",
+    "professionals-management": role === "coordenacao" ? "coordination-dashboard" : undefined,
     "time-targets": "coordination-dashboard",
-    "patient-record": role === "recepcao"
+    "patient-record": (originScreen && originScreen !== "patient-record") ? originScreen : (role === "recepcao"
       ? "reception-dashboard"
       : role === "coordenacao" || role === "administrador"
         ? "coordination-dashboard"
-        : "professional-dashboard",
+        : "professional-dashboard"),
   };
 
   const goBack = () => {
     const dest = BACK_MAP[screen];
-    if (dest) setScreen(dest);
+    if (dest) {
+      setScreen(dest);
+      if (screen === "patient-record") setOriginScreen(null);
+    }
   };
 
-  const showBack = screen in BACK_MAP;
+  const showBack = screen in BACK_MAP && Boolean(BACK_MAP[screen]);
 
   return (
     <AppLayout
       role={role!}
       screen={screen}
-      onNavigate={setScreen}
+      onNavigate={s => { setOriginScreen(null); setScreen(s); }}
       onLogout={handleLogout}
       title={getScreenTitle()}
       onBack={showBack ? goBack : undefined}
       notifications={notifications}
       onMarkAllRead={markAllRead}
+      userName={currentUser?.name}
     >
       {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} onCheckinChange={handleCheckinChange} />}
       {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => { const next = [p, ...prev]; saveStoredPatients(next); return next; }); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
@@ -3908,12 +4187,12 @@ export default function App() {
 
 
       {screen === "coordination-dashboard" && <CoordinationDashboard onOpenPatient={openPatient} targets={targets} patients={patientsList} />}
-      {screen === "professionals-management" && <ProfessionalsManagement />}
+      {screen === "professionals-management" && <ProfessionalsManagement professionals={professionals} onSaveProfessional={handleSaveProfessional} onToggleStatus={handleToggleProfessionalStatus} />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
       {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} onPdfExported={handlePdfExported} onSetAplicavel={handleSetAplicavel} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
-      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} onPdfExported={handlePdfExported} />}
+      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} onPdfExported={handlePdfExported} currentUser={currentUser} />}
 
       {/* Global Critical Alert */}
       {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (

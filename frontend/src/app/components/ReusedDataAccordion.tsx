@@ -114,7 +114,11 @@ export function ReusedDataAccordion({
                     onChange={(e) => {
                       onChange("Procedência", e.target.value);
                       if (e.target.value !== "Distrito Federal") onChange("Procedência RA", "");
-                      if (e.target.value !== "Outro") onChange("Procedência Cidade/Estado", "");
+                      if (e.target.value !== "Outro") {
+                        onChange("Procedência Estado", "");
+                        onChange("Procedência Cidade", "");
+                        onChange("Procedência Cidade/Estado", "");
+                      }
                     }}
                   >
                     <option value="">Selecione</option>

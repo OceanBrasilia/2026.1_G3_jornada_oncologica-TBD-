@@ -28,14 +28,14 @@ export type ExportarFichaResultado = { ok: true } | { ok: false; erro: string };
  * Nunca lança exceção — devolve { ok: false, erro } em caso de falha, para a
  * tela mostrar uma mensagem clara sem perder nada do que já estava na tela.
  */
-export async function exportarFichaConsolidadaPdf(props: FichaConsolidadaPdfProps): Promise<ExportarFichaResultado> {
+export async function exportarFichaConsolidadaPdf(props: FichaConsolidadaPdfProps & { exportDate?: Date }): Promise<ExportarFichaResultado> {
   try {
     // Troca símbolos que a fonte do PDF não desenha (ex.: "≥" saía como "e").
     const blob = await pdf(<FichaConsolidadaPdf {...sanitizarParaPdf(props)} />).toBlob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = nomeArquivoFichaPdf(props.patient.id, new Date(), props.versao);
+    link.download = nomeArquivoFichaPdf(props.patient.id, props.exportDate ?? new Date(), props.versao);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

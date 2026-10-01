@@ -115,7 +115,11 @@ export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, d
               {sp.resumoNutricao && (
                 <View style={styles.resumoBox} wrap={false}>
                   <Text>IMC: {sp.resumoNutricao.imc}{sp.resumoNutricao.imc !== "—" ? " kg/m²" : ""} ({sp.resumoNutricao.imcFormula})</Text>
-                  <Text>ASG-PPP: {sp.resumoNutricao.asgTotal} pontos — {sp.resumoNutricao.asgTriage.text}</Text>
+                  {sp.resumoNutricao.asgPreenchido && sp.resumoNutricao.asgTotal !== null && sp.resumoNutricao.asgTriage ? (
+                    <Text>ASG-PPP: {sp.resumoNutricao.asgTotal} pontos — {sp.resumoNutricao.asgTriage.text}</Text>
+                  ) : (
+                    <Text>ASG-PPP: Não preenchido</Text>
+                  )}
                 </View>
               )}
               {sp.resumoPsicologia && (

@@ -35,35 +35,7 @@ const SectionCard = ({ title, children, defaultOpen = true, className = "" }: an
   );
 };
 
-// Removed local components, using shared Inheritable components
-
-const CheckboxGroup = ({ label, name, options, data, onChange, direction = "row" }: any) => {
-  const selected = data?.[name] || [];
-  return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-3">{label}</label>
-      <div className={`grid ${direction === "col" ? "grid-cols-1 gap-y-3" : "grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4"}`}>
-        {options.map((opt: string) => (
-          <label key={opt} className="flex items-center space-x-3 text-sm font-normal text-[#1A2332] cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={selected.includes(opt)} 
-              onChange={(e) => {
-                if (e.target.checked) {
-                  onChange(name, [...selected, opt]);
-                } else {
-                  onChange(name, selected.filter((item: string) => item !== opt));
-                }
-              }}
-              className="w-4 h-4 rounded border-[#D5E6F3] text-[#1B6CA8] focus:ring-[#1B6CA8] accent-[#1B6CA8]"
-            />
-            <span>{opt}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-};
+// Using shared Inheritable components (InheritableCheckboxGroup com suporte a direction e acessibilidade RNF-007)
 
 export function ServicoSocialForm({ data, onChange, patient, inheritedData, origins }: ServicoSocialFormProps) {
   const commonProps = { data, onChange, inheritedData, origins };

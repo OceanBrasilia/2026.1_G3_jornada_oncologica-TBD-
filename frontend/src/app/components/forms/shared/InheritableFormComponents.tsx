@@ -42,7 +42,7 @@ const useInheritance = (name: string, data: Record<string, any>, inheritedData?:
 const OriginBadge = ({ origin }: { origin?: string }) => {
   if (!origin) return null;
   return (
-    <span className="inline-flex items-center text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20 whitespace-nowrap">
+    <span className="inline-flex items-center text-[10px] text-[#2DB5A3] font-semibold bg-[#F0FBF9] px-2 py-0.5 rounded-full border border-[#2DB5A3]/20 whitespace-normal">
       ↩ {origin}
     </span>
   );
@@ -291,28 +291,32 @@ export const InheritableRadioGroup = ({ label, name, options, data, onChange, in
         )}
       </div>
       <div className="flex flex-wrap gap-4">
-        {options.map((opt: string) => (
-          <label key={opt} className={`flex items-center gap-2 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}>
-            <input
-              type="radio"
-              name={name}
-              value={opt}
-              checked={value === opt}
-              onChange={(e) => {
-                if (!isInheritedActive) onChange(name, e.target.value);
-              }}
-              disabled={isInheritedActive}
-              className={`w-4 h-4 text-[#1B6CA8] ${isInheritedActive && value === opt ? "text-[#2DB5A3]" : ""} focus:ring-[#1B6CA8]`}
-            />
-            <span className={`text-sm ${isInheritedActive ? "text-[#6B7A8D]" : "text-[#1A2332]"}`}>{opt}</span>
-          </label>
-        ))}
+        {options.map((opt: string, idx: number) => {
+          const optId = `${labelId}-radio-${idx}`;
+          return (
+            <label key={opt} htmlFor={optId} className={`flex items-center gap-2 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}>
+              <input
+                id={optId}
+                type="radio"
+                name={name}
+                value={opt}
+                checked={value === opt}
+                onChange={(e) => {
+                  if (!isInheritedActive) onChange(name, e.target.value);
+                }}
+                disabled={isInheritedActive}
+                className={`w-4 h-4 text-[#1B6CA8] ${isInheritedActive && value === opt ? "text-[#2DB5A3]" : ""} focus:ring-[#1B6CA8]`}
+              />
+              <span className={`text-sm ${isInheritedActive ? "text-[#6B7A8D]" : "text-[#1A2332]"}`}>{opt}</span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
 };
 
-export const InheritableCheckboxGroup = ({ label, name, options, data, onChange, inheritedData, origins, separator = ", ", inline = false }: InheritableProps & { options: string[], separator?: string, inline?: boolean }) => {
+export const InheritableCheckboxGroup = ({ label, name, options, data, onChange, inheritedData, origins, separator = ", ", inline = false, direction }: InheritableProps & { options: string[], separator?: string, inline?: boolean, direction?: "col" | "row" | "grid" }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
 
   const getArrayValue = (val: any) => {
@@ -339,6 +343,12 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
     onChange(name, newSelected);
   };
 
+  const layoutClass = direction === "grid"
+    ? "grid grid-cols-1 sm:grid-cols-2 gap-2.5"
+    : (direction === "row" || inline)
+      ? "flex flex-wrap gap-4 items-center"
+      : "flex flex-col gap-2.5";
+
   return (
     <div role="group" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : name}>
       {label && (
@@ -352,19 +362,21 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
           )}
         </div>
       )}
-      <div className={`flex ${inline ? 'flex-wrap gap-4 items-center' : 'flex-col gap-2'}`}>
-        {options.map((opt: string) => {
+      <div className={layoutClass}>
+        {options.map((opt: string, idx: number) => {
+          const optId = `${labelId}-chk-${idx}`;
           const isSelected = selectedOptions.includes(opt);
           return (
-            <label key={opt} className={`relative flex items-start gap-2 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}>
+            <label key={opt} htmlFor={optId} className={`relative flex items-start gap-2.5 py-1 ${isInheritedActive ? "cursor-not-allowed opacity-80" : "cursor-pointer"}`}>
               <input
+                id={optId}
                 type="checkbox"
                 className="sr-only peer"
                 checked={isSelected}
                 disabled={isInheritedActive}
                 onChange={() => handleToggle(opt)}
               />
-              <div aria-hidden="true" className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[#1B6CA8] peer-focus-visible:ring-offset-1 ${
+              <div aria-hidden="true" className={`w-4 h-4 mt-0.5 rounded border shrink-0 flex items-center justify-center transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-[#1B6CA8] peer-focus-visible:ring-offset-1 ${
                 isSelected 
                   ? (isInheritedActive ? "bg-[#2DB5A3] border-[#2DB5A3]" : "bg-[#1B6CA8] border-[#1B6CA8]") 
                   : (isInheritedActive ? "border-[#EEF2F7] bg-white opacity-50" : "border-[#D5E6F3] bg-white")
@@ -375,7 +387,7 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
                   </svg>
                 )}
               </div>
-              <span className={`text-sm leading-snug ${isInheritedActive ? "text-[#6B7A8D]" : "text-[#1A2332]"}`}>{opt}</span>
+              <span className={`text-sm leading-snug break-words flex-1 ${isInheritedActive ? "text-[#6B7A8D]" : "text-[#1A2332]"}`}>{opt}</span>
             </label>
           );
         })}

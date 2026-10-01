@@ -48,17 +48,31 @@ export function saveFormDraft(patientId: string, specId: string, answers: Record
   }
 }
 
-export function loadFormDraft(patientId: string, specId: string): Record<string, string> | null {
+export interface FormDraftResult {
+  answers: Record<string, string>;
+  savedAt?: string;
+}
+
+export function loadFormDraftWithMeta(patientId: string, specId: string): FormDraftResult | null {
   try {
     if (typeof window === "undefined" || !window.localStorage) return null;
     const key = `${DRAFT_PREFIX}${patientId}_${specId}`;
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return parsed?.answers ?? null;
+    if (!parsed?.answers) return null;
+    return {
+      answers: parsed.answers,
+      savedAt: parsed.savedAt,
+    };
   } catch {
     return null;
   }
+}
+
+export function loadFormDraft(patientId: string, specId: string): Record<string, string> | null {
+  const meta = loadFormDraftWithMeta(patientId, specId);
+  return meta?.answers ?? null;
 }
 
 export function clearFormDraft(patientId: string, specId: string): void {

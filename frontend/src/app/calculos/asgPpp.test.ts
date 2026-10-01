@@ -85,3 +85,23 @@ describe("getTriageInfo (faixas de triagem)", () => {
     expect(getTriageInfo(20).text).toContain("≥ 9");
   });
 });
+
+describe("isAsgPppPreenchido", () => {
+  it("retorna false quando vazio, indefinido ou contendo apenas peso/altura de rotina", async () => {
+    const { isAsgPppPreenchido } = await import("./asgPpp");
+    expect(isAsgPppPreenchido(undefined)).toBe(false);
+    expect(isAsgPppPreenchido({})).toBe(false);
+    expect(isAsgPppPreenchido({ "Outro Campo": "valor" })).toBe(false);
+    expect(isAsgPppPreenchido({ "Peso": "70", "Altura": "1.75" })).toBe(false);
+  });
+
+  it("retorna true quando ao menos um campo específico da avaliação nutricional ASG-PPP foi preenchido", async () => {
+    const { isAsgPppPreenchido } = await import("./asgPpp");
+    expect(isAsgPppPreenchido({ "peso_1m": "65" })).toBe(true);
+    expect(isAsgPppPreenchido({ "Peso há 1 mês (kg)": "65" })).toBe(true);
+    expect(isAsgPppPreenchido({ "sintomas": ["Náusea (1)"] })).toBe(true);
+    expect(isAsgPppPreenchido({ "Sintomas": ["Náusea (1)"] })).toBe(true);
+    expect(isAsgPppPreenchido({ "atividade": "Normal" })).toBe(true);
+  });
+});
+
