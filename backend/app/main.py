@@ -47,7 +47,7 @@ def health_check(db: Session = Depends(get_db)):
         return {"status": "unhealthy", "database": str(e)}
 
 
-@app.post("/login")
+@app.post("/login", response_model=schemas.LoginResponse)
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     usuario = db.query(models.Usuario).filter(models.Usuario.email == req.email).first()
 
@@ -65,7 +65,23 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
 
     # Mocking token generation for now
     mock_token = str(uuid.uuid4())
-    return {"access_token": mock_token, "token_type": "bearer"}
+    
+    perfil_nome = usuario.perfil.codigo if usuario.perfil else "DESCONHECIDO"
+    esp_id = str(usuario.area_atendimento_id) if usuario.area_atendimento_id else None
+    esp_nome = usuario.area_atendimento.nome if usuario.area_atendimento else None
+    
+    return {
+        "access_token": mock_token,
+        "token_type": "bearer",
+        "usuario": {
+            "id": str(usuario.id),
+            "nome": usuario.nome,
+            "codigo": str(usuario.id)[:6].upper(),
+            "perfil": perfil_nome,
+            "especialidade_id": esp_id,
+            "especialidade_nome": esp_nome
+        }
+    }
 
 
 @app.get("/patients", response_model=List[schemas.PatientResponse])
