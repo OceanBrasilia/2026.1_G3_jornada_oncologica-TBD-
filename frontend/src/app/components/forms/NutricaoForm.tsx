@@ -163,7 +163,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
             </ConditionalField>
           </div>
           
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Ensino Médio", "Ensino Superior"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Sem instrução", "Fundamental I e II", "Médio", "Superior", "Pós-graduação"]} data={data} onChange={onChange} />
           
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Atividade física" name="atividade_fisica" stacked={true} options={["Sim: intensidade leve, moderada - min 30min, 5x/semana ou intensidade vigorosa, min 20min, 3x/semana", "Não"]} data={data} onChange={onChange} />
           

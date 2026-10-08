@@ -92,7 +92,13 @@ interface Patient {
   cpf: string;
   cns?: string;
   phone: string;
-  address: string;
+  address?: string;
+  addressRua?: string;
+  addressBairro?: string;
+  addressCidadeUF?: string;
+  addressCEP?: string;
+  sexoNascimento?: string;
+  identidadeGenero?: string;
   emergencyContact: string;
   companion?: string;
   diagnosis: string;
@@ -674,20 +680,28 @@ function LoginScreen({ onLogin, onPublicJourney }: {
   async function handleLoginSubmit(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setErrorMsg(null);
+    
+    if (!email.trim() || !pwd.trim()) {
+      setErrorMsg("Por favor, preencha o e-mail e a senha.");
+      return;
+    }
+    
     setLoading(true);
-
-    const emailToUse = email.trim() || currentRoleConfig.defaultEmail;
-    const pwdToUse = pwd || "dummy";
 
     try {
       // Integração com endpoint POST /login
-      await api.login(emailToUse, pwdToUse);
-    } catch {
-      // Fallback amigável caso o backend esteja em modo offline/desenvolvimento
-      // Se o usuário digitou uma senha inválida no backend ativo, prossegue com aviso ou autentica
+      await api.login(email.trim(), pwd);
+      onLogin(role, email.trim());
+    } catch (err: any) {
+      // Verifica se é um erro de rede (backend offline) para permitir mock, ou erro real
+      if (err instanceof Error && err.message.includes("Failed to fetch")) {
+        console.warn("Backend offline. Utilizando login de contingência.");
+        onLogin(role, email.trim());
+      } else {
+        setErrorMsg("E-mail ou senha incorretos.");
+      }
     } finally {
       setLoading(false);
-      onLogin(role, emailToUse);
     }
   }
 
@@ -1508,9 +1522,11 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
   const [generatedId, setGeneratedId] = useState<string>("CAO-2024-0006");
 
   const [form, setForm] = useState({
-    name: "", birth: "", cpf: "", cns: "", phone: "", address: "",
+    name: "", birth: "", cpf: "", cns: "", phone: "", 
+    addressRua: "", addressBairro: "", addressCidadeUF: "", addressCEP: "",
     emergency: "", companion: "", diagnosis: "", cid: "", origin: "",
     maritalStatus: "", religion: "", raceColor: "",
+    identidadeGenero: "", identidadeGeneroOutro: "",
   });
 
   async function handleSave() {
@@ -1565,7 +1581,12 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       cpf: form.cpf.trim(),
       cns: form.cns.trim() || undefined,
       phone: form.phone.trim() || "Não informado",
-      address: form.address.trim() || "Não informado",
+      addressRua: form.addressRua.trim() || undefined,
+      addressBairro: form.addressBairro.trim() || undefined,
+      addressCidadeUF: form.addressCidadeUF.trim() || undefined,
+      addressCEP: form.addressCEP.trim() || undefined,
+      address: form.addressRua.trim() || "Não informado", // Fallback for old code
+      identidadeGenero: form.identidadeGenero === "Outro" && form.identidadeGeneroOutro.trim() ? form.identidadeGeneroOutro.trim() : (form.identidadeGenero || undefined),
       emergencyContact: form.emergency.trim() || "Não informado",
       companion: form.companion.trim() || undefined,
       diagnosis: form.diagnosis.trim() || "Não informado",
@@ -1640,12 +1661,26 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           {field("Telefone *", "phone", "tel", "(31) 9 0000-0000")}
           {field("Acompanhante", "companion", "text", "Nome e grau de parentesco")}
 
+          <div className="sm:col-span-2">
+            <label htmlFor="cadastro-identidadeGenero" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Gênero / Sexo</label>
+            <select id="cadastro-identidadeGenero" value={form.identidadeGenero} onChange={e => setForm(f => ({ ...f, identidadeGenero: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition mb-3">
+              <option value="">Selecione...</option>
+              {["Mulher cisgênero", "Homem cisgênero", "Mulher transgênero", "Homem transgênero", "Não-binário", "Outro"].map(o => <option key={o}>{o}</option>)}
+            </select>
+            {form.identidadeGenero === "Outro" && (
+              <input type="text" value={form.identidadeGeneroOutro} onChange={e => setForm(f => ({ ...f, identidadeGeneroOutro: e.target.value }))}
+                placeholder="Qual?"
+                className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            )}
+          </div>
+
           <div>
             <label htmlFor="cadastro-maritalStatus" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Estado civil</label>
             <select id="cadastro-maritalStatus" value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
-              {["Solteiro(a)", "Casado(a)", "União estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
+              {["Solteiro(a)", "Casado(a)", "União Estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
 
@@ -2609,40 +2644,64 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   const inheritedData: Record<string, string> = {};
   const origins: Record<string, string> = {};
 
-  // 1. Dados cadastrais da Recepção / Acolhimento inicial reaproveitados (RF-006 / RF-009)
+  // Origin tracking with timestamps to ensure newest wins
+  const inheritanceTimestamps: Record<string, string> = {};
+  
+  function applyInheritance(key: string, value: string, origin: string, timestampStr: string) {
+    if (value && value.trim() !== "" && value !== "—") {
+      if (!inheritanceTimestamps[key] || timestampStr >= inheritanceTimestamps[key]) {
+        inheritedData[key] = value;
+        origins[key] = origin;
+        inheritanceTimestamps[key] = timestampStr;
+      }
+    }
+  }
+
+  // 1. Dados cadastrais
+  const baseTime = "0000-00-00T00:00:00.000Z"; 
   if (patient.phone) {
-    inheritedData["Telefone"] = patient.phone; origins["Telefone"] = "Cadastro (Recepção)";
-    inheritedData["Telefones de contato"] = patient.phone; origins["Telefones de contato"] = "Cadastro (Recepção)";
+    applyInheritance("Telefone", patient.phone, "Cadastro", baseTime);
+    applyInheritance("Telefones de contato", patient.phone, "Cadastro", baseTime);
   }
-  if (patient.address) {
-    inheritedData["Endereço"] = patient.address; origins["Endereço"] = "Cadastro (Recepção)";
-    inheritedData["Endereço Rua"] = patient.address; origins["Endereço Rua"] = "Cadastro (Recepção)";
+  if (patient.addressRua) {
+    applyInheritance("Endereço Rua", patient.addressRua, "Cadastro", baseTime);
+    applyInheritance("Endereço", patient.addressRua, "Cadastro", baseTime); // fallback
+  } else if (patient.address) {
+    applyInheritance("Endereço Rua", patient.address, "Cadastro", baseTime);
+    applyInheritance("Endereço", patient.address, "Cadastro", baseTime);
   }
-  if (patient.maritalStatus) {
-    inheritedData["Estado civil"] = patient.maritalStatus; origins["Estado civil"] = "Cadastro (Recepção)";
-  }
+  if (patient.addressBairro) applyInheritance("Bairro", patient.addressBairro, "Cadastro", baseTime);
+  if (patient.addressCidadeUF) applyInheritance("Cidade - UF", patient.addressCidadeUF, "Cadastro", baseTime);
+  if (patient.addressCEP) applyInheritance("CEP", patient.addressCEP, "Cadastro", baseTime);
+  
+  if (patient.maritalStatus) applyInheritance("Estado civil", patient.maritalStatus, "Cadastro", baseTime);
   if (patient.raceColor) {
-    inheritedData["corRaca"] = patient.raceColor; origins["corRaca"] = "Cadastro (Recepção)";
-    inheritedData["Cor/raça (autodeclarada)"] = patient.raceColor; origins["Cor/raça (autodeclarada)"] = "Cadastro (Recepção)";
+    applyInheritance("corRaca", patient.raceColor, "Cadastro", baseTime);
+    applyInheritance("Cor/raça (autodeclarada)", patient.raceColor, "Cadastro", baseTime);
   }
-  if (patient.religion) {
-    inheritedData["Religião"] = patient.religion; origins["Religião"] = "Cadastro (Recepção)";
-  }
+  if (patient.religion) applyInheritance("Religião", patient.religion, "Cadastro", baseTime);
   if (patient.companion) {
-    inheritedData["Acompanhante"] = patient.companion; origins["Acompanhante"] = "Cadastro (Recepção)";
-    inheritedData["acompanhanteNome"] = patient.companion; origins["acompanhanteNome"] = "Cadastro (Recepção)";
+    applyInheritance("Acompanhante", patient.companion, "Cadastro", baseTime);
+    applyInheritance("acompanhanteNome", patient.companion, "Cadastro", baseTime);
   }
+  if (patient.identidadeGenero) {
+    applyInheritance("Gênero", patient.identidadeGenero, "Cadastro", baseTime);
+    applyInheritance("Sexo", patient.identidadeGenero, "Cadastro", baseTime);
+  }
+  if (patient.birth) applyInheritance("Data de Nascimento", patient.birth, "Cadastro", baseTime);
+  if (patient.diagnosis && patient.cid) applyInheritance("topografiaCid", `${patient.diagnosis} - CID ${patient.cid}`, "Cadastro", baseTime);
+
   if (patient.weight) {
     const pLimpo = patient.weight.replace(" kg", "").trim();
-    inheritedData["peso"] = pLimpo; origins["peso"] = "Triagem inicial";
-    inheritedData["pesoPonderal"] = pLimpo; origins["pesoPonderal"] = "Triagem inicial";
+    applyInheritance("peso", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
+    applyInheritance("pesoPonderal", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
   }
   if (patient.height) {
     const aLimpo = patient.height.replace(" m", "").trim();
-    inheritedData["altura"] = aLimpo; origins["altura"] = "Triagem inicial";
+    applyInheritance("altura", aLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
   }
 
-  // 2. Respostas já preenchidas por outras especialidades com identificação de autor e horário
+  // 2. Respostas já preenchidas por outras especialidades
   if (patient.formAnswers) {
     for (let i = 0; i < patient.specialties.length; i++) {
       const s = patient.specialties[i];
@@ -2652,37 +2711,75 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
         const originDesc = s.professional
           ? `${s.name} (${s.professional}${s.completedTime ? ` · ${s.completedTime}` : ""})`
           : s.name;
+        
+        // Uso de _updatedAt ou um fallback sequencial usando i (para o mock funcionar)
+        const ts = answers["_updatedAt"] || `0000-00-00T00:01:${String(i).padStart(2, '0')}.000Z`;
+        
         for (const [key, val] of Object.entries(answers)) {
           if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
-          if (val && val !== "—") {
-            inheritedData[key] = val;
-            origins[key] = originDesc;
+          
+          // Tratamento de conexões e traduções (4.1 e 4.2)
+          if (key === "medicacoes") applyInheritance("MUC", val, originDesc, ts);
+          if (key === "MUC") applyInheritance("medicacoes", val, originDesc, ts);
+          
+          if (key === "Estadiamento") {
+            let mapped = val;
+            if (val === "Não se aplica") mapped = "Não aplicável";
+            applyInheritance("estadiamento_doenca", mapped, originDesc, ts);
           }
+          if (key === "estadiamento_doenca") {
+            let mapped = val;
+            if (val === "Não aplicável") mapped = "Não se aplica";
+            applyInheritance("Estadiamento", mapped, originDesc, ts);
+          }
+          
+          if (key === "Cirurgias prévias") {
+            if (val === "Nega") applyInheritance("fezCirurgia", "Não", originDesc, ts);
+            if (val === "Sim") applyInheritance("fezCirurgia", "Sim", originDesc, ts);
+          }
+          
+          if (key === "Alergia") {
+            if (val === "Nega") applyInheritance("qs_alergia", "Não", originDesc, ts);
+            if (val === "Sim") applyInheritance("qs_alergia", "Sim", originDesc, ts);
+          }
+          
+          if (key === "Apoio familiar") applyInheritance("suporteFamiliar", val, originDesc, ts);
+          
+          if (key === "Tratamento em curso") applyInheritance("tratamentosEmCurso", val, originDesc, ts);
+          if (key === "tratamentosEmCurso") applyInheritance("Tratamento em curso", val, originDesc, ts);
+          
+          if (key === "viaAlimentar") {
+            let mapped = val;
+            if (val === "SNE") mapped = "Sonda";
+            if (val === "GTT") mapped = "Ostomia";
+            if (val === "NPT") mapped = "Parenteral";
+            applyInheritance("via_alimentacao", mapped, originDesc, ts);
+          }
+          if (key === "via_alimentacao") {
+            let mapped = val;
+            if (val === "Sonda") mapped = "SNE";
+            if (val === "Ostomia") mapped = "GTT";
+            if (val === "Parenteral") mapped = "NPT";
+            applyInheritance("viaAlimentar", mapped, originDesc, ts);
+          }
+          
+          if (key === "Comorbidades e outras doenças") {
+            if (val.includes("Diabetes")) applyInheritance("qs_diabetes", "Sim", originDesc, ts);
+            if (val.includes("Hipertensão") || val.includes("Cardiopatia")) applyInheritance("qs_doenca_cardiovascular", "Sim", originDesc, ts);
+          }
+          
+          if ((key === "medicacoes" || key === "MUC") && val.trim() !== "") {
+             applyInheritance("qs_tomando_medicamento", "Sim", originDesc, ts);
+          }
+
+          // Bloqueados de herança (conceitos semelhantes mas avaliações diferentes)
+          const blocked = ["Dor", "Disfagia", "Atividade física", "Cansaço", "Quedas"];
+          if (blocked.includes(key)) continue;
+
+          applyInheritance(key, val, originDesc, ts);
         }
       }
     }
-  }
-
-  // 3. Conexões de campos equivalentes seguros entre especialidades
-  if (patient.formAnswers?.enfermagem?.medicacoes && !inheritedData["MUC"]) {
-    inheritedData["MUC"] = patient.formAnswers.enfermagem.medicacoes;
-    const enfSpec = patient.specialties.find(s => s.id === "enfermagem");
-    origins["MUC"] = `Enfermagem${enfSpec?.professional ? ` (${enfSpec.professional})` : ""}`;
-  }
-  if (patient.formAnswers?.medicina?.["Estadiamento"] && !inheritedData["estadiamento_doenca"]) {
-    inheritedData["estadiamento_doenca"] = patient.formAnswers.medicina["Estadiamento"];
-    const medSpec = patient.specialties.find(s => s.id === "medicina");
-    origins["estadiamento_doenca"] = `Medicina${medSpec?.professional ? ` (${medSpec.professional})` : ""}`;
-  }
-  if (patient.formAnswers?.medicina?.["Tratamento em curso"] && !inheritedData["tratamentosEmCurso"]) {
-    inheritedData["tratamentosEmCurso"] = patient.formAnswers.medicina["Tratamento em curso"];
-    const medSpec = patient.specialties.find(s => s.id === "medicina");
-    origins["tratamentosEmCurso"] = `Medicina${medSpec?.professional ? ` (${medSpec.professional})` : ""}`;
-  }
-  if (patient.formAnswers?.enfermagem?.["Alergia"] && !inheritedData["qs_alergia"]) {
-    inheritedData["qs_alergia"] = patient.formAnswers.enfermagem["Alergia"];
-    const enfSpec = patient.specialties.find(s => s.id === "enfermagem");
-    origins["qs_alergia"] = `Enfermagem${enfSpec?.professional ? ` (${enfSpec.professional})` : ""}`;
   }
 
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({

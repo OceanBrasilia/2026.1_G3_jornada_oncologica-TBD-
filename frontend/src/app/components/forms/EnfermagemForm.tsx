@@ -101,7 +101,7 @@ export function EnfermagemForm({ data, onChange, patient, inheritedData, origins
         onChange={onChange}
       >
         <div className="flex flex-col gap-4">
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Analfabeto", "Ensino Fundamental Incompleto", "Ensino Fundamental Completo", "Ensino Médio Incompleto", "Ensino Médio Completo", "Ensino Superior Incompleto", "Ensino Superior Completo"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Sem instrução", "Fundamental I e II", "Médio", "Superior", "Pós-graduação"]} data={data} onChange={onChange} />
 
           <InheritableSelect inheritedData={inheritedData} origins={origins} label="Acompanhante hoje" name="Acompanhante" options={["Desacompanhado", "Cônjuge", "Filho(a)", "Irmão(ã)", "Outro parente", "Amigo(a)"]} data={data} onChange={onChange} />
         </div>

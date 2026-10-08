@@ -117,7 +117,6 @@ export function ReusedDataAccordion({
                       if (e.target.value !== "Outro") {
                         onChange("Procedência Estado", "");
                         onChange("Procedência Cidade", "");
-                        onChange("Procedência Cidade/Estado", "");
                       }
                     }}
                   >

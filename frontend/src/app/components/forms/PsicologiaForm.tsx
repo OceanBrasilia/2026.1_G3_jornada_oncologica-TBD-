@@ -155,8 +155,8 @@ export function PsicologiaForm({ data, onChange, patient, inheritedData, origins
       >
         <div className="flex flex-col gap-4">
           <InheritableSelect inheritedData={inheritedData} origins={origins} label="Sexo" name="Sexo" options={["Masculino", "Feminino"]} data={data} onChange={onChange} />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Estado civil" name="Estado civil" options={["Solteiro/a", "Casado/a", "Divorciado/a", "Viúvo/a"]} data={data} onChange={onChange} />
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Não alfabetizado", "Ensino Fundamental Incompleto", "Ensino Fundamental Completo", "Ensino Médio Incompleto", "Ensino Médio Completo", "Ensino Superior Incompleto", "Ensino Superior Completo"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Estado civil" name="Estado civil" options={["Solteiro(a)", "Casado(a)", "União Estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Sem instrução", "Fundamental I e II", "Médio", "Superior", "Pós-graduação"]} data={data} onChange={onChange} />
 
           <InheritableSelect inheritedData={inheritedData} origins={origins} label="Fase do tratamento" name="Fase do tratamento" options={["Diagnóstico", "Tratamento", "Acompanhamento (Follow-up)", "Cuidados Paliativos"]} data={data} onChange={onChange} />
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Profissional responsável pela aplicação" name="Profissional Responsável" data={data} onChange={onChange} />

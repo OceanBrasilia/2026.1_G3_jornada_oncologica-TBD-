@@ -57,6 +57,7 @@ def seed_data():  # noqa: C901
             "ADMINISTRADOR": Perfil(id=uuid.uuid4(), codigo="ADMINISTRADOR"),
             "PROFISSIONAL": Perfil(id=uuid.uuid4(), codigo="PROFISSIONAL"),
             "RECEPCAO": Perfil(id=uuid.uuid4(), codigo="RECEPCAO"),
+            "COORDENACAO": Perfil(id=uuid.uuid4(), codigo="COORDENACAO"),
         }
         for p in perfis.values():
             db.add(p)
@@ -101,6 +102,13 @@ def seed_data():  # noqa: C901
 
         print("Semeando usuários...")
         users = {
+            "coordenacao": Usuario(
+                id=uuid.uuid4(),
+                nome="Coordenador Geral",
+                email="coord@hospital.com.br",
+                senha_hash="dummy",
+                perfil_id=perfis["COORDENACAO"].id,
+            ),
             "admin": Usuario(
                 id=uuid.uuid4(),
                 nome="Administrador do Sistema",
