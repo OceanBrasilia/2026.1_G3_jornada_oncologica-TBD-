@@ -658,9 +658,10 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 
-function LoginScreen({ onLogin, onPublicJourney }: {
+function LoginScreen({ onLogin, onPublicJourney, professionals = [] }: {
   onLogin: (r: Role, email?: string) => void;
   onPublicJourney: () => void;
+  professionals?: Professional[];
 }) {
   const [role, setRole] = useState<Role>("profissional");
   const [email, setEmail] = useState("");
@@ -693,8 +694,18 @@ function LoginScreen({ onLogin, onPublicJourney }: {
       await api.login(email.trim(), pwd);
       onLogin(role, email.trim());
     } catch (err: any) {
-      // Verifica se é um erro de rede (backend offline) para permitir mock, ou erro real
-      if (err instanceof Error && err.message.includes("Failed to fetch")) {
+      const emailNorm = email.trim().toLowerCase();
+      const localPro = professionals.find(p => p.email.toLowerCase() === emailNorm && p.status === "ativo");
+      const roleMatches = localPro && (
+        (role === "recepcao" && localPro.role === "Recepção") ||
+        (role === "profissional" && localPro.role === "Profissional") ||
+        (role === "coordenacao" && localPro.role === "Coordenação") ||
+        (role === "administrador" && localPro.role === "Administração")
+      );
+
+      if (localPro && roleMatches) {
+        onLogin(role, email.trim());
+      } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
         console.warn("Backend offline. Utilizando login de contingência.");
         onLogin(role, email.trim());
       } else {
@@ -2647,10 +2658,17 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   // Origin tracking with timestamps to ensure newest wins
   const inheritanceTimestamps: Record<string, string> = {};
   
-  function applyInheritance(key: string, value: string, origin: string, timestampStr: string) {
-    if (value && value.trim() !== "" && value !== "—") {
+  function applyInheritance(key: string, value: any, origin: string, timestampStr: string) {
+    if (value === null || value === undefined) return;
+    const strVal = typeof value === "string" 
+      ? value 
+      : Array.isArray(value) 
+        ? value.join(", ") 
+        : String(value);
+
+    if (strVal && strVal.trim() !== "" && strVal !== "—") {
       if (!inheritanceTimestamps[key] || timestampStr >= inheritanceTimestamps[key]) {
-        inheritedData[key] = value;
+        inheritedData[key] = strVal;
         origins[key] = origin;
         inheritanceTimestamps[key] = timestampStr;
       }
@@ -2692,12 +2710,12 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   if (patient.diagnosis && patient.cid) applyInheritance("topografiaCid", `${patient.diagnosis} - CID ${patient.cid}`, "Cadastro", baseTime);
 
   if (patient.weight) {
-    const pLimpo = patient.weight.replace(" kg", "").trim();
+    const pLimpo = String(patient.weight).replace(" kg", "").trim();
     applyInheritance("peso", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
     applyInheritance("pesoPonderal", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
   }
   if (patient.height) {
-    const aLimpo = patient.height.replace(" m", "").trim();
+    const aLimpo = String(patient.height).replace(" m", "").trim();
     applyInheritance("altura", aLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
   }
 
@@ -2715,8 +2733,15 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
         // Uso de _updatedAt ou um fallback sequencial usando i (para o mock funcionar)
         const ts = answers["_updatedAt"] || `0000-00-00T00:01:${String(i).padStart(2, '0')}.000Z`;
         
-        for (const [key, val] of Object.entries(answers)) {
+        for (const [key, rawVal] of Object.entries(answers)) {
           if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
+          if (rawVal === null || rawVal === undefined) continue;
+
+          const val = typeof rawVal === "string" 
+            ? rawVal 
+            : Array.isArray(rawVal) 
+              ? rawVal.join(", ") 
+              : String(rawVal);
           
           // Tratamento de conexões e traduções (4.1 e 4.2)
           if (key === "medicacoes") applyInheritance("MUC", val, originDesc, ts);
@@ -2763,7 +2788,7 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
             applyInheritance("viaAlimentar", mapped, originDesc, ts);
           }
           
-          if (key === "Comorbidades e outras doenças") {
+          if (key === "Comorbidades e outras doenças" || key === "Comorbidades") {
             if (val.includes("Diabetes")) applyInheritance("qs_diabetes", "Sim", originDesc, ts);
             if (val.includes("Hipertensão") || val.includes("Cardiopatia")) applyInheritance("qs_doenca_cardiovascular", "Sim", originDesc, ts);
           }
@@ -4240,7 +4265,7 @@ export default function App() {
     return titles[screen] ?? "Central de Acolhimento";
   };
 
-  if (screen === "login") return <LoginScreen onLogin={handleLogin} onPublicJourney={() => setScreen("public-journey")} />;
+  if (screen === "login") return <LoginScreen onLogin={handleLogin} onPublicJourney={() => setScreen("public-journey")} professionals={professionals} />;
   if (screen === "public-journey") return <PublicJourneyScreen onBack={() => setScreen("login")} />;
 
   const BACK_MAP: Partial<Record<Screen, Screen>> = {
