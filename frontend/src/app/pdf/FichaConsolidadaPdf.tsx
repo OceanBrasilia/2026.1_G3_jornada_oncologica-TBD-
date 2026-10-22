@@ -45,6 +45,8 @@ export interface FichaConsolidadaPdfProps {
     arrivalTime: string;
   };
   geradoEm: string;
+  /** Número da exportação deste paciente (1, 2, 3…) — RF-018. */
+  versao: number;
   exportadoPor: string;
   dadosCompartilhados: DadoGeral[];
   divergencias: { campo: string; label: string; valor: string; origem: string; outrasRespostas: DivergenciaCampo[] }[];
@@ -52,7 +54,7 @@ export interface FichaConsolidadaPdfProps {
 }
 
 /** Documento PDF da Ficha Consolidada (RF-018) — gerado com @react-pdf/renderer (vetorial, texto selecionável). */
-export function FichaConsolidadaPdf({ patient, geradoEm, exportadoPor, dadosCompartilhados, divergencias, especialidades }: FichaConsolidadaPdfProps) {
+export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, dadosCompartilhados, divergencias, especialidades }: FichaConsolidadaPdfProps) {
   return (
     <Document title={`Ficha Consolidada - ${patient.id}`}>
       <Page size="A4" style={styles.page} wrap>
@@ -66,7 +68,7 @@ export function FichaConsolidadaPdf({ patient, geradoEm, exportadoPor, dadosComp
             <Text style={styles.metaItem}>Chegada: {patient.date} às {patient.arrivalTime}</Text>
           </View>
           <View style={styles.metaRow}>
-            <Text style={styles.metaItem}>Versão do documento: 1.0</Text>
+            <Text style={styles.metaItem}>Versão do documento: {versao}</Text>
             <Text style={styles.metaItem}>Gerado em {geradoEm}</Text>
             <Text style={styles.metaItem}>Exportado por: {exportadoPor}</Text>
           </View>
@@ -113,7 +115,11 @@ export function FichaConsolidadaPdf({ patient, geradoEm, exportadoPor, dadosComp
               {sp.resumoNutricao && (
                 <View style={styles.resumoBox} wrap={false}>
                   <Text>IMC: {sp.resumoNutricao.imc}{sp.resumoNutricao.imc !== "—" ? " kg/m²" : ""} ({sp.resumoNutricao.imcFormula})</Text>
-                  <Text>ASG-PPP: {sp.resumoNutricao.asgTotal} pontos — {sp.resumoNutricao.asgTriage.text}</Text>
+                  {sp.resumoNutricao.asgPreenchido && sp.resumoNutricao.asgTotal !== null && sp.resumoNutricao.asgTriage ? (
+                    <Text>ASG-PPP: {sp.resumoNutricao.asgTotal} pontos — {sp.resumoNutricao.asgTriage.text}</Text>
+                  ) : (
+                    <Text>ASG-PPP: Não preenchido</Text>
+                  )}
                 </View>
               )}
               {sp.resumoPsicologia && (

@@ -20,11 +20,15 @@ import { DefaultForm } from "./components/forms/DefaultForm";
 import { OdontologiaForm } from "./components/forms/OdontologiaForm";
 import { FonoaudiologiaForm } from "./components/forms/FonoaudiologiaForm";
 import { GlobalCriticalAlert } from "./components/ui/GlobalCriticalAlert";
-import { AlertBadge } from "./components/ui/AlertBadge";
+import { Level3Chips } from "./components/ui/Level3Chips";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "./components/ui/alert-dialog";
 import { Level2Banner } from "./components/ui/Level2Banner";
 import { PendencyList } from "./components/ui/PendencyList";
 import { mockPatientAlerts } from "./mocks/patientAlertsMock";
-import { PatientAlert, AlertCategory, AlertLevel } from "./types/alerts";
+import { PatientAlert, AlertCategory } from "./types/alerts";
 import { generatePatientAlerts } from "./alerts/generatePatientAlerts";
 import { filterAlertsForRole, podeVerConfidencial } from "./alerts/visibleAlerts";
 import {
@@ -32,6 +36,17 @@ import {
 } from "./consolidado/buildConsolidatedView";
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
+import { calcularIdade } from "./utils/idade";
+import { statusGeralDoPaciente } from "./utils/statusPaciente";
+import {
+  loadStoredPatients,
+  saveStoredPatients,
+  saveFormDraft,
+  loadFormDraft,
+  clearFormDraft,
+  resetStoredPatients,
+  loadFormDraftWithMeta,
+} from "./services/patientStorage";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -49,7 +64,7 @@ type Screen =
   | "time-targets"
   | "forms-list";
 
-type Role = "recepcao" | "profissional" | "coordenacao";
+type Role = "recepcao" | "profissional" | "coordenacao" | "administrador";
 type SpecStatus = "atendido" | "pendente" | "em-atendimento" | "nao-se-aplica";
 type PatStatus = "aguardando" | "em-atendimento" | "pendente" | "finalizado";
 
@@ -77,7 +92,13 @@ interface Patient {
   cpf: string;
   cns?: string;
   phone: string;
-  address: string;
+  address?: string;
+  addressRua?: string;
+  addressBairro?: string;
+  addressCidadeUF?: string;
+  addressCEP?: string;
+  sexoNascimento?: string;
+  identidadeGenero?: string;
   emergencyContact: string;
   companion?: string;
   diagnosis: string;
@@ -94,6 +115,10 @@ interface Patient {
   raceColor?: string;
   formAnswers?: Record<string, Record<string, string>>;
   alerts?: PatientAlert[];
+  /** Exportações em PDF da ficha consolidada (RF-018): a próxima recebe a versão seguinte. */
+  pdfExports?: PdfExportRecord[];
+  /** Chegada/saída registradas pela Recepção. A saída só é dada na Recepção. */
+  checkin?: CheckinRecord;
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -384,9 +409,10 @@ interface SidebarProps {
   onLogout: () => void;
   open: boolean;
   onClose: () => void;
+  userName?: string;
 }
 
-function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarProps) {
+function Sidebar({ role, screen, onNavigate, onLogout, open, onClose, userName }: SidebarProps) {
   const navItems: { icon: React.ReactNode; label: string; screen: Screen }[] = role === "recepcao"
     ? [
       { icon: <Home size={18} />, label: "Dashboard", screen: "reception-dashboard" },
@@ -397,15 +423,22 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
         { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
         { icon: <ClipboardList size={18} />, label: "Formulários", screen: "forms-list" },
       ]
-      : [
-        { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
-        { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
-        { icon: <UserPlus size={18} />, label: "Profissionais", screen: "professionals-management" },
-        { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
-      ];
+      : role === "coordenacao"
+        ? [
+          { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
+          { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
+          { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
+        ]
+        : [
+          { icon: <UserPlus size={18} />, label: "Gestão de Profissionais", screen: "professionals-management" },
+          { icon: <BarChart3 size={18} />, label: "Painel Geral", screen: "coordination-dashboard" },
+          { icon: <Users size={18} />, label: "Pacientes", screen: "professional-dashboard" },
+          { icon: <SlidersHorizontal size={18} />, label: "Metas de tempo", screen: "time-targets" },
+          { icon: <ClipboardList size={18} />, label: "Formulários", screen: "forms-list" },
+        ];
 
-  const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : "Coordenação";
-  const userName = nomeExibicaoPorPerfil(role);
+  const roleLabel = role === "recepcao" ? "Recepção" : role === "profissional" ? "Profissional" : role === "coordenacao" ? "Coordenação" : "Administração";
+  const displayName = userName || nomeExibicaoPorPerfil(role);
 
   return (
     <>
@@ -421,7 +454,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
             <p className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider leading-none">Central</p>
             <p className="text-[10px] text-[#6B7A8D] leading-none mt-0.5">Acolhimento Oncológico</p>
           </div>
-          <button className="ml-auto lg:hidden" onClick={onClose}><X size={18} className="text-[#6B7A8D]" /></button>
+          <button className="ml-auto lg:hidden" onClick={onClose} aria-label="Fechar menu"><X size={18} className="text-[#6B7A8D]" /></button>
         </div>
 
         {/* Role badge */}
@@ -453,7 +486,7 @@ function Sidebar({ role, screen, onNavigate, onLogout, open, onClose }: SidebarP
               <User size={14} className="text-[#1B6CA8]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-[#1A2332] truncate">{userName}</p>
+              <p className="text-xs font-bold text-[#1A2332] truncate">{displayName}</p>
               <p className="text-[10px] text-[#9AAABB]">{roleLabel}</p>
             </div>
           </div>
@@ -516,7 +549,7 @@ function buildNotifications(patients: Patient[]): AppNotification[] {
 
 // ─── Authenticated Layout ─────────────────────────────────────────────────────
 
-function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack, notifications, onMarkAllRead }: {
+function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack, notifications, onMarkAllRead, userName }: {
   children: React.ReactNode;
   role: Role;
   screen: Screen;
@@ -526,6 +559,7 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
   onBack?: () => void;
   notifications: AppNotification[];
   onMarkAllRead: () => void;
+  userName?: string;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
@@ -533,15 +567,15 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
 
   return (
     <div className="min-h-screen bg-[#F4F7FB] flex print:bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar role={role} screen={screen} onNavigate={onNavigate} onLogout={onLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} />
       <div className="flex-1 min-w-0 lg:ml-60 flex flex-col min-h-screen print:ml-0 print:block">
         {/* Top bar */}
         <header className="sticky top-0 z-10 bg-white border-b border-[rgba(27,108,168,0.1)] px-4 md:px-6 py-3.5 flex items-center gap-3 print:hidden">
-          <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)}>
+          <button className="lg:hidden p-2 rounded-xl hover:bg-[#F4F7FB] transition" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
             <Menu size={20} className="text-[#6B7A8D]" />
           </button>
           {onBack && (
-            <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+            <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Voltar">
               <ArrowLeft size={20} className="text-[#6B7A8D]" />
             </button>
           )}
@@ -550,6 +584,8 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
             <button
               onClick={() => { setBellOpen(o => !o); if (!bellOpen) onMarkAllRead(); }}
               className="p-2 rounded-xl hover:bg-[#F4F7FB] transition relative"
+              aria-label={unread > 0 ? `Notificações: ${unread} não lidas` : "Notificações"}
+              aria-expanded={bellOpen}
             >
               <Bell size={18} className={unread > 0 ? "text-[#1B6CA8]" : "text-[#9AAABB]"} />
               {unread > 0 && (
@@ -622,9 +658,10 @@ function AppLayout({ children, role, screen, onNavigate, onLogout, title, onBack
 
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 
-function LoginScreen({ onLogin, onPublicJourney }: {
-  onLogin: (r: Role) => void;
+function LoginScreen({ onLogin, onPublicJourney, professionals = [] }: {
+  onLogin: (r: Role, email?: string) => void;
   onPublicJourney: () => void;
+  professionals?: Professional[];
 }) {
   const [role, setRole] = useState<Role>("profissional");
   const [email, setEmail] = useState("");
@@ -635,7 +672,8 @@ function LoginScreen({ onLogin, onPublicJourney }: {
   const roles: { id: Role; label: string; defaultEmail: string }[] = [
     { id: "recepcao", label: "Recepção", defaultEmail: "recepcao@hospital.com.br" },
     { id: "profissional", label: "Profissional", defaultEmail: "felipe@hospital.com.br" },
-    { id: "coordenacao", label: "Coordenação", defaultEmail: "admin@hospital.com.br" },
+    { id: "coordenacao", label: "Coordenação", defaultEmail: "coordenacao@hospital.com.br" },
+    { id: "administrador", label: "Administração", defaultEmail: "admin@hospital.com.br" },
   ];
 
   const currentRoleConfig = roles.find(r => r.id === role) || roles[1];
@@ -643,20 +681,38 @@ function LoginScreen({ onLogin, onPublicJourney }: {
   async function handleLoginSubmit(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setErrorMsg(null);
+    
+    if (!email.trim() || !pwd.trim()) {
+      setErrorMsg("Por favor, preencha o e-mail e a senha.");
+      return;
+    }
+    
     setLoading(true);
-
-    const emailToUse = email.trim() || currentRoleConfig.defaultEmail;
-    const pwdToUse = pwd || "dummy";
 
     try {
       // Integração com endpoint POST /login
-      await api.login(emailToUse, pwdToUse);
-    } catch {
-      // Fallback amigável caso o backend esteja em modo offline/desenvolvimento
-      // Se o usuário digitou uma senha inválida no backend ativo, prossegue com aviso ou autentica
+      await api.login(email.trim(), pwd);
+      onLogin(role, email.trim());
+    } catch (err: any) {
+      const emailNorm = email.trim().toLowerCase();
+      const localPro = professionals.find(p => p.email.toLowerCase() === emailNorm && p.status === "ativo");
+      const roleMatches = localPro && (
+        (role === "recepcao" && localPro.role === "Recepção") ||
+        (role === "profissional" && localPro.role === "Profissional") ||
+        (role === "coordenacao" && localPro.role === "Coordenação") ||
+        (role === "administrador" && localPro.role === "Administração")
+      );
+
+      if (localPro && roleMatches) {
+        onLogin(role, email.trim());
+      } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
+        console.warn("Backend offline. Utilizando login de contingência.");
+        onLogin(role, email.trim());
+      } else {
+        setErrorMsg("E-mail ou senha incorretos.");
+      }
     } finally {
       setLoading(false);
-      onLogin(role);
     }
   }
 
@@ -689,19 +745,19 @@ function LoginScreen({ onLogin, onPublicJourney }: {
               </div>
             )}
             <div>
-              <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">E-mail ou usuário</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              <label htmlFor="login-email" className="block text-sm font-semibold text-[#1A2332] mb-1.5">E-mail ou usuário</label>
+              <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
                 placeholder={currentRoleConfig.defaultEmail}
                 className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Senha</label>
-              <input type="password" value={pwd} onChange={e => setPwd(e.target.value)}
+              <label htmlFor="login-senha" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Senha</label>
+              <input id="login-senha" type="password" value={pwd} onChange={e => setPwd(e.target.value)}
                 placeholder="••••••••"
                 className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/25 focus:border-[#1B6CA8] transition text-sm" />
             </div>
             <button type="submit" disabled={loading}
-              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1 flex items-center justify-center gap-2 disabled:opacity-75">
+              className="w-full py-3.5 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] active:scale-[.98] transition-all shadow-lg shadow-[#1B6CA8]/25 mt-1 flex items-center justify-center gap-2 disabled:opacity-75 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1B6CA8]/40 focus-visible:ring-offset-2">
               {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
@@ -759,7 +815,7 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
               completedTime: compTime,
             };
           })
-          : mkSpecs(["atendido", "em-atendimento", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]);
+          : [];
 
         const publicPatient: Patient = {
           id: data.paciente.codigo_publico || data.paciente.id,
@@ -772,8 +828,8 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
           diagnosis: "Acompanhamento Oncológico",
           cid: "",
           origin: "Recepção Central",
-          status: (data.jornada?.status === "FINALIZADO" ? "finalizado" : "em-atendimento") as PatStatus,
-          arrivalTime: data.jornada?.data_acolhimento || "Hoje",
+          status: (!data.jornada ? "aguardando" : data.jornada.status === "FINALIZADO" ? "finalizado" : "em-atendimento") as PatStatus,
+          arrivalTime: data.jornada?.data_acolhimento || "Não registrada",
           date: new Date().toLocaleDateString("pt-BR"),
           specialties: mappedSpecs,
         };
@@ -814,7 +870,7 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8F4FD] to-[#E8F5F0]" style={{ fontFamily: "'Inter', sans-serif" }}>
       <header className="bg-white border-b border-[rgba(27,108,168,0.1)] px-4 py-4 flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+        <button onClick={onBack} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Voltar">
           <ArrowLeft size={20} className="text-[#6B7A8D]" />
         </button>
         <div className="flex items-center gap-2">
@@ -868,6 +924,9 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
 
             <div className="px-6 py-6">
               <p className="text-xs font-bold text-[#6B7A8D] uppercase tracking-widest mb-5">Etapas do acolhimento</p>
+              {result.specialties.length === 0 && (
+                <p className="text-sm text-[#6B7A8D]">Ainda não há etapas registradas para este acolhimento.</p>
+              )}
               <div className="space-y-1">
                 {result.specialties.map((sp, i) => (
                   <div key={sp.id} className="flex items-start gap-3">
@@ -908,19 +967,21 @@ function PublicJourneyScreen({ onBack }: { onBack: () => void }) {
 
 type CheckinRecord = { arrived: boolean; arrivedAt?: string; departed: boolean; departedAt?: string };
 
-function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PATIENTS }: {
+function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PATIENTS, onCheckinChange }: {
   onNavigate: (s: Screen) => void;
   onOpenPatient: (p: Patient) => void;
   onAddDoc: (doc: PatientDocument) => void;
   patients?: Patient[];
+  onCheckinChange?: (patientId: string, registro: CheckinRecord) => void;
 }) {
   const [search, setSearch] = useState("");
 
-  // Deriva o check-in "padrão" de um paciente a partir do status que veio da API.
+  // Usa o registro de chegada/saída salvo no paciente; sem registro, deriva a
+  // chegada do status. A saída nunca é deduzida: mesmo com a jornada
+  // finalizada, o paciente só sai quando a Recepção registra a saída.
   function deriveCheckin(p: Patient): CheckinRecord {
-    return p.status === "finalizado"
-      ? { arrived: true, arrivedAt: p.arrivalTime, departed: true, departedAt: "12:30" }
-      : p.status !== "aguardando"
+    if (p.checkin) return p.checkin;
+    return p.status !== "aguardando"
       ? { arrived: true, arrivedAt: p.arrivalTime, departed: false }
       : { arrived: false, departed: false };
   }
@@ -934,9 +995,8 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
   const [checkins, setCheckins] = useState<Record<string, CheckinRecord>>(initCheckins);
 
   // A cada atualização de `patients` (polling da API a cada 30s), sincroniza a fila:
-  // adiciona pacientes novos e avança o status de quem a API já confirmou como
-  // "em atendimento" ou "finalizado" — sem nunca reverter uma marcação manual
-  // (chegada/saída) que a recepção já tenha feito na tela.
+  // adiciona pacientes novos e marca a chegada de quem já entrou em atendimento,
+  // sem nunca reverter uma marcação manual (chegada/saída) da recepção.
   useEffect(() => {
     setCheckins(prev => {
       let changed = false;
@@ -1005,18 +1065,23 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
 
   const uploadSelectedPatient = patients.find(p => p.id === uploadPatientId);
 
+  const horaAtual = () => new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+  function registrarCheckin(id: string, registro: CheckinRecord) {
+    setCheckins(c => ({ ...c, [id]: registro }));
+    onCheckinChange?.(id, registro);
+  }
+
   function confirmArrival(id: string) {
-    const now = MOCK_NOW;
-    setCheckins(c => ({ ...c, [id]: { ...c[id], arrived: true, arrivedAt: now } }));
+    registrarCheckin(id, { ...checkins[id], departed: checkins[id]?.departed ?? false, arrived: true, arrivedAt: horaAtual() });
   }
 
   function confirmDeparture(id: string) {
-    const now = MOCK_NOW;
-    setCheckins(c => ({ ...c, [id]: { ...c[id], departed: true, departedAt: now } }));
+    registrarCheckin(id, { ...checkins[id], arrived: checkins[id]?.arrived ?? true, departed: true, departedAt: horaAtual() });
   }
 
   function undoArrival(id: string) {
-    setCheckins(c => ({ ...c, [id]: { arrived: false, departed: false } }));
+    registrarCheckin(id, { arrived: false, departed: false });
   }
 
   const filtered = patients.filter(p =>
@@ -1200,7 +1265,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   <span className="text-amber-600 font-semibold">{pendingCount} aguardando</span>
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition mt-0.5">
+              <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition mt-0.5" aria-label="Fechar">
                 <X size={18} className="text-[#6B7A8D]" />
               </button>
             </div>
@@ -1300,7 +1365,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                     </h3>
                     <p className="text-xs text-[#9AAABB] mt-0.5">PDF, JPEG, PNG ou DOCX · máx. 20 MB</p>
                   </div>
-                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                     <X size={18} className="text-[#6B7A8D]" />
                   </button>
                 </div>
@@ -1399,7 +1464,7 @@ function ReceptionDashboard({ onNavigate, onOpenPatient, onAddDoc, patients = PA
                   <h3 className="font-bold text-[#1A2332] text-lg" style={{ fontFamily: "'Nunito', sans-serif" }}>
                     Confirmar anexo
                   </h3>
-                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+                  <button onClick={closeUploadModal} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                     <X size={18} className="text-[#6B7A8D]" />
                   </button>
                 </div>
@@ -1468,9 +1533,11 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
   const [generatedId, setGeneratedId] = useState<string>("CAO-2024-0006");
 
   const [form, setForm] = useState({
-    name: "", birth: "", cpf: "", cns: "", phone: "", address: "",
+    name: "", birth: "", cpf: "", cns: "", phone: "", 
+    addressRua: "", addressBairro: "", addressCidadeUF: "", addressCEP: "",
     emergency: "", companion: "", diagnosis: "", cid: "", origin: "",
     maritalStatus: "", religion: "", raceColor: "",
+    identidadeGenero: "", identidadeGeneroOutro: "",
   });
 
   async function handleSave() {
@@ -1490,7 +1557,7 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
         data_nascimento: form.birth,
         cpf: form.cpf.trim(),
         name: form.name.trim(),
-        diagnosis: form.diagnosis.trim() || "Em investigação",
+        diagnosis: form.diagnosis.trim() || undefined,
         treatment_stage: "Acolhimento Inicial",
         phone: form.phone.trim(),
         address: form.address.trim(),
@@ -1514,8 +1581,9 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       // Se a API estiver offline, mantém o fluxo cadastrando em memória
     }
 
-    const birthYear = parseInt(form.birth.split("-")[0], 10);
-    const calculatedAge = isNaN(birthYear) ? 0 : Math.max(0, new Date().getFullYear() - birthYear);
+    const calculatedAge = calcularIdade(form.birth);
+
+    const arrivalTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
     const newPatient: Patient = {
       id: assignedId,
@@ -1523,20 +1591,28 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
       age: calculatedAge,
       cpf: form.cpf.trim(),
       cns: form.cns.trim() || undefined,
-      phone: form.phone.trim() || "(31) 9 9999-9999",
-      address: form.address.trim() || "Não informado",
+      phone: form.phone.trim() || "Não informado",
+      addressRua: form.addressRua.trim() || undefined,
+      addressBairro: form.addressBairro.trim() || undefined,
+      addressCidadeUF: form.addressCidadeUF.trim() || undefined,
+      addressCEP: form.addressCEP.trim() || undefined,
+      address: form.addressRua.trim() || "Não informado", // Fallback for old code
+      identidadeGenero: form.identidadeGenero === "Outro" && form.identidadeGeneroOutro.trim() ? form.identidadeGeneroOutro.trim() : (form.identidadeGenero || undefined),
       emergencyContact: form.emergency.trim() || "Não informado",
       companion: form.companion.trim() || undefined,
-      diagnosis: form.diagnosis.trim() || "Câncer de Mama",
-      cid: form.cid.trim() || "C50.9",
+      diagnosis: form.diagnosis.trim() || "Não informado",
+      cid: form.cid.trim() || "Não informado",
       origin: form.origin.trim() || "Recepção Central",
       status: "aguardando",
-      arrivalTime: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      arrivalTime,
       date: new Date().toLocaleDateString("pt-BR"),
       maritalStatus: form.maritalStatus || undefined,
       raceColor: form.raceColor || undefined,
       religion: form.religion || undefined,
-      specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"]),
+      // A Recepção fica atendida no próprio cadastro, com o horário real e o
+      // perfil de quem cadastrou (e não o nome/horário fixo dos dados de exemplo).
+      specialties: mkSpecs(["atendido", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente", "pendente"])
+        .map(s => s.id === "recepcao" ? { ...s, professional: nomeExibicaoPorPerfil("recepcao"), completedTime: arrivalTime } : s),
     };
 
     setGeneratedId(assignedId);
@@ -1547,8 +1623,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
 
   const field = (label: string, key: keyof typeof form, type = "text", placeholder = "") => (
     <div>
-      <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">{label}</label>
-      <input type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+      <label htmlFor={`cadastro-${key}`} className="block text-sm font-semibold text-[#1A2332] mb-1.5">{label}</label>
+      <input id={`cadastro-${key}`} type={type} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
         placeholder={placeholder}
         className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
     </div>
@@ -1596,18 +1672,32 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           {field("Telefone *", "phone", "tel", "(31) 9 0000-0000")}
           {field("Acompanhante", "companion", "text", "Nome e grau de parentesco")}
 
+          <div className="sm:col-span-2">
+            <label htmlFor="cadastro-identidadeGenero" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Gênero / Sexo</label>
+            <select id="cadastro-identidadeGenero" value={form.identidadeGenero} onChange={e => setForm(f => ({ ...f, identidadeGenero: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition mb-3">
+              <option value="">Selecione...</option>
+              {["Mulher cisgênero", "Homem cisgênero", "Mulher transgênero", "Homem transgênero", "Não-binário", "Outro"].map(o => <option key={o}>{o}</option>)}
+            </select>
+            {form.identidadeGenero === "Outro" && (
+              <input type="text" value={form.identidadeGeneroOutro} onChange={e => setForm(f => ({ ...f, identidadeGeneroOutro: e.target.value }))}
+                placeholder="Qual?"
+                className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-[#1A2332] placeholder-[#9AAABB] text-sm focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition" />
+            )}
+          </div>
+
           <div>
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Estado civil</label>
-            <select value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
+            <label htmlFor="cadastro-maritalStatus" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Estado civil</label>
+            <select id="cadastro-maritalStatus" value={form.maritalStatus} onChange={e => setForm(f => ({ ...f, maritalStatus: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
-              {["Solteiro(a)", "Casado(a)", "União estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
+              {["Solteiro(a)", "Casado(a)", "União Estável", "Separado(a)", "Divorciado(a)", "Viúvo(a)"].map(o => <option key={o}>{o}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Cor/raça (autodeclarada)</label>
-            <select value={form.raceColor} onChange={e => setForm(f => ({ ...f, raceColor: e.target.value }))}
+            <label htmlFor="cadastro-raceColor" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Cor/raça (autodeclarada)</label>
+            <select id="cadastro-raceColor" value={form.raceColor} onChange={e => setForm(f => ({ ...f, raceColor: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
               {["Branca", "Preta", "Parda", "Amarela", "Indígena", "Não declarada"].map(o => <option key={o}>{o}</option>)}
@@ -1615,8 +1705,8 @@ function PatientRegistrationScreen({ onBack, onSaved }: {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-semibold text-[#1A2332] mb-1.5">Religião / espiritualidade</label>
-            <select value={form.religion} onChange={e => setForm(f => ({ ...f, religion: e.target.value }))}
+            <label htmlFor="cadastro-religion" className="block text-sm font-semibold text-[#1A2332] mb-1.5">Religião / espiritualidade</label>
+            <select id="cadastro-religion" value={form.religion} onChange={e => setForm(f => ({ ...f, religion: e.target.value }))}
               className="w-full px-4 py-2.5 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition">
               <option value="">Selecione...</option>
               {["Católica", "Evangélica", "Espírita", "Umbanda / Candomblé", "Budista", "Judaica", "Islâmica", "Sem religião", "Outra", "Prefere não informar"].map(o => <option key={o}>{o}</option>)}
@@ -2046,11 +2136,20 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
             <span className="font-bold text-[#1A2332]">IMC</span>
             <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
           </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="font-bold text-[#1A2332]">ASG-PPP</span>
-            <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
-          </div>
-          <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+          {resumoNutricao.asgPreenchido && resumoNutricao.asgTotal !== null && resumoNutricao.asgTriage ? (
+            <>
+              <div className="flex justify-between items-center text-sm">
+                <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+              </div>
+              <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+            </>
+          ) : (
+            <div className="flex justify-between items-center text-xs text-[#8A9EB9]">
+              <span>ASG-PPP</span>
+              <span className="italic">Não preenchido</span>
+            </div>
+          )}
         </div>
       )}
       {resumoPsicologia && (
@@ -2081,7 +2180,7 @@ function AnswerCard({ answers, specId, role, professional, completedTime, onEdit
   );
 }
 
-function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert }: {
+function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, onDeleteDoc, role, onAcknowledgeAlert, onResolvePendency, equipeUsuario, onPdfExported, onSetAplicavel }: {
   patient: Patient;
   onOpenSpecialty: (specId: string, mode: "edit" | "fill") => void;
   onConsolidated: () => void;
@@ -2089,6 +2188,10 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   onDeleteDoc: (id: string) => void;
   role: Role | null;
   onAcknowledgeAlert: (alertId: string) => void;
+  onResolvePendency: (alertId: string) => void;
+  equipeUsuario: string | null;
+  onPdfExported: (registro: PdfExportRecord) => void;
+  onSetAplicavel: (specId: string, aplicavel: boolean) => void;
 }) {
   const [activeTab, setActiveTab] = useState("resumo");
   const [exportMsg, setExportMsg] = useState("");
@@ -2132,16 +2235,20 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
     try {
       // Import dinâmico: só baixa a biblioteca de PDF quando alguém realmente exporta.
       const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+      const versao = proximaVersaoPdf(patient);
+      const exportadoPor = nomeExibicaoPorPerfil(role);
       const resultado = await exportarFichaConsolidadaPdf({
         patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
         geradoEm,
-        exportadoPor: nomeExibicaoPorPerfil(role),
+        versao,
+        exportadoPor,
         dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
         divergencias: infosCompartilhadas.filter(i => i.divergente),
         especialidades: buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial),
       });
       if (resultado.ok) {
-        setExportMsg("Ficha exportada em PDF.");
+        onPdfExported({ versao, geradoEm, exportadoPor });
+        setExportMsg(`Ficha exportada em PDF (versão ${versao}).`);
       } else {
         setExportMsg("");
         setExportError(resultado.erro);
@@ -2174,13 +2281,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
             <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">{patient.id}</p>
             <div className="flex items-center gap-3 mb-1">
               <h2 className="text-2xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>{patient.name}</h2>
-              {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
-                <div className="flex items-center gap-1">
-                  {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
-                    <AlertBadge key={alert.id} category={alert.category} alert={alert} />
-                  ))}
-                </div>
-              )}
+              <Level3Chips alerts={visibleAlerts} />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-blue-100">
               <span>{patient.age} anos</span>
@@ -2211,7 +2312,8 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
       </div>
 
       <Level2Banner alerts={visibleAlerts} onAcknowledge={onAcknowledgeAlert} />
-      <PendencyList alerts={visibleAlerts} />
+      {/* [CONFIRMAR COM A EQUIPE] Só o perfil Profissional vê o botão de resolver pendência. */}
+      <PendencyList alerts={visibleAlerts} onResolve={role === "profissional" ? onResolvePendency : undefined} equipeUsuario={equipeUsuario} />
 
       {/* Timeline */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-4">
@@ -2264,18 +2366,20 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   <h4 className="font-bold text-[#1A2332] mb-3 text-sm">Dados do paciente</h4>
                   <dl className="space-y-2">
                     {[
-                      ["CPF", patient.cpf],
+                      ["CPF", patient.cpf || "—"],
                       ["CNS", patient.cns ?? "—"],
-                      ["Telefone", patient.phone],
+                      ["Telefone", patient.phone || "—"],
                       ["Estado civil", patient.maritalStatus ?? "—"],
                       ["Cor/raça", patient.raceColor ?? "—"],
                       ["Religião", patient.religion ?? "—"],
-                      ["Endereço", patient.address],
-                      ["Emergência", patient.emergencyContact],
+                      ["Endereço", patient.address || "—"],
+                      ["Emergência", patient.emergencyContact || "—"],
+                      ["Origem", patient.origin || "—"],
+                      ["Data de acolhimento", patient.date ? `${patient.date}${patient.arrivalTime ? ` às ${patient.arrivalTime}` : ""}` : "—"],
                     ].map(([k, v]) => (
                       <div key={k} className="flex gap-2 text-sm">
                         <dt className="text-[#9AAABB] font-medium min-w-[90px] shrink-0">{k}</dt>
-                        <dd className="text-[#1A2332] font-medium">{v}</dd>
+                        <dd className="text-[#1A2332] font-medium">{v || "—"}</dd>
                       </div>
                     ))}
                   </dl>
@@ -2411,18 +2515,23 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                   />
                 );
               })() : activeSpec.status === "nao-se-aplica" ? (
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-500 text-center">
-                  Esta especialidade foi marcada como não aplicável a este paciente.
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-500 text-center space-y-3">
+                  <p>Esta especialidade foi marcada como não aplicável a este paciente.</p>
+                  <BotaoAplicabilidade specName={activeSpec.name} aplicavel onConfirm={() => onSetAplicavel(activeSpec.id, true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-[#D5E6F3] bg-white rounded-xl text-sm text-[#1B6CA8] hover:bg-[#F4F7FB] transition font-semibold">
+                    <RotateCcw size={15} /> Tornar aplicável novamente
+                  </BotaoAplicabilidade>
                 </div>
               ) : (
                 <div className="flex flex-col sm:flex-row gap-2">
                   <button onClick={() => onOpenSpecialty(activeSpec.id, "fill")}
-                    className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
+                    className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1B6CA8]/40 focus-visible:ring-offset-2">
                     <Clipboard size={16} /> {activeSpec.status === "em-atendimento" ? "Continuar formulário" : "Preencher formulário"}
                   </button>
-                  <button className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] rounded-xl text-sm text-[#6B7A8D] hover:bg-[#F4F7FB] transition font-medium">
+                  <BotaoAplicabilidade specName={activeSpec.name} aplicavel={false} onConfirm={() => onSetAplicavel(activeSpec.id, false)}
+                    className="flex items-center justify-center gap-2 px-4 py-3 border border-[#D5E6F3] rounded-xl text-sm text-[#6B7A8D] hover:bg-[#F4F7FB] transition font-medium">
                     <X size={15} /> Não se aplica
-                  </button>
+                  </BotaoAplicabilidade>
                 </div>
               )}
             </div>
@@ -2438,7 +2547,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
               <h3 className="font-bold text-[#1A2332]" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 Confirmar remoção
               </h3>
-              <button onClick={() => setDeleteTarget(null)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+              <button onClick={() => setDeleteTarget(null)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                 <X size={16} className="text-[#6B7A8D]" />
               </button>
             </div>
@@ -2490,9 +2599,49 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   );
 }
 
+type PdfExportRecord = { versao: number; geradoEm: string; exportadoPor: string };
+
+/** Botão "Não se aplica" / "Tornar aplicável novamente" da ficha, sempre com confirmação. */
+function BotaoAplicabilidade({ specName, aplicavel, onConfirm, className, children }: {
+  specName: string;
+  /** true = vai tornar aplicável de novo; false = vai marcar como não se aplica. */
+  aplicavel: boolean;
+  onConfirm: () => void;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const [aberto, setAberto] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setAberto(true)} className={className}>{children}</button>
+      <AlertDialog open={aberto} onOpenChange={setAberto}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{aplicavel ? `Tornar ${specName} aplicável novamente?` : `Marcar ${specName} como "não se aplica"?`}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {aplicavel
+                ? `${specName} volta a ficar pendente para este paciente. As respostas já registradas continuam guardadas.`
+                : `${specName} deixa de contar para a finalização da jornada. Para desfazer, clique em "Tornar aplicável novamente".`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onConfirm}>{aplicavel ? "Tornar aplicável" : "Marcar como não se aplica"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+/** Número da próxima exportação em PDF deste paciente (1 na primeira). */
+function proximaVersaoPdf(patient: Patient): number {
+  return (patient.pdfExports?.length ?? 0) + 1;
+}
+
 // ─── Specialty Form ───────────────────────────────────────────────────────────
 
-function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
+function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   patient: Patient;
   specId: string;
   mode: "fill" | "edit";
@@ -2500,33 +2649,187 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
   onSave: (specId: string, answers: Record<string, string>, status: SpecStatus) => void;
 }) {
   const spec = patient.specialties.find(s => s.id === specId);
-  const [obs, setObs] = useState(patient.formAnswers?.[specId]?.["Observações"] ?? "");
+  const storedDraftMeta = loadFormDraftWithMeta(patient.id, specId);
+  const [draftBannerVisible, setDraftBannerVisible] = useState(Boolean(storedDraftMeta));
+  const [obs, setObs] = useState(storedDraftMeta?.answers?.["Observações"] ?? patient.formAnswers?.[specId]?.["Observações"] ?? "");
   const inheritedData: Record<string, string> = {};
   const origins: Record<string, string> = {};
 
+  // Origin tracking with timestamps to ensure newest wins
+  const inheritanceTimestamps: Record<string, string> = {};
+  
+  function applyInheritance(key: string, value: any, origin: string, timestampStr: string) {
+    if (value === null || value === undefined) return;
+    const strVal = typeof value === "string" 
+      ? value 
+      : Array.isArray(value) 
+        ? value.join(", ") 
+        : String(value);
+
+    if (strVal && strVal.trim() !== "" && strVal !== "—") {
+      if (!inheritanceTimestamps[key] || timestampStr >= inheritanceTimestamps[key]) {
+        inheritedData[key] = strVal;
+        origins[key] = origin;
+        inheritanceTimestamps[key] = timestampStr;
+      }
+    }
+  }
+
+  // 1. Dados cadastrais
+  const baseTime = "0000-00-00T00:00:00.000Z"; 
+  if (patient.phone) {
+    applyInheritance("Telefone", patient.phone, "Cadastro", baseTime);
+    applyInheritance("Telefones de contato", patient.phone, "Cadastro", baseTime);
+  }
+  if (patient.addressRua) {
+    applyInheritance("Endereço Rua", patient.addressRua, "Cadastro", baseTime);
+    applyInheritance("Endereço", patient.addressRua, "Cadastro", baseTime); // fallback
+  } else if (patient.address) {
+    applyInheritance("Endereço Rua", patient.address, "Cadastro", baseTime);
+    applyInheritance("Endereço", patient.address, "Cadastro", baseTime);
+  }
+  if (patient.addressBairro) applyInheritance("Bairro", patient.addressBairro, "Cadastro", baseTime);
+  if (patient.addressCidadeUF) applyInheritance("Cidade - UF", patient.addressCidadeUF, "Cadastro", baseTime);
+  if (patient.addressCEP) applyInheritance("CEP", patient.addressCEP, "Cadastro", baseTime);
+  
+  if (patient.maritalStatus) applyInheritance("Estado civil", patient.maritalStatus, "Cadastro", baseTime);
+  if (patient.raceColor) {
+    applyInheritance("corRaca", patient.raceColor, "Cadastro", baseTime);
+    applyInheritance("Cor/raça (autodeclarada)", patient.raceColor, "Cadastro", baseTime);
+  }
+  if (patient.religion) applyInheritance("Religião", patient.religion, "Cadastro", baseTime);
+  if (patient.companion) {
+    applyInheritance("Acompanhante", patient.companion, "Cadastro", baseTime);
+    applyInheritance("acompanhanteNome", patient.companion, "Cadastro", baseTime);
+  }
+  if (patient.identidadeGenero) {
+    applyInheritance("Gênero", patient.identidadeGenero, "Cadastro", baseTime);
+    applyInheritance("Sexo", patient.identidadeGenero, "Cadastro", baseTime);
+  }
+  if (patient.birth) applyInheritance("Data de Nascimento", patient.birth, "Cadastro", baseTime);
+  if (patient.diagnosis && patient.cid) applyInheritance("topografiaCid", `${patient.diagnosis} - CID ${patient.cid}`, "Cadastro", baseTime);
+
+  if (patient.weight) {
+    const pLimpo = String(patient.weight).replace(" kg", "").trim();
+    applyInheritance("peso", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
+    applyInheritance("pesoPonderal", pLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
+  }
+  if (patient.height) {
+    const aLimpo = String(patient.height).replace(" m", "").trim();
+    applyInheritance("altura", aLimpo, "Triagem inicial", "0000-00-00T00:00:01.000Z");
+  }
+
+  // 2. Respostas já preenchidas por outras especialidades
   if (patient.formAnswers) {
     for (let i = 0; i < patient.specialties.length; i++) {
       const s = patient.specialties[i];
       if (s.id === specId) continue;
       const answers = patient.formAnswers[s.id];
       if (answers) {
-        for (const [key, val] of Object.entries(answers)) {
+        const originDesc = s.professional
+          ? `${s.name} (${s.professional}${s.completedTime ? ` · ${s.completedTime}` : ""})`
+          : s.name;
+        
+        // Uso de _updatedAt ou um fallback sequencial usando i (para o mock funcionar)
+        const ts = answers["_updatedAt"] || `0000-00-00T00:01:${String(i).padStart(2, '0')}.000Z`;
+        
+        for (const [key, rawVal] of Object.entries(answers)) {
           if (key === "Observações" || key === "_updatedAt" || key.endsWith("_suppressed") || key.endsWith("_isOther") || key.endsWith("_append")) continue;
-          if (val && val !== "—") {
-            inheritedData[key] = val;
-            origins[key] = s.name;
+          if (rawVal === null || rawVal === undefined) continue;
+
+          const val = typeof rawVal === "string" 
+            ? rawVal 
+            : Array.isArray(rawVal) 
+              ? rawVal.join(", ") 
+              : String(rawVal);
+          
+          // Tratamento de conexões e traduções (4.1 e 4.2)
+          if (key === "medicacoes") applyInheritance("MUC", val, originDesc, ts);
+          if (key === "MUC") applyInheritance("medicacoes", val, originDesc, ts);
+          
+          if (key === "Estadiamento") {
+            let mapped = val;
+            if (val === "Não se aplica") mapped = "Não aplicável";
+            applyInheritance("estadiamento_doenca", mapped, originDesc, ts);
           }
+          if (key === "estadiamento_doenca") {
+            let mapped = val;
+            if (val === "Não aplicável") mapped = "Não se aplica";
+            applyInheritance("Estadiamento", mapped, originDesc, ts);
+          }
+          
+          if (key === "Cirurgias prévias") {
+            if (val === "Nega") applyInheritance("fezCirurgia", "Não", originDesc, ts);
+            if (val === "Sim") applyInheritance("fezCirurgia", "Sim", originDesc, ts);
+          }
+          
+          if (key === "Alergia") {
+            if (val === "Nega") applyInheritance("qs_alergia", "Não", originDesc, ts);
+            if (val === "Sim") applyInheritance("qs_alergia", "Sim", originDesc, ts);
+          }
+          
+          if (key === "Apoio familiar") applyInheritance("suporteFamiliar", val, originDesc, ts);
+          
+          if (key === "Tratamento em curso") applyInheritance("tratamentosEmCurso", val, originDesc, ts);
+          if (key === "tratamentosEmCurso") applyInheritance("Tratamento em curso", val, originDesc, ts);
+          
+          if (key === "viaAlimentar") {
+            let mapped = val;
+            if (val === "SNE") mapped = "Sonda";
+            if (val === "GTT") mapped = "Ostomia";
+            if (val === "NPT") mapped = "Parenteral";
+            applyInheritance("via_alimentacao", mapped, originDesc, ts);
+          }
+          if (key === "via_alimentacao") {
+            let mapped = val;
+            if (val === "Sonda") mapped = "SNE";
+            if (val === "Ostomia") mapped = "GTT";
+            if (val === "Parenteral") mapped = "NPT";
+            applyInheritance("viaAlimentar", mapped, originDesc, ts);
+          }
+          
+          if (key === "Comorbidades e outras doenças" || key === "Comorbidades") {
+            if (val.includes("Diabetes")) applyInheritance("qs_diabetes", "Sim", originDesc, ts);
+            if (val.includes("Hipertensão") || val.includes("Cardiopatia")) applyInheritance("qs_doenca_cardiovascular", "Sim", originDesc, ts);
+          }
+          
+          if ((key === "medicacoes" || key === "MUC") && val.trim() !== "") {
+             applyInheritance("qs_tomando_medicamento", "Sim", originDesc, ts);
+          }
+
+          // Bloqueados de herança (conceitos semelhantes mas avaliações diferentes)
+          const blocked = ["Dor", "Disfagia", "Atividade física", "Cansaço", "Quedas"];
+          if (blocked.includes(key)) continue;
+
+          applyInheritance(key, val, originDesc, ts);
         }
       }
     }
   }
 
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, string>>({
-    ...(patient.formAnswers?.[specId] || {})
+    ...(patient.formAnswers?.[specId] || {}),
+    ...(storedDraftMeta?.answers || {})
   });
 
+  const handleDiscardDraft = () => {
+    clearFormDraft(patient.id, specId);
+    setDynamicAnswers(patient.formAnswers?.[specId] || {});
+    setObs(patient.formAnswers?.[specId]?.["Observações"] || "");
+    setDraftBannerVisible(false);
+  };
+
   const handleDynamicAnswer = (key: string, value: string) => {
-    setDynamicAnswers(prev => ({ ...prev, [key]: value }));
+    setDynamicAnswers(prev => {
+      const next = { ...prev, [key]: value };
+      saveFormDraft(patient.id, specId, { ...next, "Observações": obs });
+      return next;
+    });
+  };
+
+  const handleObsChange = (value: string) => {
+    setObs(value);
+    saveFormDraft(patient.id, specId, { ...dynamicAnswers, "Observações": value });
   };
 
   const getAnswers = () => ({
@@ -2538,6 +2841,36 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
 
   return (
     <div className="max-w-2xl space-y-5">
+      {/* Aviso de rascunho recuperado */}
+      {draftBannerVisible && storedDraftMeta && (
+        <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-bold">Rascunho não salvo restaurado</p>
+              <p className="text-amber-800">
+                Restaurado de {storedDraftMeta.savedAt ? new Date(storedDraftMeta.savedAt).toLocaleString("pt-BR") : "sessão anterior"}.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setDraftBannerVisible(false)}
+              className="px-3 py-1.5 bg-[#1B6CA8] hover:bg-[#155a90] text-white rounded-lg text-xs font-semibold transition"
+            >
+              Continuar
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-semibold transition"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      )}
       {/* Specialty-specific */}
       {specId === "nutricao" && <NutricaoForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
       {specId === "fisioterapia" && <FisioterapiaForm data={mergedData} inheritedData={inheritedData} origins={origins} onChange={handleDynamicAnswer} patient={patient} />}
@@ -2553,8 +2886,8 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
       )}
       {/* Observations */}
       <div className="bg-white rounded-2xl border border-[rgba(27,108,168,0.1)] shadow-sm p-5">
-        <h3 className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
-        <textarea value={obs} onChange={e => setObs(e.target.value)}
+        <h3 id="observacoes-titulo" className="font-bold text-[#1A2332] mb-3 text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>Observações e evolução</h3>
+        <textarea aria-labelledby="observacoes-titulo" value={obs} onChange={e => handleObsChange(e.target.value)}
           rows={4} placeholder="Registre observações, condutas ou evolução da especialidade..."
           className="w-full px-4 py-3 rounded-xl border border-[#D5E6F3] bg-[#F9FBFE] text-sm text-[#1A2332] placeholder-[#9AAABB] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition resize-none" />
       </div>
@@ -2584,7 +2917,7 @@ function SpecialtyFormScreen({ patient, specId, onBack, onSave }: {
 
 // ─── Consolidated Record ──────────────────────────────────────────────────────
 
-function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient; onBack: () => void; role: Role | null }) {
+function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, currentUser }: { patient: Patient; onBack: () => void; role: Role | null; onPdfExported: (registro: PdfExportRecord) => void; currentUser?: { name: string } | null }) {
   const agora = new Date();
   const pad2 = (n: number) => String(n).padStart(2, "0");
   const now = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
@@ -2633,20 +2966,27 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
   const handleExportPDF = async () => {
     setErroExportacao("");
     setExportando(true);
-    const exportadoPor = nomeExibicaoPorPerfil(role);
+    const exportadoPor = currentUser?.name || nomeExibicaoPorPerfil(role);
+    const versao = proximaVersaoPdf(patient);
+    const exportDate = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, "0");
+    const geradoEmAgora = `${pad2(exportDate.getDate())}/${pad2(exportDate.getMonth() + 1)}/${exportDate.getFullYear()} às ${pad2(exportDate.getHours())}:${pad2(exportDate.getMinutes())}`;
     try {
       // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
       // não pesa o carregamento inicial do app para quem nunca usa essa tela.
       const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
       const resultado = await exportarFichaConsolidadaPdf({
         patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
-        geradoEm: now,
+        geradoEm: geradoEmAgora,
+        exportDate,
+        versao,
         exportadoPor,
         dadosCompartilhados,
         divergencias: divergencies,
         especialidades: especialidadesParaPdf,
       });
-      if (!resultado.ok) setErroExportacao(resultado.erro);
+      if (resultado.ok) onPdfExported({ versao, geradoEm: geradoEmAgora, exportadoPor });
+      else setErroExportacao(resultado.erro);
     } catch (erro) {
       console.error("Falha ao carregar o gerador de PDF:", erro);
       setErroExportacao("Não foi possível carregar o gerador de PDF agora. Tente novamente em instantes.");
@@ -2660,13 +3000,7 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
         <div>
           <div className="flex items-center gap-3">
             <h2 className="font-bold text-[#1A2332] text-xl print:text-2xl" style={{ fontFamily: "'Nunito', sans-serif" }}>Ficha Consolidada Multidisciplinar</h2>
-            {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).length > 0 && (
-              <div className="flex items-center gap-1 print:hidden">
-                {visibleAlerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active).map(alert => (
-                  <AlertBadge key={alert.id} category={alert.category} alert={alert} />
-                ))}
-              </div>
-            )}
+            <Level3Chips alerts={visibleAlerts} className="print:hidden" />
           </div>
           <p className="text-sm text-[#9AAABB] print:text-gray-600">Ficha gerada em {now}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6B7A8D] print:text-gray-700 mt-1">
@@ -2793,11 +3127,20 @@ function ConsolidatedRecordScreen({ patient, onBack, role }: { patient: Patient;
                       <span className="font-bold text-[#1A2332]">IMC</span>
                       <span className="font-bold text-[#1B6CA8]">{resumoNutricao.imc}{resumoNutricao.imc !== "—" ? " kg/m²" : ""} <span className="text-[10px] font-normal text-[#8A9EB9]">({resumoNutricao.imcFormula})</span></span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-bold text-[#1A2332]">ASG-PPP</span>
-                      <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
-                    </div>
-                    <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                    {resumoNutricao.asgPreenchido && resumoNutricao.asgTotal !== null && resumoNutricao.asgTriage ? (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-bold text-[#1A2332]">ASG-PPP</span>
+                          <span className="font-bold text-[#1B6CA8]">{resumoNutricao.asgTotal} pontos</span>
+                        </div>
+                        <p className="text-xs text-[#3A4354]">{resumoNutricao.asgTriage.text}</p>
+                      </>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs text-[#8A9EB9]">
+                        <span>ASG-PPP</span>
+                        <span className="italic">Não preenchido</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {resumoPsicologia && (
@@ -2876,12 +3219,40 @@ const ROLE_COLORS: Record<string, string> = {
   "Coordenação": "bg-purple-50 text-purple-700 border-purple-200",
 };
 
-function ProfessionalsManagement() {
-  const [professionals, setProfessionals] = useState<Professional[]>(INITIAL_PROFESSIONALS);
+const PROFESSIONALS_STORAGE_KEY = "jornada_oncologica_professionals";
+
+function loadStoredProfessionals(defaults: Professional[]): Professional[] {
+  try {
+    const raw = localStorage.getItem(PROFESSIONALS_STORAGE_KEY);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function saveStoredProfessionals(pros: Professional[]): void {
+  try {
+    localStorage.setItem(PROFESSIONALS_STORAGE_KEY, JSON.stringify(pros));
+  } catch {
+    // localStorage indisponível
+  }
+}
+
+interface ProfessionalsManagementProps {
+  professionals: Professional[];
+  onSaveProfessional: (pro: Omit<Professional, "id">, editId?: string) => { success: boolean; error?: string };
+  onToggleStatus: (id: string) => void;
+}
+
+function ProfessionalsManagement({ professionals, onSaveProfessional, onToggleStatus }: ProfessionalsManagementProps) {
   const [search, setSearch] = useState("");
   const [filterRole, setFilterRole] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<Professional | null>(null);
+  const [formError, setFormError] = useState("");
+  const [targetToInactivate, setTargetToInactivate] = useState<Professional | null>(null);
 
   const emptyForm = { name: "", role: "Profissional", specialty: "Enfermagem", email: "", status: "ativo" as "ativo" | "inativo" };
   const [form, setForm] = useState(emptyForm);
@@ -2897,28 +3268,44 @@ function ProfessionalsManagement() {
   function openNew() {
     setEditTarget(null);
     setForm(emptyForm);
+    setFormError("");
     setShowForm(true);
   }
 
   function openEdit(pro: Professional) {
     setEditTarget(pro);
     setForm({ name: pro.name, role: pro.role, specialty: pro.specialty, email: pro.email, status: pro.status });
+    setFormError("");
     setShowForm(true);
   }
 
   function handleSave() {
-    if (!form.name.trim() || !form.email.trim()) return;
-    if (editTarget) {
-      setProfessionals(ps => ps.map(p => p.id === editTarget.id ? { ...p, ...form } : p));
-    } else {
-      const newId = `PRO-${String(professionals.length + 1).padStart(3, "0")}`;
-      setProfessionals(ps => [...ps, { id: newId, ...form }]);
+    setFormError("");
+    if (!form.name.trim() || !form.email.trim()) {
+      setFormError("Preencha todos os campos obrigatórios (nome e e-mail).");
+      return;
+    }
+    const result = onSaveProfessional(form, editTarget?.id);
+    if (!result.success) {
+      setFormError(result.error || "Erro ao salvar profissional.");
+      return;
     }
     setShowForm(false);
   }
 
-  function handleToggleStatus(id: string) {
-    setProfessionals(ps => ps.map(p => p.id === id ? { ...p, status: p.status === "ativo" ? "inativo" : "ativo" } : p));
+  function handleRequestToggleStatus(pro: Professional) {
+    if (pro.status === "ativo") {
+      setTargetToInactivate(pro);
+    } else {
+      onToggleStatus(pro.id);
+    }
+  }
+
+  function confirmInactivate() {
+    if (targetToInactivate) {
+      onToggleStatus(targetToInactivate.id);
+      setTargetToInactivate(null);
+    }
   }
 
   const counts = {
@@ -3001,7 +3388,7 @@ function ProfessionalsManagement() {
                   <td className="px-4 py-3.5 text-sm text-[#6B7A8D]">{pro.specialty}</td>
                   <td className="px-4 py-3.5 text-sm text-[#6B7A8D]">{pro.email}</td>
                   <td className="px-4 py-3.5">
-                    <button onClick={() => handleToggleStatus(pro.id)}
+                    <button onClick={() => handleRequestToggleStatus(pro)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border transition-colors ${pro.status === "ativo" ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100" : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"}`}>
                       {pro.status === "ativo" ? <><Check size={11} /> Ativo</> : <><X size={11} /> Inativo</>}
                     </button>
@@ -3039,7 +3426,7 @@ function ProfessionalsManagement() {
               <div className="flex gap-2 flex-wrap">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${ROLE_COLORS[pro.role] ?? ""}`}>{pro.role}</span>
                 {pro.specialty !== "—" && <span className="text-xs text-[#6B7A8D] bg-[#F4F7FB] px-2.5 py-0.5 rounded-full">{pro.specialty}</span>}
-                <button onClick={() => handleToggleStatus(pro.id)}
+                <button onClick={() => handleRequestToggleStatus(pro)}
                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${pro.status === "ativo" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"}`}>
                   {pro.status === "ativo" ? <><Check size={10} /> Ativo</> : <><X size={10} /> Inativo</>}
                 </button>
@@ -3061,10 +3448,17 @@ function ProfessionalsManagement() {
               <h3 className="font-bold text-[#1A2332] text-lg" style={{ fontFamily: "'Nunito', sans-serif" }}>
                 {editTarget ? "Editar profissional" : "Novo profissional"}
               </h3>
-              <button onClick={() => setShowForm(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition">
+              <button onClick={() => setShowForm(false)} className="p-2 rounded-xl hover:bg-[#F4F7FB] transition" aria-label="Fechar">
                 <X size={18} className="text-[#6B7A8D]" />
               </button>
             </div>
+
+            {formError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-center gap-2">
+                <AlertCircle size={15} className="text-red-500 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -3117,6 +3511,44 @@ function ProfessionalsManagement() {
               <button onClick={handleSave}
                 className="flex-1 py-3 bg-[#1B6CA8] text-white rounded-xl font-bold text-sm hover:bg-[#155a90] transition shadow-md flex items-center justify-center gap-2">
                 <Save size={15} /> {editTarget ? "Salvar alterações" : "Cadastrar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal to Inactivate Professional (Obs 15) */}
+      {targetToInactivate && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[rgba(27,108,168,0.1)] w-full max-w-md p-6">
+            <div className="flex items-center gap-3 text-amber-600 mb-3">
+              <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-[#1A2332] text-base" style={{ fontFamily: "'Nunito', sans-serif" }}>
+                  Confirmar inativação
+                </h3>
+                <p className="text-xs text-[#6B7A8D]">Ação de segurança cadastral</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-[#4A5568] mb-6">
+              Deseja realmente inativar o profissional <strong className="text-[#1A2332]">{targetToInactivate.name}</strong>? Ele perderá o acesso ao sistema.
+            </p>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTargetToInactivate(null)}
+                className="flex-1 py-2.5 border border-[#D5E6F3] bg-white text-[#6B7A8D] rounded-xl font-semibold text-sm hover:bg-[#F4F7FB] transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmInactivate}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition shadow-sm"
+              >
+                Confirmar inativação
               </button>
             </div>
           </div>
@@ -3479,16 +3911,6 @@ function CoordinationDashboard({ onOpenPatient, targets, patients: patientsProp 
 
 // ─── Dashboard API helpers (Issue 5) ─────────────────────────────────────────
 
-function calcIdade(dataNasc?: string | null): number {
-  if (!dataNasc) return 0;
-  const nasc = new Date(dataNasc);
-  const hoje = new Date();
-  let idade = hoje.getFullYear() - nasc.getFullYear();
-  const m = hoje.getMonth() - nasc.getMonth();
-  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) idade--;
-  return idade;
-}
-
 function mapEtapaStatus(s: string): SpecStatus {
   switch (s) {
     case "EM_ATENDIMENTO": return "em-atendimento";
@@ -3522,35 +3944,45 @@ function apiItemToPaciente(item: DashboardJornadaItem): Patient {
     ? new Date(item.chegada_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
     : new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+  const dataStr = item.chegada_em
+    ? new Date(item.chegada_em).toLocaleDateString("pt-BR")
+    : new Date().toLocaleDateString("pt-BR");
+
   return {
-    id:          item.jornada_id,
-    name:        item.paciente_nome,
-    age:         calcIdade(item.paciente_data_nascimento),
-    cpf:         item.paciente_cpf,
-    cid:         "",
-    diagnosis:   item.diagnostico ?? "",
-    status:      mapJornadaStatus(item.jornada_status),
-    arrivalTime: chegadaStr,
+    id:               item.jornada_id,
+    name:             item.paciente_nome,
+    age:              calcularIdade(item.paciente_data_nascimento),
+    cpf:              item.paciente_cpf,
+    cid:              "",
+    diagnosis:        item.diagnostico ?? "",
+    status:           mapJornadaStatus(item.jornada_status),
+    arrivalTime:      chegadaStr,
+    date:             dataStr,
+    origin:           "Recepção Central",
+    emergencyContact: "Não informado",
     specialties,
-    weight:      "",
-    height:      "",
+    weight:           "",
+    height:           "",
     // legado
-    email:       "",
-    phone:       "",
-    address:     "",
+    email:            "",
+    phone:            "",
+    address:          "",
   } as Patient;
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [patientsList, setPatientsList] = useState<Patient[]>(PATIENTS);
+  const [patientsList, setPatientsList] = useState<Patient[]>(() => loadStoredPatients(PATIENTS));
   const [screen, setScreen] = useState<Screen>("login");
   const [role, setRole] = useState<Role | null>(null);
-  const [selectedPatient, setSelectedPatient] = useState<Patient>(patientsList[0]);
+  const [originScreen, setOriginScreen] = useState<Screen | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient>(() => loadStoredPatients(PATIENTS)[0] || PATIENTS[0]);
   const [selectedSpec, setSelectedSpec] = useState<string>("nutricao");
   const [targets, setTargets] = useState<SpecTarget[]>(DEFAULT_TARGETS.map(t => ({ ...t })));
   const [patientDocs, setPatientDocs] = useState<PatientDocument[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>(() => loadStoredProfessionals(INITIAL_PROFESSIONALS));
+  const [currentUser, setCurrentUser] = useState<{ name: string; role: Role; email: string; specialty?: string } | null>(null);
 
   // ─── Polling em tempo real: busca jornadas do dia a cada 30s ──────────────
   useEffect(() => {
@@ -3577,17 +4009,52 @@ export default function App() {
   const notifications: AppNotification[] = baseNotifications.map(n => ({ ...n, read: readNotifIds.has(n.id) }));
   function markAllRead() { setReadNotifIds(new Set(baseNotifications.map(n => n.id))); }
 
-  function handleLogin(r: Role) {
+  function handleLogin(r: Role, email?: string) {
     setRole(r);
-    setScreen(r === "recepcao" ? "reception-dashboard" : r === "coordenacao" ? "coordination-dashboard" : "professional-dashboard");
+    const emailNorm = email?.trim().toLowerCase();
+    let matchedPro = emailNorm ? professionals.find(p => p.email.toLowerCase() === emailNorm) : undefined;
+    if (!matchedPro) {
+      const roleMap: Record<Role, string> = {
+        recepcao: "Recepção",
+        profissional: "Profissional",
+        coordenacao: "Coordenação",
+        administrador: "Coordenação",
+      };
+      matchedPro = professionals.find(p => p.role === roleMap[r]);
+    }
+    const defaultNames: Record<Role, string> = {
+      recepcao: "Carla Santos",
+      profissional: "Enfª. Patrícia Lima",
+      coordenacao: "Ana Lima",
+      administrador: "Administrador HUB",
+    };
+    setCurrentUser({
+      name: matchedPro?.name || defaultNames[r],
+      role: r,
+      email: matchedPro?.email || (email || `${r}@hospital.com.br`),
+      specialty: matchedPro?.specialty !== "—" ? matchedPro?.specialty : undefined,
+    });
+    setOriginScreen(null);
+    setScreen(
+      r === "recepcao"
+        ? "reception-dashboard"
+        : r === "administrador"
+          ? "professionals-management"
+          : r === "coordenacao"
+            ? "coordination-dashboard"
+            : "professional-dashboard"
+    );
   }
 
   function handleLogout() {
     setRole(null);
+    setCurrentUser(null);
+    setOriginScreen(null);
     setScreen("login");
   }
 
   function openPatient(p: Patient) {
+    setOriginScreen(screen);
     setSelectedPatient(p);
     setScreen("patient-record");
   }
@@ -3600,9 +4067,34 @@ export default function App() {
     setScreen("specialty-form");
   }
 
+  function handleSaveProfessional(data: Omit<Professional, "id">, editId?: string): { success: boolean; error?: string } {
+    const emailNorm = data.email.trim().toLowerCase();
+    const duplicate = professionals.find(p => p.email.toLowerCase() === emailNorm && p.id !== editId);
+    if (duplicate) {
+      return { success: false, error: "Já existe um profissional cadastrado com este e-mail." };
+    }
+    if (editId) {
+      const updated = professionals.map(p => p.id === editId ? { ...p, ...data } : p);
+      setProfessionals(updated);
+      saveStoredProfessionals(updated);
+    } else {
+      const newId = `PRO-${String(professionals.length + 1).padStart(3, "0")}`;
+      const updated = [...professionals, { id: newId, ...data }];
+      setProfessionals(updated);
+      saveStoredProfessionals(updated);
+    }
+    return { success: true };
+  }
+
+  function handleToggleProfessionalStatus(id: string) {
+    const updated = professionals.map(p => p.id === id ? { ...p, status: (p.status === "ativo" ? "inativo" : "ativo") as "ativo" | "inativo" } : p);
+    setProfessionals(updated);
+    saveStoredProfessionals(updated);
+  }
+
   function handleSaveForm(specId: string, answers: Record<string, string>, status: SpecStatus) {
     const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const userName = nomeExibicaoPorPerfil(role);
+    const userName = currentUser?.name || nomeExibicaoPorPerfil(role);
 
     setPatientsList(prev => {
       const pIndex = prev.findIndex(p => p.id === selectedPatient.id);
@@ -3635,14 +4127,14 @@ export default function App() {
       const previousAlerts = p.alerts || [];
       const freshAlerts = generatePatientAlerts(newFormAnswers, () => new Date().toLocaleString('pt-BR'));
       const newAlerts = freshAlerts.map(fresh => {
-        const prev = previousAlerts.find(a => a.id === fresh.id);
-        if (prev?.status && prev.status !== 'aberto') {
-          return { ...fresh, status: prev.status, createdAt: prev.createdAt ?? fresh.createdAt };
+        const prevAlert = previousAlerts.find(a => a.id === fresh.id);
+        if (prevAlert?.status && prevAlert.status !== 'aberto') {
+          return { ...fresh, status: prevAlert.status, createdAt: prevAlert.createdAt ?? fresh.createdAt, resolvedBy: prevAlert.resolvedBy, resolvedAt: prevAlert.resolvedAt };
         }
         return fresh;
       });
 
-      const updatedPatient = { ...p, specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
+      const updatedPatient = { ...p, status: statusGeralDoPaciente(newSpecialties), specialties: newSpecialties, formAnswers: newFormAnswers, alerts: newAlerts };
       if (answers.Peso) updatedPatient.weight = answers.Peso;
       if (answers.Altura) updatedPatient.height = answers.Altura;
 
@@ -3652,6 +4144,8 @@ export default function App() {
 
       const newList = [...prev];
       newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      clearFormDraft(p.id, specId);
       return newList;
     });
     setScreen("patient-record");
@@ -3671,6 +4165,86 @@ export default function App() {
 
       const newList = [...prev];
       newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  // Equipe do usuário logado (ex.: "Nutrição"). O login ainda não informa;
+  // enquanto for null, resolver pendência pede confirmação de equipe.
+  const equipeUsuario: string | null = null;
+
+  function handleSetAplicavel(specId: string, aplicavel: boolean) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const newSpecialties = p.specialties.map(s => s.id !== specId ? s : {
+        ...s,
+        status: (aplicavel ? "pendente" : "nao-se-aplica") as SpecStatus,
+        completedTime: undefined,
+      });
+      const updatedPatient = { ...p, specialties: newSpecialties, status: statusGeralDoPaciente(newSpecialties) };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  function handleCheckinChange(patientId: string, registro: CheckinRecord) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === patientId);
+      if (pIndex === -1) return prev;
+      const updatedPatient = { ...prev[pIndex], checkin: registro };
+      PATIENTS[PATIENTS.findIndex(px => px.id === patientId)] = updatedPatient;
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  function handlePdfExported(registro: PdfExportRecord) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const updatedPatient = { ...p, pdfExports: [...(p.pdfExports || []), registro] };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
+      return newList;
+    });
+  }
+
+  function handleResolvePendency(alertId: string) {
+    setPatientsList(prev => {
+      const pIndex = prev.findIndex(p => p.id === selectedPatient?.id);
+      if (pIndex === -1) return prev;
+
+      const p = prev[pIndex];
+      const resolvedAt = new Date().toLocaleString('pt-BR');
+      const resolvedBy = currentUser?.name || nomeExibicaoPorPerfil(role);
+      const newAlerts = (p.alerts || []).map(a => a.id === alertId ? { ...a, status: 'resolvido' as const, resolvedBy, resolvedAt } : a);
+      const updatedPatient = { ...p, alerts: newAlerts };
+
+      setSelectedPatient(updatedPatient);
+      PATIENTS[PATIENTS.findIndex(px => px.id === p.id)] = updatedPatient;
+
+      const newList = [...prev];
+      newList[pIndex] = updatedPatient;
+      saveStoredPatients(newList);
       return newList;
     });
   }
@@ -3691,52 +4265,56 @@ export default function App() {
     return titles[screen] ?? "Central de Acolhimento";
   };
 
-  if (screen === "login") return <LoginScreen onLogin={handleLogin} onPublicJourney={() => setScreen("public-journey")} />;
+  if (screen === "login") return <LoginScreen onLogin={handleLogin} onPublicJourney={() => setScreen("public-journey")} professionals={professionals} />;
   if (screen === "public-journey") return <PublicJourneyScreen onBack={() => setScreen("login")} />;
 
   const BACK_MAP: Partial<Record<Screen, Screen>> = {
     "patient-registration": "reception-dashboard",
     "specialty-form": "patient-record",
     "consolidated-record": "patient-record",
-    "professionals-management": "coordination-dashboard",
+    "professionals-management": role === "coordenacao" ? "coordination-dashboard" : undefined,
     "time-targets": "coordination-dashboard",
-    "patient-record": role === "recepcao"
+    "patient-record": (originScreen && originScreen !== "patient-record") ? originScreen : (role === "recepcao"
       ? "reception-dashboard"
-      : role === "coordenacao"
+      : role === "coordenacao" || role === "administrador"
         ? "coordination-dashboard"
-        : "professional-dashboard",
+        : "professional-dashboard"),
   };
 
   const goBack = () => {
     const dest = BACK_MAP[screen];
-    if (dest) setScreen(dest);
+    if (dest) {
+      setScreen(dest);
+      if (screen === "patient-record") setOriginScreen(null);
+    }
   };
 
-  const showBack = screen in BACK_MAP;
+  const showBack = screen in BACK_MAP && Boolean(BACK_MAP[screen]);
 
   return (
     <AppLayout
       role={role!}
       screen={screen}
-      onNavigate={setScreen}
+      onNavigate={s => { setOriginScreen(null); setScreen(s); }}
       onLogout={handleLogout}
       title={getScreenTitle()}
       onBack={showBack ? goBack : undefined}
       notifications={notifications}
       onMarkAllRead={markAllRead}
+      userName={currentUser?.name}
     >
-      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} />}
-      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => [p, ...prev]); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
+      {screen === "reception-dashboard" && <ReceptionDashboard onNavigate={setScreen} onOpenPatient={openPatient} onAddDoc={doc => setPatientDocs(ds => [...ds, doc])} patients={patientsList} onCheckinChange={handleCheckinChange} />}
+      {screen === "patient-registration" && <PatientRegistrationScreen onBack={goBack} onSaved={p => { setPatientsList(prev => { const next = [p, ...prev]; saveStoredPatients(next); return next; }); PATIENTS.unshift(p); setSelectedPatient(p); setScreen("patient-record"); }} />}
       {screen === "professional-dashboard" && <ProfessionalDashboard onOpenPatient={openPatient} patients={patientsList} />}
 
 
       {screen === "coordination-dashboard" && <CoordinationDashboard onOpenPatient={openPatient} targets={targets} patients={patientsList} />}
-      {screen === "professionals-management" && <ProfessionalsManagement />}
+      {screen === "professionals-management" && <ProfessionalsManagement professionals={professionals} onSaveProfessional={handleSaveProfessional} onToggleStatus={handleToggleProfessionalStatus} />}
       {screen === "forms-list" && <FormsListScreen onOpenPatient={openPatient} />}
       {screen === "time-targets" && <TimeTargetsScreen targets={targets} onChange={setTargets} />}
-      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} />}
+      {screen === "patient-record" && <PatientRecordScreen patient={selectedPatient} onOpenSpecialty={openSpecialty} onConsolidated={() => setScreen("consolidated-record")} docs={patientDocs.filter(d => d.patientId === selectedPatient.id)} onDeleteDoc={id => setPatientDocs(ds => ds.filter(d => d.id !== id))} role={role} onAcknowledgeAlert={handleAcknowledgeAlert} onResolvePendency={handleResolvePendency} equipeUsuario={equipeUsuario} onPdfExported={handlePdfExported} onSetAplicavel={handleSetAplicavel} />}
       {screen === "specialty-form" && <SpecialtyFormScreen key={`${selectedPatient.id}-${selectedSpec}`} patient={selectedPatient} specId={selectedSpec} mode={specMode} onBack={goBack} onSave={handleSaveForm} />}
-      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} />}
+      {screen === "consolidated-record" && <ConsolidatedRecordScreen patient={selectedPatient} onBack={goBack} role={role} onPdfExported={handlePdfExported} currentUser={currentUser} />}
 
       {/* Global Critical Alert */}
       {selectedPatient && ["patient-record", "specialty-form", "consolidated-record"].includes(screen) && (

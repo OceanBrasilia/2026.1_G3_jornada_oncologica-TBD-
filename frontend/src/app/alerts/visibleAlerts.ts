@@ -13,7 +13,7 @@ import { PatientAlert } from "../types/alerts";
  * Ajustar aqui se a equipe definir outra regra de acesso por perfil.
  */
 export function podeVerConfidencial(role: string | null): boolean {
-  return role === "profissional" || role === "coordenacao";
+  return role === "profissional" || role === "coordenacao" || role === "administrador";
 }
 
 export function filterAlertsForRole(alerts: PatientAlert[], role: string | null): PatientAlert[] {

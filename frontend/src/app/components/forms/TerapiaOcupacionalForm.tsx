@@ -66,7 +66,7 @@ const PainScale = ({ name, data, onChange, inheritedData, origins }: any) => {
           </button>
         </div>
       )}
-      <div className="flex flex-col gap-1 overflow-x-auto pb-2">
+      <div role="group" aria-labelledby="to-escala-dor" className="flex flex-col gap-1 overflow-x-auto pb-2">
         <div className="flex gap-1 min-w-max">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((val) => {
             const isSelected = value === String(val);
@@ -74,6 +74,7 @@ const PainScale = ({ name, data, onChange, inheritedData, origins }: any) => {
               <button
                 key={val}
                 type="button"
+                aria-pressed={isSelected}
                 onClick={() => {
                   if (!isInheritedActive) onChange(name, String(val));
                 }}
@@ -105,7 +106,7 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
   return (
     <div className="space-y-6">
       <PatientHeader 
-        id="CAO-2024-0002"
+        id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
         diagnosis={patient?.diagnosis}
@@ -149,7 +150,7 @@ export function TerapiaOcupacionalForm({ data, onChange, patient, inheritedData,
 
         <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Dor" name="TO_Dor" options={["Sim", "Não"]} data={data} onChange={onChange} />
         <ConditionalField data={data} onChange={onChange} showIf={{ campo: "TO_Dor", igual: "Sim" }} campos={["TO_Dor_Intensidade"]} className="mt-2">
-          <label className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor:</label>
+          <span id="to-escala-dor" className="block text-xs font-bold text-[#1A2332] mb-2">Escala numérica de dor:</span>
           <PainScale name="TO_Dor_Intensidade" data={data} onChange={onChange} inheritedData={inheritedData} origins={origins} />
         </ConditionalField>
 

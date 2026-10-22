@@ -3,9 +3,10 @@ import { podeVerConfidencial, filterAlertsForRole } from "./visibleAlerts";
 import { AlertCategory, AlertLevel, PatientAlert } from "../types/alerts";
 
 describe("podeVerConfidencial", () => {
-  it("profissional e coordenacao podem ver", () => {
+  it("profissional, coordenacao e administrador podem ver", () => {
     expect(podeVerConfidencial("profissional")).toBe(true);
     expect(podeVerConfidencial("coordenacao")).toBe(true);
+    expect(podeVerConfidencial("administrador")).toBe(true);
   });
 
   it("recepcao e ausência de perfil (portal público) não podem ver", () => {

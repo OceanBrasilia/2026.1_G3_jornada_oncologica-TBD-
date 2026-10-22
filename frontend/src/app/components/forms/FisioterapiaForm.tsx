@@ -46,7 +46,7 @@ export function FisioterapiaForm({ data, onChange, patient, inheritedData, origi
   return (
     <div className="space-y-6">
       <PatientHeader 
-        id="CAO-2024-0002"
+        id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
         diagnosis={patient?.diagnosis}

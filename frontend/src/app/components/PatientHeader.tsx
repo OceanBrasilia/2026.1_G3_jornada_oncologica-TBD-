@@ -1,5 +1,5 @@
-import { AlertBadge } from './ui/AlertBadge';
-import { PatientAlert, AlertLevel } from '../types/alerts';
+import { Level3Chips } from './ui/Level3Chips';
+import { PatientAlert } from '../types/alerts';
 
 export interface PatientHeaderProps {
   id?: string;
@@ -13,7 +13,7 @@ export interface PatientHeaderProps {
 }
 
 export function PatientHeader({
-  id = 'CAO-2024-0002',
+  id,
   name,
   age,
   diagnosis,
@@ -22,8 +22,6 @@ export function PatientHeader({
   status = 'Pendente',
   alerts = [],
 }: PatientHeaderProps) {
-  const level3Alerts = alerts.filter(a => a.level.includes(AlertLevel.LEVEL_3) && a.active);
-
   return (
     <div className="bg-[#1B6CA8] rounded-2xl p-5 mb-5 text-white flex justify-between items-center shadow-sm">
       <div>
@@ -32,13 +30,7 @@ export function PatientHeader({
           <h2 className="text-xl font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>
             {name}
           </h2>
-          {level3Alerts.length > 0 && (
-            <div className="flex items-center gap-1">
-              {level3Alerts.map(alert => (
-                <AlertBadge key={alert.id} category={alert.category} alert={alert} />
-              ))}
-            </div>
-          )}
+          <Level3Chips alerts={alerts} />
         </div>
         <div className="text-sm opacity-90">
           {age ? `${age} anos` : ''} 

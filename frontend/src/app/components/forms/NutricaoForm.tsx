@@ -4,6 +4,7 @@ import {
   calculateBox4Score, calculateBoxBScore, calculateBoxCScore, calculateBoxDScore
 } from "../../calculos/asgPpp";
 import { calculateIMC, IMC_FORMULA } from "../../calculos/imc";
+import { calcularIdade } from "../../utils/idade";
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
 import {
@@ -94,14 +95,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
   const dob = getVal("data_nasc");
   let computedAge = getVal("idade", "age");
   if (!computedAge && dob) {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    computedAge = age.toString();
+    computedAge = calcularIdade(dob).toString();
   }
 
   const weight = getVal("peso", "weight");
@@ -132,7 +126,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
   return (
     <div className="space-y-6">
       <PatientHeader 
-        id="CAO-2024-0002"
+        id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
         diagnosis={patient?.diagnosis}
@@ -169,7 +163,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
             </ConditionalField>
           </div>
           
-          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Ensino Médio", "Ensino Superior"]} data={data} onChange={onChange} />
+          <InheritableSelect inheritedData={inheritedData} origins={origins} label="Escolaridade" name="Escolaridade" options={["Sem instrução", "Fundamental I e II", "Médio", "Superior", "Pós-graduação"]} data={data} onChange={onChange} />
           
           <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Atividade física" name="atividade_fisica" stacked={true} options={["Sim: intensidade leve, moderada - min 30min, 5x/semana ou intensidade vigorosa, min 20min, 3x/semana", "Não"]} data={data} onChange={onChange} />
           

@@ -7,6 +7,19 @@ from pydantic import BaseModel, ConfigDict
 
 # Auth ─────────────────────────────────────────────────────────────────────
 
+class UsuarioLoginInfo(BaseModel):
+    id: str
+    nome: str
+    codigo: Optional[str] = None
+    perfil: str
+    especialidade_id: Optional[str] = None
+    especialidade_nome: Optional[str] = None
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    usuario: UsuarioLoginInfo
+
 class LoginRequest(BaseModel):
     email: str
     password: str

@@ -1,5 +1,5 @@
 import { calculateIMC, IMC_FORMULA } from "../calculos/imc";
-import { calculateAsgPppTotal, getTriageInfo } from "../calculos/asgPpp";
+import { calculateAsgPppTotal, getTriageInfo, isAsgPppPreenchido } from "../calculos/asgPpp";
 import { calculateIrpoTotal, classifyIrpoRisk, irpoQuestions, type IrpoRisk } from "../calculos/irpo";
 import { formatarLabelCampo } from "./fieldLabels";
 
@@ -187,17 +187,25 @@ export function buildDetalhesEspecialidade(
 export interface ResumoNutricao {
   imc: string;
   imcFormula: string;
-  asgTotal: number;
-  asgTriage: { text: string; color: string };
+  asgTotal: number | null;
+  asgTriage: { text: string; color: string } | null;
+  asgPreenchido: boolean;
 }
 
 /** Resultado calculado de IMC + ASG-PPP, com fórmula/classificação (RF-021). Null se nada foi preenchido. */
 export function buildResumoNutricao(answers: Record<string, any> | undefined): ResumoNutricao | null {
   if (!answers) return null;
   const imc = calculateIMC(answers.peso || "", answers.altura || "");
-  const asgTotal = calculateAsgPppTotal(answers);
-  if (imc === "—" && asgTotal === 0) return null;
-  return { imc, imcFormula: IMC_FORMULA, asgTotal, asgTriage: getTriageInfo(asgTotal) };
+  const asgPreenchido = isAsgPppPreenchido(answers);
+  const asgTotal = asgPreenchido ? calculateAsgPppTotal(answers) : null;
+  if (imc === "—" && !asgPreenchido) return null;
+  return {
+    imc,
+    imcFormula: IMC_FORMULA,
+    asgTotal,
+    asgTriage: asgTotal !== null ? getTriageInfo(asgTotal) : null,
+    asgPreenchido,
+  };
 }
 
 export interface ResumoPsicologia {
