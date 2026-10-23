@@ -35,6 +35,7 @@ import {
   buildDadosGerais, buildDetalhesEspecialidade, buildInformacoesCompartilhadas, buildResumoNutricao, buildResumoPsicologia, statusLabel,
 } from "./consolidado/buildConsolidatedView";
 import { buildEspecialidadesPdf } from "./pdf/buildEspecialidadesPdf";
+import { ExportDocumentModal } from "./components/ExportDocumentModal";
 import { nomeExibicaoPorPerfil } from "./utils/roleDisplayName";
 import { calcularIdade } from "./utils/idade";
 import { statusGeralDoPaciente } from "./utils/statusPaciente";
@@ -2222,43 +2223,81 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
   const activeSpec = patient.specialties.find(s => s.id === activeTab);
 
   const [exportError, setExportError] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportModalTipo, setExportModalTipo] = useState<"completo" | "especialidade">("completo");
+  const [exportModalSpecId, setExportModalSpecId] = useState<string | undefined>(undefined);
 
-  async function handleExport() {
+  function handleAbrirExportacao(tipo: "completo" | "especialidade" = "completo", specId?: string) {
+    setExportModalTipo(tipo);
+    setExportModalSpecId(specId);
+    setExportModalOpen(true);
+  }
+
+  async function handleExecutarExportacao(opcoes: {
+    tipo: "completo" | "especialidade";
+    especialidadeId?: string;
+    especialidadeNome?: string;
+    formato: "pdf" | "docx";
+    nomeArquivo: string;
+  }) {
     setExportError("");
-    setExportMsg("Gerando PDF...");
+    setExportMsg(`Gerando ${opcoes.formato.toUpperCase()}...`);
     const temAcessoConfidencial = podeVerConfidencial(role);
     const agora = new Date();
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const geradoEm = `${pad2(agora.getDate())}/${pad2(agora.getMonth() + 1)}/${agora.getFullYear()} às ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
     const infosCompartilhadas = buildInformacoesCompartilhadas(patient.formAnswers, patient.specialties);
+    const versao = proximaVersaoPdf(patient);
+    const exportadoPor = currentUser?.name || nomeExibicaoPorPerfil(role);
+
+    const specsParaExportar =
+      opcoes.tipo === "especialidade" && opcoes.especialidadeId
+        ? patient.specialties.filter(s => s.id === opcoes.especialidadeId)
+        : patient.specialties;
+
+    const especialidadesExportadas = buildEspecialidadesPdf(specsParaExportar, patient.formAnswers, patient.date, temAcessoConfidencial);
+
+    const exportProps = {
+      patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+      geradoEm,
+      versao,
+      exportadoPor,
+      dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
+      divergencias: infosCompartilhadas.filter(i => i.divergente),
+      especialidades: especialidadesExportadas,
+      tipo: opcoes.tipo,
+      especialidadeNome: opcoes.especialidadeNome,
+      nomeArquivo: opcoes.nomeArquivo,
+    };
 
     try {
-      // Import dinâmico: só baixa a biblioteca de PDF quando alguém realmente exporta.
-      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
-      const versao = proximaVersaoPdf(patient);
-      const exportadoPor = nomeExibicaoPorPerfil(role);
-      const resultado = await exportarFichaConsolidadaPdf({
-        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
-        geradoEm,
-        versao,
-        exportadoPor,
-        dadosCompartilhados: infosCompartilhadas.filter(i => !i.divergente),
-        divergencias: infosCompartilhadas.filter(i => i.divergente),
-        especialidades: buildEspecialidadesPdf(patient.specialties, patient.formAnswers, patient.date, temAcessoConfidencial),
-      });
-      if (resultado.ok) {
-        onPdfExported({ versao, geradoEm, exportadoPor });
-        setExportMsg(`Ficha exportada em PDF (versão ${versao}).`);
+      if (opcoes.formato === "pdf") {
+        const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+        const resultado = await exportarFichaConsolidadaPdf(exportProps);
+        if (resultado.ok) {
+          onPdfExported({ versao, geradoEm, exportadoPor });
+          setExportMsg(`Documento exportado em PDF (${resultado.nomeArquivo || opcoes.nomeArquivo}).`);
+        } else {
+          setExportMsg("");
+          setExportError(resultado.erro);
+        }
       } else {
-        setExportMsg("");
-        setExportError(resultado.erro);
+        const { exportarDocumentoDocx } = await import("./export/exportDocumentoDocx");
+        const resultado = await exportarDocumentoDocx(exportProps);
+        if (resultado.ok) {
+          onPdfExported({ versao, geradoEm, exportadoPor });
+          setExportMsg(`Documento exportado em Word DOCX (${resultado.nomeArquivo || opcoes.nomeArquivo}).`);
+        } else {
+          setExportMsg("");
+          setExportError(resultado.erro);
+        }
       }
     } catch (erro) {
-      console.error("Falha ao carregar o gerador de PDF:", erro);
+      console.error("Falha ao exportar documento:", erro);
       setExportMsg("");
-      setExportError("Não foi possível gerar o PDF agora. Tente novamente em instantes.");
+      setExportError("Não foi possível gerar o documento agora. Tente novamente em instantes.");
     }
-    setTimeout(() => { setExportMsg(""); setExportError(""); }, 3000);
+    setTimeout(() => { setExportMsg(""); setExportError(""); }, 3500);
   }
 
   return (
@@ -2296,9 +2335,9 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
                 <FileText size={13} /> Ficha consolidada
               </button>
-              <button onClick={() => handleExport()}
+              <button onClick={() => handleAbrirExportacao("completo")}
                 className="flex items-center gap-1.5 px-3 py-2 bg-white/15 text-white rounded-xl text-xs font-bold hover:bg-white/25 transition">
-                <Download size={13} /> PDF
+                <Download size={13} /> Exportar
               </button>
             </div>
           </div>
@@ -2511,7 +2550,7 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
                     professional={activeSpec.professional}
                     completedTime={activeSpec.completedTime}
                     onEdit={() => onOpenSpecialty(activeSpec.id, "edit")}
-                    onExport={() => handleExport()}
+                    onExport={() => handleAbrirExportacao("especialidade", activeSpec.id)}
                   />
                 );
               })() : activeSpec.status === "nao-se-aplica" ? (
@@ -2595,6 +2634,15 @@ function PatientRecordScreen({ patient, onOpenSpecialty, onConsolidated, docs, o
           </div>
         </div>
       )}
+
+      <ExportDocumentModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        patient={patient}
+        initialTipo={exportModalTipo}
+        initialSpecId={exportModalSpecId}
+        onExport={handleExecutarExportacao}
+      />
     </div>
   );
 }
@@ -2962,8 +3010,15 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, curren
 
   const [exportando, setExportando] = useState(false);
   const [erroExportacao, setErroExportacao] = useState("");
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
-  const handleExportPDF = async () => {
+  const handleExecutarExportacao = async (opcoes: {
+    tipo: "completo" | "especialidade";
+    especialidadeId?: string;
+    especialidadeNome?: string;
+    formato: "pdf" | "docx";
+    nomeArquivo: string;
+  }) => {
     setErroExportacao("");
     setExportando(true);
     const exportadoPor = currentUser?.name || nomeExibicaoPorPerfil(role);
@@ -2971,25 +3026,43 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, curren
     const exportDate = new Date();
     const pad2 = (n: number) => String(n).padStart(2, "0");
     const geradoEmAgora = `${pad2(exportDate.getDate())}/${pad2(exportDate.getMonth() + 1)}/${exportDate.getFullYear()} às ${pad2(exportDate.getHours())}:${pad2(exportDate.getMinutes())}`;
+
+    const specsParaExportar =
+      opcoes.tipo === "especialidade" && opcoes.especialidadeId
+        ? patient.specialties.filter(s => s.id === opcoes.especialidadeId)
+        : patient.specialties;
+
+    const especialidadesExportadas = buildEspecialidadesPdf(specsParaExportar, patient.formAnswers, patient.date, temAcessoConfidencial);
+
+    const exportProps = {
+      patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
+      geradoEm: geradoEmAgora,
+      exportDate,
+      versao,
+      exportadoPor,
+      dadosCompartilhados,
+      divergencias: divergencies,
+      especialidades: especialidadesExportadas,
+      tipo: opcoes.tipo,
+      especialidadeNome: opcoes.especialidadeNome,
+      nomeArquivo: opcoes.nomeArquivo,
+    };
+
     try {
-      // Import dinâmico: a biblioteca de PDF só é baixada quando alguém realmente exporta,
-      // não pesa o carregamento inicial do app para quem nunca usa essa tela.
-      const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
-      const resultado = await exportarFichaConsolidadaPdf({
-        patient: { id: patient.id, name: patient.name, age: patient.age, diagnosis: patient.diagnosis, cid: patient.cid, date: patient.date, arrivalTime: patient.arrivalTime },
-        geradoEm: geradoEmAgora,
-        exportDate,
-        versao,
-        exportadoPor,
-        dadosCompartilhados,
-        divergencias: divergencies,
-        especialidades: especialidadesParaPdf,
-      });
-      if (resultado.ok) onPdfExported({ versao, geradoEm: geradoEmAgora, exportadoPor });
-      else setErroExportacao(resultado.erro);
+      if (opcoes.formato === "pdf") {
+        const { exportarFichaConsolidadaPdf } = await import("./pdf/exportFichaConsolidadaPdf");
+        const resultado = await exportarFichaConsolidadaPdf(exportProps);
+        if (resultado.ok) onPdfExported({ versao, geradoEm: geradoEmAgora, exportadoPor });
+        else setErroExportacao(resultado.erro);
+      } else {
+        const { exportarDocumentoDocx } = await import("./export/exportDocumentoDocx");
+        const resultado = await exportarDocumentoDocx(exportProps);
+        if (resultado.ok) onPdfExported({ versao, geradoEm: geradoEmAgora, exportadoPor });
+        else setErroExportacao(resultado.erro);
+      }
     } catch (erro) {
-      console.error("Falha ao carregar o gerador de PDF:", erro);
-      setErroExportacao("Não foi possível carregar o gerador de PDF agora. Tente novamente em instantes.");
+      console.error("Falha ao exportar documento:", erro);
+      setErroExportacao("Não foi possível gerar o documento agora. Tente novamente em instantes.");
     }
     setExportando(false);
   };
@@ -3010,8 +3083,8 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, curren
             <span>Chegada: {patient.date} às {patient.arrivalTime}</span>
           </div>
         </div>
-        <button onClick={handleExportPDF} disabled={exportando} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
-          <Download size={15} /> {exportando ? "Gerando PDF..." : "Exportar PDF"}
+        <button onClick={() => setExportModalOpen(true)} disabled={exportando} className="print:hidden flex items-center gap-2 px-4 py-2.5 bg-[#1B6CA8] text-white rounded-xl text-sm font-bold hover:bg-[#155a90] transition shadow-md disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
+          <Download size={15} /> {exportando ? "Gerando..." : "Exportar documento"}
         </button>
       </div>
 
@@ -3178,6 +3251,14 @@ function ConsolidatedRecordScreen({ patient, onBack, role, onPdfExported, curren
         className="print:hidden flex items-center gap-2 text-sm text-[#6B7A8D] hover:text-[#1A2332] transition font-medium mt-6">
         <ArrowLeft size={15} /> Voltar à ficha do paciente
       </button>
+
+      <ExportDocumentModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        patient={patient}
+        initialTipo="completo"
+        onExport={handleExecutarExportacao}
+      />
     </div>
   );
 }

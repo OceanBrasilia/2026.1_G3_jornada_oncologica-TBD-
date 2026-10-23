@@ -51,16 +51,38 @@ export interface FichaConsolidadaPdfProps {
   dadosCompartilhados: DadoGeral[];
   divergencias: { campo: string; label: string; valor: string; origem: string; outrasRespostas: DivergenciaCampo[] }[];
   especialidades: EspecialidadePdf[];
+  tipo?: "completo" | "especialidade";
+  especialidadeNome?: string;
+  tituloDocumento?: string;
+  nomeArquivo?: string;
 }
 
 /** Documento PDF da Ficha Consolidada (RF-018) — gerado com @react-pdf/renderer (vetorial, texto selecionável). */
-export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, dadosCompartilhados, divergencias, especialidades }: FichaConsolidadaPdfProps) {
+export function FichaConsolidadaPdf({
+  patient,
+  geradoEm,
+  versao,
+  exportadoPor,
+  dadosCompartilhados,
+  divergencias,
+  especialidades,
+  tipo,
+  especialidadeNome,
+  tituloDocumento,
+}: FichaConsolidadaPdfProps) {
+  const isEspecialidade = tipo === "especialidade";
+  const tituloFinal =
+    tituloDocumento ||
+    (isEspecialidade
+      ? `Ficha de Atendimento — ${especialidadeNome || especialidades[0]?.nome || "Especialidade"}`
+      : "Ficha Consolidada Multidisciplinar");
+
   return (
-    <Document title={`Ficha Consolidada - ${patient.id}`}>
+    <Document title={`${tituloFinal} - ${patient.id}`}>
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.header} fixed>
           <Text style={styles.systemName}>Jornada Conectada — Acolhimento Oncológico HUB</Text>
-          <Text style={styles.title}>Ficha Consolidada Multidisciplinar</Text>
+          <Text style={styles.title}>{tituloFinal}</Text>
           <View style={styles.metaRow}>
             <Text style={styles.metaItem}>Paciente: {patient.name} ({patient.id})</Text>
             <Text style={styles.metaItem}>{patient.age} anos</Text>
@@ -74,7 +96,7 @@ export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, d
           </View>
         </View>
 
-        {dadosCompartilhados.length > 0 && (
+        {!isEspecialidade && dadosCompartilhados.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Dados compartilhados entre especialidades</Text>
             {dadosCompartilhados.map(d => (
@@ -86,7 +108,7 @@ export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, d
           </View>
         )}
 
-        {divergencias.length > 0 && (
+        {!isEspecialidade && divergencias.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Alertas de divergência</Text>
             {divergencias.map(d => (
@@ -102,7 +124,9 @@ export function FichaConsolidadaPdf({ patient, geradoEm, versao, exportadoPor, d
         )}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Evolução e conduta por especialidade</Text>
+          <Text style={styles.sectionTitle}>
+            {isEspecialidade ? "Registro da Especialidade" : "Evolução e conduta por especialidade"}
+          </Text>
           {especialidades.map(sp => (
             <View style={styles.specCard} key={sp.nome}>
               <View style={styles.specHeader} wrap={false}>
