@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { 
-  calculateBox1Score, calculateBox2Score, calculateBox3Score,
-  calculateBox4Score, calculateBoxBScore, calculateBoxCScore, calculateBoxDScore
+  calculateBox1ScoreFromAnexo1, calculateWeightLossPercentage,
+  formatWeightLossPercentage, calculateAnexo1Score,
+  calculateBox2Score, calculateBox3Score, calculateBox4Score,
+  calculateBoxBScore, calculateBoxCScore, calculateEstresseFebreScore,
+  calculateCorticoideScore, calculateBoxDScore
 } from "../../calculos/asgPpp";
 import { calculateIMC, IMC_FORMULA } from "../../calculos/imc";
 import { calcularIdade } from "../../utils/idade";
@@ -103,13 +106,38 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
   const imc = useMemo(() => calculateIMC(weight, height), [weight, height]);
 
   // Scores
-  const box1Score = useMemo(() => calculateBox1Score(weight, data.peso_1m || "", data.peso_6m || "", data.peso_var_2sem || ""), [weight, data.peso_1m, data.peso_6m, data.peso_var_2sem]);
+  // Período e perda de peso (Anexo 1)
+  const applicablePeriod = data.periodo_perda_peso || (data.peso_6m && !data.peso_1m ? "6m" : "1m");
+  const recentWeight = applicablePeriod === "6m" ? (data.peso_6m || "") : (data.peso_1m || data.peso_6m || "");
+  const weightLossPercentage = useMemo(() => calculateWeightLossPercentage(recentWeight, weight), [recentWeight, weight]);
+  const anexo1Score = useMemo(() => calculateAnexo1Score(weightLossPercentage, applicablePeriod), [weightLossPercentage, applicablePeriod]);
+
+  // Caixa 1
+  const box1Score = useMemo(() => calculateBox1ScoreFromAnexo1(anexo1Score, data.peso_var_2sem || ""), [anexo1Score, data.peso_var_2sem]);
+
+  // Caixa 2
   const box2Score = useMemo(() => calculateBox2Score(data.ingestao_mudanca || "", data.ingestao_atual || ""), [data.ingestao_mudanca, data.ingestao_atual]);
+
+  // Caixa 3 e 4
   const box3Score = useMemo(() => calculateBox3Score(data.sintomas || []), [data.sintomas]);
   const box4Score = useMemo(() => calculateBox4Score(data.atividade || ""), [data.atividade]);
+
+  // Caixa B
   const boxBScore = useMemo(() => calculateBoxBScore(data.doencas || []), [data.doencas]);
-  const boxCScore = useMemo(() => calculateBoxCScore(parseInt(data.febre || "0"), parseInt(data.duracao_febre || "0"), parseInt(data.corticoide || "0")), [data.febre, data.duracao_febre, data.corticoide]);
-  const boxDScore = useMemo(() => calculateBoxDScore(parseInt(data.exame_fisico || "0")), [data.exame_fisico]);
+
+  // Anexo 3 (Demanda metabólica / Bloco C)
+  const estresseFebreResult = useMemo(
+    () => calculateEstresseFebreScore(data.estresse_metabolico, data.febre, data.duracao_febre),
+    [data.estresse_metabolico, data.febre, data.duracao_febre]
+  );
+  const corticoidePoints = useMemo(
+    () => calculateCorticoideScore(data.corticoide),
+    [data.corticoide]
+  );
+  const boxCScore = estresseFebreResult.pontos + corticoidePoints;
+
+  // Caixa D
+  const boxDScore = useMemo(() => calculateBoxDScore(parseInt(data.exame_fisico || "0", 10)), [data.exame_fisico]);
 
   const totalScore = box1Score + box2Score + box3Score + box4Score + boxBScore + boxCScore + boxDScore;
   
@@ -238,11 +266,56 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
         </div>
       </AccordionCard>
 
-      <AccordionCard title="ASG-PPP — Caixa 1: Peso" value="caixa1">
+      <AccordionCard title="ASG-PPP — Caixa 1: Peso e Anexo 1: Perda de Peso" value="caixa1">
         <div className="grid md:grid-cols-2 gap-4">
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Há um mês atrás eu pesava aproximadamente (kg)" name="peso_1m" placeholder="Ex.: 70" data={data} onChange={onChange} />
           <InheritableInput inheritedData={inheritedData} origins={origins} label="Há seis meses atrás eu pesava aproximadamente (kg)" name="peso_6m" placeholder="Ex.: 72" data={data} onChange={onChange} />
         </div>
+
+        <div className="mt-2">
+          <InheritableRadioPills
+            inheritedData={inheritedData}
+            origins={origins}
+            label="Período de referência para o Anexo 1 (perda de peso):"
+            name="periodo_perda_peso"
+            options={["1 mês (ou inferior a 1 mês)", "6 meses (até 6 meses)"]}
+            data={data}
+            onChange={(name: string, val: string) => onChange(name, val.includes("6") ? "6m" : "1m")}
+          />
+        </div>
+
+        {/* Anexo 1 — Cálculo explícito da perda de peso */}
+        <div className="bg-[#F8FAFC] border border-[#D5E6F3] rounded-xl p-4 space-y-2 mt-2">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
+            <span className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider">
+              Anexo 1 — Cálculo do percentual de perda de peso
+            </span>
+            <span className="text-xs font-bold text-[#1B6CA8] bg-[#EBF4FA] px-2.5 py-0.5 rounded-full border border-[#1B6CA8]/20">
+              Pontuação do Anexo 1: {anexo1Score} {anexo1Score === 1 ? "ponto" : "pontos"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs pt-1">
+            <div>
+              <span className="text-[#64748B] block font-medium">Peso recente (denominador):</span>
+              <span className="text-[#1E293B] font-bold">{recentWeight ? `${recentWeight} kg` : "Não informado"}</span>
+            </div>
+            <div>
+              <span className="text-[#64748B] block font-medium">Peso atual (aferido):</span>
+              <span className="text-[#1E293B] font-bold">{weight ? `${weight} kg` : "Não informado"}</span>
+            </div>
+            <div>
+              <span className="text-[#64748B] block font-medium">Percentual de perda de peso:</span>
+              <span className="text-[#1B6CA8] font-bold text-sm">
+                {formatWeightLossPercentage(weightLossPercentage)}
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#64748B] pt-1">
+            Fórmula: ((Peso recente - Peso atual) / Peso recente) × 100
+          </p>
+        </div>
+
         <InheritableRadioPills inheritedData={inheritedData} origins={origins} 
           label="Durante as 2 últimas semanas o meu peso:" 
           name="peso_var_2sem" 
@@ -250,7 +323,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           data={data} 
           onChange={onChange} 
         />
-        <SectionFooterScore label="Escore Caixa 1" score={box1Score} total={5} />
+        <SectionFooterScore label="Pontuação da Caixa 1" score={box1Score} total={5} />
       </AccordionCard>
 
       <AccordionCard title="ASG-PPP — Caixa 2: Ingestão alimentar" value="caixa2">
@@ -278,7 +351,7 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
           data={data} 
           onChange={onChange} 
         />
-        <SectionFooterScore label="Escore Caixa 2" score={box2Score} total={4} />
+        <SectionFooterScore label="Pontuação da Caixa 2" score={box2Score} total={4} />
       </AccordionCard>
 
       <AccordionCard title="ASG-PPP — Caixa 3: Sintomas (últimas 2 semanas)" value="caixa3">
@@ -326,16 +399,6 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
 
       <AccordionCard title="Doenças e requerimentos nutricionais" value="doencas">
         <InheritableTextarea inheritedData={inheritedData} origins={origins} label="Todos diagnósticos relevantes (especifique)" name="diagnosticos_relevantes" data={data} onChange={onChange} />
-        <InheritableSelect inheritedData={inheritedData} origins={origins} 
-          label="Estadiamento da doença primária" 
-          name="estadiamento_doenca" 
-          options={["I", "II", "III", "IV", "Outro", "Não aplicável"]} 
-          data={data} 
-          onChange={onChange} 
-        />
-        <ConditionalField data={data} onChange={onChange} showIf={{ campo: "estadiamento_doenca", igual: "Outro" }} campos={["estadiamento_outro"]} className="pl-4 border-l-2 border-[#FCD34D] mb-4">
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Especifique o outro estadiamento" name="estadiamento_outro" data={data} onChange={onChange} />
-        </ConditionalField>
         <CheckboxGroupList 
           label="Condições que pontuam (marque as aplicáveis):" 
           options={[
@@ -348,29 +411,65 @@ export function NutricaoForm({ data, onChange, patient, inheritedData, origins }
         <SectionFooterScore label="B = Condições clínicas" score={boxBScore} total={6} />
       </AccordionCard>
 
-      <AccordionCard title="Demanda metabólica" value="demanda">
-        <InheritableSelect inheritedData={inheritedData} origins={origins} 
-          label="Febre" 
-          name="febre" 
-          options={["0 = Nenhum / Sem febre", "1 = Baixo / > 37,2º e < 38,3º", "2 = Moderado / ≥ 38,3º e < 38,9º", "3 = Alto / ≥ 38,9º"]} 
-          data={data} 
-          onChange={onChange} 
-        />
-        <InheritableSelect inheritedData={inheritedData} origins={origins} 
-          label="Duração da febre" 
-          name="duracao_febre" 
-          options={["0 = Nenhum / Sem febre", "1 = Baixo / < 72 horas", "2 = Moderado / 72 horas", "3 = Alto / > 72 horas"]} 
-          data={data} 
-          onChange={onChange} 
-        />
-        <InheritableSelect inheritedData={inheritedData} origins={origins} 
-          label="Corticosteroides" 
-          name="corticoide" 
-          options={["0 = Nenhum / Sem corticosteroides", "1 = Baixo / Dose baixa (< 10 mg prednisona/dia)", "2 = Moderado / Dose moderada (≥ 10 e < 30 mg prednisona/dia)", "3 = Alto / Dose alta (≥ 30 mg prednisona/dia)"]} 
-          data={data} 
-          onChange={onChange} 
-        />
-        <SectionFooterScore label="C = Demanda metabólica" score={boxCScore} total={9} />
+      <AccordionCard title="Anexo 3 — Demanda metabólica" value="demanda">
+        {/* Bloco 1 — Estresse / Febre */}
+        <div className="bg-[#F8FAFC] border border-[#D5E6F3] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
+            <span className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider">
+              Bloco 1 — Estresse / Febre / Duração da febre
+            </span>
+            <span className="text-xs font-bold text-[#1B6CA8] bg-[#EBF4FA] px-2.5 py-0.5 rounded-full border border-[#1B6CA8]/20">
+              Pontuação Bloco 1: {estresseFebreResult.pontos} {estresseFebreResult.pontos === 1 ? "ponto" : "pontos"} ({estresseFebreResult.nivel})
+            </span>
+          </div>
+
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Nível de estresse metabólico (classificação final do bloco)" 
+            name="estresse_metabolico" 
+            options={["Nenhum (0)", "1 = Baixo (1 ponto)", "2 = Moderado (2 pontos)", "3 = Alto (3 pontos)"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <InheritableSelect inheritedData={inheritedData} origins={origins} 
+              label="Febre" 
+              name="febre" 
+              options={["0 = Nenhum / Sem febre", "1 = Baixo / > 37,2º e < 38,3º", "2 = Moderado / ≥ 38,3º e < 38,9º", "3 = Alto / ≥ 38,9º"]} 
+              data={data} 
+              onChange={onChange} 
+            />
+            <InheritableSelect inheritedData={inheritedData} origins={origins} 
+              label="Duração da febre" 
+              name="duracao_febre" 
+              options={["0 = Nenhum / Sem febre", "1 = Baixo / < 72 horas", "2 = Moderado / 72 horas", "3 = Alto / > 72 horas"]} 
+              data={data} 
+              onChange={onChange} 
+            />
+          </div>
+        </div>
+
+        {/* Bloco 2 — Corticoide */}
+        <div className="bg-[#F8FAFC] border border-[#D5E6F3] rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-2">
+            <span className="text-xs font-bold text-[#1B6CA8] uppercase tracking-wider">
+              Bloco 2 — Corticoide
+            </span>
+            <span className="text-xs font-bold text-[#1B6CA8] bg-[#EBF4FA] px-2.5 py-0.5 rounded-full border border-[#1B6CA8]/20">
+              Pontuação Corticoide: {corticoidePoints} {corticoidePoints === 1 ? "ponto" : "pontos"}
+            </span>
+          </div>
+
+          <InheritableSelect inheritedData={inheritedData} origins={origins} 
+            label="Uso de corticosteroides" 
+            name="corticoide" 
+            options={["0 = Nenhum / Sem corticosteroides", "1 = Baixo / Dose baixa (< 10 mg prednisona/dia)", "2 = Moderado / Dose moderada (≥ 10 e < 30 mg prednisona/dia)", "3 = Alto / Dose alta (≥ 30 mg prednisona/dia)"]} 
+            data={data} 
+            onChange={onChange} 
+          />
+        </div>
+
+        <SectionFooterScore label="C = Demanda metabólica (Bloco 1 + Bloco 2)" score={boxCScore} total={6} />
       </AccordionCard>
 
       <AccordionCard title="Exame físico" value="exame">
