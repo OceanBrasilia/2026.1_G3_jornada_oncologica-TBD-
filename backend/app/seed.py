@@ -643,7 +643,10 @@ def seed_data():  # noqa: C901
                 "opcoes": [
                     ("Ambulatório de Psicologia", None),
                     ("Ambulatório de Psiquiatria", None),
-                    ("Não identificada necessidade de encaminhamento nesse momento", None),
+                    (
+                        "Não identificada necessidade de encaminhamento nesse momento, mas o serviço foi disponibilizado para busca por livre demanda",
+                        None,
+                    ),
                     ("Outro", None),
                 ],
             },
@@ -1064,7 +1067,9 @@ def seed_data():  # noqa: C901
             "26. Evito falar sobre minha doença.": "3",
             "27. Tenho medo constante da morte.": "3",
             "28. Recentemente tenho pensado em acabar com a minha própria vida": "Não",
-            "Encaminhado (a) para": "Não identificada necessidade de encaminhamento nesse momento",
+            "Encaminhado (a) para": (
+                "Não identificada necessidade de encaminhamento nesse momento, mas o serviço foi disponibilizado para busca por livre demanda"
+            ),
             "Observações": "Paciente ansiosa em relação ao diagnóstico. Receptiva à intervenção psicológica.",
         }
         fill_form(created_etapas_p3["psicologia"].id, f_psicologia, users["psicologia"].id, ans_psicologia)
