@@ -9,10 +9,13 @@ describe("mapRendaServicoSocialParaNutricao", () => {
   it("mapeia faixas sem renda/abaixo de 1 salário para a faixa mais baixa da Nutrição", () => {
     expect(mapRendaServicoSocialParaNutricao("Sem renda")).toBe("1 a 2 salários");
     expect(mapRendaServicoSocialParaNutricao("Menos de 1 salário mínimo")).toBe("1 a 2 salários");
+    expect(mapRendaServicoSocialParaNutricao("Até 1 Salário Mínimo")).toBe("1 a 2 salários");
+    expect(mapRendaServicoSocialParaNutricao("1,2 a 3 Salários Mínimos")).toBe("1 a 2 salários");
   });
 
   it("mapeia a faixa mais alta para 'Mais de 4 salários'", () => {
     expect(mapRendaServicoSocialParaNutricao("Mais de 5 salários mínimos")).toBe("Mais de 4 salários");
+    expect(mapRendaServicoSocialParaNutricao("Acima de 3 Salários Mínimos")).toBe("3 a 4 salários");
   });
 
   it("valor desconhecido é devolvido sem alteração (não quebra)", () => {
@@ -25,8 +28,14 @@ describe("mapRendaServicoSocialParaTerapiaOcupacional", () => {
     expect(mapRendaServicoSocialParaTerapiaOcupacional("Sem renda")).toBe("Sem renda");
   });
 
+  it("mapeia 'Até 1 Salário Mínimo' e faixas intermediárias", () => {
+    expect(mapRendaServicoSocialParaTerapiaOcupacional("Até 1 Salário Mínimo")).toBe("Até 1 salário mínimo");
+    expect(mapRendaServicoSocialParaTerapiaOcupacional("1,2 a 3 Salários Mínimos")).toBe("De 1 a 3 salários mínimos");
+  });
+
   it("mapeia a faixa mais alta para 'Mais de 3 salários mínimos'", () => {
     expect(mapRendaServicoSocialParaTerapiaOcupacional("Mais de 5 salários mínimos")).toBe("Mais de 3 salários mínimos");
+    expect(mapRendaServicoSocialParaTerapiaOcupacional("Acima de 3 Salários Mínimos")).toBe("Mais de 3 salários mínimos");
   });
 
   it("valor desconhecido é devolvido sem alteração (não quebra)", () => {

@@ -190,7 +190,7 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
   },
   "servico-social": {
     "Situação de moradia": "Casa própria",
-    "Composição familiar": "Cônjuge e 2 filhos",
+    "Composição familiar": "Cônjuge ou companheiro(a) e 2 filhos",
     "Renda familiar": "2 a 4 salários mínimos",
     "Benefício social": "Não",
     "Necessidade de transporte": "Sim",

@@ -179,7 +179,8 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
   }
 
   const value = data?.[name] || "";
-  const isOther = value && !options.includes(value);
+  const isCustomOther = value && !options.includes(value);
+  const showOtherInput = hasOther && (value === "Outro" || isCustomOther || Boolean(data?.[`${name}_isOther`] === "true") || Boolean(data?.[`${name}_outro`]));
 
   return (
     <div>
@@ -190,13 +191,16 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
       <select
         id={id}
         name={name}
-        value={isOther && hasOther ? "Outro" : value}
+        value={isCustomOther && hasOther ? "Outro" : value}
         onChange={(e) => {
-          if (e.target.value !== "Outro") {
-            onChange(name, e.target.value);
-            if (hasOther) onChange(`${name}_isOther`, "false");
+          const val = e.target.value;
+          onChange(name, val);
+          if (val !== "Outro") {
+            if (hasOther) {
+              onChange(`${name}_isOther`, "false");
+              if (data?.[`${name}_outro`]) onChange(`${name}_outro`, "");
+            }
           } else {
-            onChange(name, "");
             if (hasOther) onChange(`${name}_isOther`, "true");
           }
         }}
@@ -206,16 +210,17 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
         {options.map((o: string) => (
           <option key={o} value={o}>{o}</option>
         ))}
-        {hasOther && <option value="Outro">Outro</option>}
+        {hasOther && !options.includes("Outro") && <option value="Outro">Outro</option>}
       </select>
       
-      {hasOther && (isOther || data?.[`${name}_isOther`] === "true") && (
+      {showOtherInput && (
         <input
           type="text"
-          value={isOther ? value : ""}
+          value={data?.[`${name}_outro`] ?? (isCustomOther ? value : "")}
           onChange={(e) => {
-            onChange(name, e.target.value);
-            onChange(`${name}_isOther`, "false");
+            const outroTexto = e.target.value;
+            onChange(`${name}_outro`, outroTexto);
+            if (value !== "Outro") onChange(name, "Outro");
           }}
           placeholder="Especifique..."
           aria-label={`${label}: especifique`}
@@ -226,11 +231,12 @@ export const InheritableSelect = ({ label, name, options, data, onChange, inheri
   );
 };
 
-export const InheritableRadioPills = ({ label, name, options, data, onChange, inheritedData, origins, stacked = false, block = false, subLabel }: InheritableProps & { options: string[], stacked?: boolean, block?: boolean, subLabel?: string }) => {
+export const InheritableRadioPills = ({ label, name, options, data, onChange, inheritedData, origins, stacked = false, block = false, subLabel, hasOther = false }: InheritableProps & { options: string[], stacked?: boolean, block?: boolean, subLabel?: string, hasOther?: boolean }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
   const labelId = useId();
 
   const value = isInheritedActive ? inheritedValue : (data?.[name] || "");
+  const showOtherInput = hasOther && (value === "Outro" || Boolean(data?.[`${name}_outro`]));
 
   return (
     <div role="group" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : name}>
@@ -256,7 +262,12 @@ export const InheritableRadioPills = ({ label, name, options, data, onChange, in
               aria-pressed={isSelected}
               aria-disabled={isInheritedActive || undefined}
               onClick={() => {
-                if (!isInheritedActive) onChange(name, opt);
+                if (!isInheritedActive) {
+                  onChange(name, opt);
+                  if (opt !== "Outro" && data?.[`${name}_outro`]) {
+                    onChange(`${name}_outro`, "");
+                  }
+                }
               }}
               className={`px-4 py-1.5 text-sm font-semibold transition-colors border ${block ? 'w-full text-left flex' : ''} ${!block && !stacked ? 'rounded-full' : 'rounded-xl'} ${
                 isSelected 
@@ -269,6 +280,18 @@ export const InheritableRadioPills = ({ label, name, options, data, onChange, in
           );
         })}
       </div>
+      {showOtherInput && (
+        <div className="mt-2">
+          <input
+            type="text"
+            value={data?.[`${name}_outro`] ?? ""}
+            onChange={(e) => onChange(`${name}_outro`, e.target.value)}
+            placeholder="Especifique..."
+            aria-label={`${label}: especifique`}
+            className="w-full px-3 py-2 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -316,7 +339,7 @@ export const InheritableRadioGroup = ({ label, name, options, data, onChange, in
   );
 };
 
-export const InheritableCheckboxGroup = ({ label, name, options, data, onChange, inheritedData, origins, separator = ", ", inline = false, direction }: InheritableProps & { options: string[], separator?: string, inline?: boolean, direction?: "col" | "row" | "grid" }) => {
+export const InheritableCheckboxGroup = ({ label, name, options, data, onChange, inheritedData, origins, separator = ", ", inline = false, direction, hasOther = false, subLabel }: InheritableProps & { options: string[], separator?: string, inline?: boolean, direction?: "col" | "row" | "grid", hasOther?: boolean, subLabel?: string }) => {
   const { inheritedValue, origin, isInheritedActive } = useInheritance(name, data, inheritedData, origins);
 
   const getArrayValue = (val: any) => {
@@ -336,6 +359,9 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
     let newSelected;
     if (selectedOptions.includes(opt)) {
       newSelected = selectedOptions.filter((item: string) => item !== opt);
+      if (opt === "Outro" && data?.[`${name}_outro`]) {
+        onChange(`${name}_outro`, "");
+      }
     } else {
       newSelected = [...selectedOptions, opt];
     }
@@ -348,6 +374,8 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
     : (direction === "row" || inline)
       ? "flex flex-wrap gap-4 items-center"
       : "flex flex-col gap-2.5";
+
+  const showOtherInput = (hasOther || options.includes("Outro")) && (selectedOptions.includes("Outro") || Boolean(data?.[`${name}_outro`]));
 
   return (
     <div role="group" aria-labelledby={label ? labelId : undefined} aria-label={label ? undefined : name}>
@@ -362,6 +390,7 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
           )}
         </div>
       )}
+      {subLabel && <div className="text-[10px] text-[#8A9EB9] font-normal leading-tight mb-2 -mt-1">{subLabel}</div>}
       <div className={layoutClass}>
         {options.map((opt: string, idx: number) => {
           const optId = `${labelId}-chk-${idx}`;
@@ -392,6 +421,18 @@ export const InheritableCheckboxGroup = ({ label, name, options, data, onChange,
           );
         })}
       </div>
+      {showOtherInput && (
+        <div className="mt-2.5">
+          <input
+            type="text"
+            value={data?.[`${name}_outro`] ?? ""}
+            onChange={(e) => onChange(`${name}_outro`, e.target.value)}
+            placeholder="Especifique..."
+            aria-label={`${label}: especifique`}
+            className="w-full px-3 py-2 rounded-xl border border-[#D5E6F3] bg-white text-sm text-[#1A2332] focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/20 focus:border-[#1B6CA8] transition"
+          />
+        </div>
+      )}
     </div>
   );
 };
