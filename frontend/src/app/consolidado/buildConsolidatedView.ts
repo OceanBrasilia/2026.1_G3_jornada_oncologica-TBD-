@@ -48,7 +48,14 @@ const CAMPOS_SUBSTITUIDOS_POR_RESUMO: Record<string, string[]> = {
 };
 
 function isCampoTecnico(campo: string): boolean {
-  return campo === "_updatedAt" || campo.endsWith("_suppressed") || campo.endsWith("_isOther") || campo.endsWith("_append");
+  return (
+    campo === "_updatedAt" ||
+    campo.endsWith("_suppressed") ||
+    campo.endsWith("_isOther") ||
+    campo.endsWith("_append") ||
+    campo === "cuidadoresJSON" ||
+    campo === "cuidadores"
+  );
 }
 
 function valorVazio(valor: any): boolean {
