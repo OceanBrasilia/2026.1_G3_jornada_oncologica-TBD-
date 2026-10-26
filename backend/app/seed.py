@@ -677,28 +677,99 @@ def seed_data():  # noqa: C901
 
         print("Semeando Formulário de Terapia Ocupacional...")
         terapia_ocupacional_fields = [
-            {
-                "nome": "Independência nas AVDs",
-                "tipo": "SELECAO_UNICA",
-                "opcoes": [("Independente", None), ("Parcialmente dependente", None), ("Dependente", None)],
-            },
-            {"nome": "Uso de órtese/prótese", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None)]},
-            {
-                "nome": "Capacidade de autocuidado",
-                "tipo": "SELECAO_UNICA",
-                "opcoes": [("Preservada", None), ("Alterada", None)],
-            },
-            {
-                "nome": "Atividades de lazer/trabalho",
-                "tipo": "SELECAO_UNICA",
-                "opcoes": [("Mantidas", None), ("Reduzidas", None), ("Interrompidas", None)],
-            },
-            {
-                "nome": "Adaptações no domicílio",
-                "tipo": "SELECAO_UNICA",
-                "opcoes": [("Necessárias", None), ("Não necessárias", None)],
-            },
+            {"nome": "Gênero", "tipo": "SELECAO_UNICA", "opcoes": [("Feminino", None), ("Masculino", None), ("Prefiro não dizer", None), ("Outro", None)]},
+            {"nome": "Estado Civil", "tipo": "SELECAO_UNICA", "opcoes": [("Casado(a)", None), ("Divorciado(a)", None), ("Solteiro(a)", None), ("União Estável", None), ("Viúvo(a)", None), ("Outro", None)]},
+            {"nome": "Histórico familiar", "tipo": "TEXTO"},
+            {"nome": "Escolaridade", "tipo": "SELECAO_UNICA", "opcoes": [
+                ("Não Alfabetizado", None), ("Alfabetizado", None), ("Ensino Fundamental Incompleto", None),
+                ("Ensino Fundamental Completo", None), ("Ensino Médio Incompleto", None), ("Ensino Médio Completo", None),
+                ("Ensino Superior Incompleto", None), ("Ensino Superior Completo", None)
+            ]},
+            {"nome": "Atividade Profissional", "tipo": "TEXTO"},
+            {"nome": "Renda Atual / Situação ocupacional", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Ativo(a)", None), ("Desempregado(a)", None), ("Afastado(a), recebendo Auxílio Doença", None),
+                ("Afastado(a), sem renda", None), ("Benefício de Prestação Continuada (BPC/LOAS)", None),
+                ("Auxílio Brasil", None), ("Aposentado(a)", None), ("Pensionista", None), ("Outro", None)
+            ]},
+            {"nome": "Naturalidade", "tipo": "TEXTO"},
+            {"nome": "Reside em", "tipo": "TEXTO"},
+            {"nome": "Acompanhado(a) de", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Filho(a)", None), ("Mãe ou Pai", None), ("Neto(a)", None), ("Companheiro(a)", None),
+                ("Amigo(a)", None), ("Sem acompanhante", None), ("Outro", None)
+            ]},
+            {"nome": "Religião", "tipo": "SELECAO_UNICA", "opcoes": [
+                ("Católico(a)", None), ("Evangélico(a)", None), ("Testemunha de Jeová", None),
+                ("Adventista do Sétimo Dia", None), ("Espírita", None), ("Não possui", None), ("Outro", None)
+            ]},
+            {"nome": "Localização do Câncer", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Não soube informar", None), ("Aguardando resultado de exames complementares", None),
+                ("CID C15 - Esôfago", None), ("CID C16 - Estômago", None), ("CID C17 - Intestino", None),
+                ("CID C18 - Cólon", None), ("CID C20 - Reto", None), ("CID C21 - Anal e Canal Anal", None),
+                ("CID C22 - Fígado", None), ("CID C25 - Pâncreas", None), ("CID C34 - Brônquios e Pulmões", None),
+                ("CID C44 - Pele", None), ("CID C50 - Mama", None), ("CID C53 - Colo de Útero", None),
+                ("CID C56 - Ovário", None), ("CID C60 - Pênis", None), ("CID C61 - Próstata", None),
+                ("CID C62 - Testículo", None), ("CID C64-C68 - Sistema Urinário", None),
+                ("CID C69-C72 - Sistema Nervoso Central", None), ("Outro", None)
+            ]},
+            {"nome": "Tratamento Oncológico", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Virgem de tratamento", None), ("Cirurgia Oncológica", None), ("Quimioterapia", None),
+                ("Radioterapia", None), ("Outro", None)
+            ]},
+            {"nome": "Fadiga", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None), ("Um pouco", None)]},
+            {"nome": "Escala Visual Analógica - EVA", "tipo": "SELECAO_UNICA", "opcoes": [
+                ("Sem dor (0)", None), ("Dor leve (1-3)", None), ("Dor moderada (4-5)", None),
+                ("Dor intensa (6-7)", None), ("Dor muito intensa (8-9)", None), ("Pior dor possível (10)", None)
+            ]},
+            {"nome": "Queda", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None), ("Risco de queda", None)]},
+            {"nome": "AVD - Alimentação", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AVD - Higiene Pessoal", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AVD - Banho", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AVD - Vestir metade inferior", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AVD - Utilização do vaso sanitário", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AVD - Mobilidade Funcional", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "Utiliza algum Dispositivo?", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None), ("Outro", None)]},
+            {"nome": "AIVD - Tarefas Domésticas", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AIVD - Saúde/medicamentos", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AIVD - Gerenciamento Financeiro", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "AIVD - Fazer Compras", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Auxílio/Supervisão", None), ("Dependente", None), ("Não se aplica", None)]},
+            {"nome": "Descanso e Sono", "tipo": "SELECAO_UNICA", "opcoes": [("Alterado", None), ("Não Alterado", None)]},
+            {"nome": "Lazer e participação Social", "tipo": "SELECAO_UNICA", "opcoes": [("Alterado", None), ("Não Alterado", None)]},
+            {"nome": "Memória", "tipo": "SELECAO_UNICA", "opcoes": [("Alterado", None), ("Não Alterado", None)]},
+            {"nome": "Neste momento quem mais te ajuda?", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [("Amigos", None), ("Equipe", None), ("Companheiro", None), ("Vizinho", None), ("Familiares", None), ("Outro", None)]},
+            {"nome": "Atividades significativas", "tipo": "TEXTO"},
             {"nome": "Observações", "tipo": "TEXTO"},
+            {"nome": "Diagnóstico Terapêutico Ocupacional", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Capacidade funcional preservada e desempenho ocupacional satisfatório", None),
+                ("Dependência para realização de AIVDs", None),
+                ("Dependência para realização de AVDs", None),
+                ("Alterações na mobilidade", None),
+                ("Risco de queda", None),
+                ("Dor incapacitante", None),
+                ("Fadiga", None),
+                ("Outro", None)
+            ]},
+            {"nome": "Condutas Iniciais", "tipo": "SELECAO_UNICA", "opcoes": [
+                ("Não elegível. Realizo orientações em saúde e deixo o serviço à disposição por busca espontânea em caso de necessidade.", None),
+                ("Elegível. Encaminho para acompanhamento ambulatorial.", None)
+            ]},
+            {"nome": "Encaminhamentos", "tipo": "MULTIPLA_ESCOLHA", "opcoes": [
+                ("Orientações em Saúde", None),
+                ("Ambulatório de Terapia Ocupacional", None),
+                ("Encaminhamento para outra especialidade", None),
+                ("Outro", None)
+            ]},
+            {"nome": "Profissional avaliador", "tipo": "SELECAO_UNICA", "opcoes": [
+                ("Yara Helena de Carvalho Paiva (Terapeuta Ocupacional Staff)", None),
+                ("Nathalia Rayane Nogueira de Santanna (R1 Atenção em Oncologia)", None),
+                ("Outro", None)
+            ]},
+            {"nome": "Códigos de Procedimentos", "tipo": "TEXTO"},
+            # Campos legados preservados
+            {"nome": "Independência nas AVDs", "tipo": "SELECAO_UNICA", "opcoes": [("Independente", None), ("Parcialmente dependente", None), ("Dependente", None)]},
+            {"nome": "Uso de órtese/prótese", "tipo": "SELECAO_UNICA", "opcoes": [("Sim", None), ("Não", None)]},
+            {"nome": "Capacidade de autocuidado", "tipo": "SELECAO_UNICA", "opcoes": [("Preservada", None), ("Alterada", None)]},
+            {"nome": "Atividades de lazer/trabalho", "tipo": "SELECAO_UNICA", "opcoes": [("Mantidas", None), ("Reduzidas", None), ("Interrompidas", None)]},
+            {"nome": "Adaptações no domicílio", "tipo": "SELECAO_UNICA", "opcoes": [("Necessárias", None), ("Não necessárias", None)]},
         ]
         f_terapia_ocupacional = create_form("Formulário de Terapia Ocupacional", terapia_ocupacional_fields)
 
@@ -1076,12 +1147,48 @@ def seed_data():  # noqa: C901
 
         # Terapia Ocupacional
         ans_to = {
+            "Gênero": "Feminino",
+            "Estado Civil": "Casado(a)",
+            "Histórico familiar": "Sem histórico relevante de dependência funcional prévia.",
+            "Escolaridade": "Ensino Médio Completo",
+            "Atividade Profissional": "Costureira",
+            "Renda Atual / Situação ocupacional": "Afastado(a), recebendo Auxílio Doença",
+            "Naturalidade": "Brasília - DF",
+            "Reside em": "Ceilândia - DF",
+            "Acompanhado(a) de": "Filho(a)",
+            "Religião": "Católico(a)",
+            "Localização do Câncer": "CID C50 - Mama",
+            "Tratamento Oncológico": "Quimioterapia",
+            "Fadiga": "Sim",
+            "Escala Visual Analógica - EVA": "Dor moderada (4-5)",
+            "Queda": "Não",
+            "AVD - Alimentação": "Independente",
+            "AVD - Higiene Pessoal": "Independente",
+            "AVD - Banho": "Auxílio/Supervisão",
+            "AVD - Vestir metade inferior": "Independente",
+            "AVD - Utilização do vaso sanitário": "Independente",
+            "AVD - Mobilidade Funcional": "Independente",
+            "Utiliza algum Dispositivo?": "Não",
+            "AIVD - Tarefas Domésticas": "Auxílio/Supervisão",
+            "AIVD - Saúde/medicamentos": "Independente",
+            "AIVD - Gerenciamento Financeiro": "Independente",
+            "AIVD - Fazer Compras": "Auxílio/Supervisão",
+            "Descanso e Sono": "Alterado",
+            "Lazer e participação Social": "Alterado",
+            "Memória": "Não Alterado",
+            "Neste momento quem mais te ajuda?": "Familiares",
+            "Atividades significativas": "Costurar roupas para a família e cuidar de plantas.",
+            "Observações": "Paciente com limitação funcional leve no membro superior. Orientações sobre conservação de energia.",
+            "Diagnóstico Terapêutico Ocupacional": "Dependência para realização de AIVDs, Fadiga",
+            "Condutas Iniciais": "Elegível. Encaminho para acompanhamento ambulatorial.",
+            "Encaminhamentos": "Ambulatório de Terapia Ocupacional, Orientações em Saúde",
+            "Profissional avaliador": "Yara Helena de Carvalho Paiva (Terapeuta Ocupacional Staff)",
+            "Códigos de Procedimentos": "03.01.01.004-8, 03.01.04.004-4",
             "Independência nas AVDs": "Parcialmente dependente",
             "Uso de órtese/prótese": "Não",
             "Capacidade de autocuidado": "Preservada",
             "Atividades de lazer/trabalho": "Reduzidas",
             "Adaptações no domicílio": "Não necessárias",
-            "Observações": "Paciente com limitação funcional leve no membro superior. Orientações sobre conservação de energia.",
         }
         fill_form(
             created_etapas_p3["terapia-ocupacional"].id, f_terapia_ocupacional, users["terapia-ocupacional"].id, ans_to
