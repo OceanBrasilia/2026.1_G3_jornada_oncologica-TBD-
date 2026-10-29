@@ -166,11 +166,28 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Diagnóstico oncológico": "Câncer de Mama",
     "Estadiamento": "IIA",
     "Tipo histológico": "Carcinoma ductal invasivo",
-    "Metástase": "Não identificada",
-    "Conduta proposta": "Quimioterapia neoadjuvante",
-    "Encaminhamentos": "Oncologia clínica, Radioterapia",
-    "Observações": "Paciente orientada sobre plano terapêutico. Exames complementares solicitados.",
-    "peso": "70"
+    "História oncológica": "Nódulo mamário palpável diagnosticado há 4 meses. Biópsia confirmou CDI.",
+    "Tratamento em curso": "Planejada quimioterapia neoadjuvante",
+    "Situação atual": "Paciente em bom estado geral, lúcida e orientada.",
+    "ECOG / Performance": "1",
+    "peso": "68",
+    "altura": "1.63",
+    "Gestação": "2",
+    "Parto": "2",
+    "Aborto": "0",
+    "DUM": "2020-05-10",
+    "Menopausa": "Sim",
+    "Atividade física": "Não",
+    "ACV": "RCR em 2T, bulhas normofonéticas sem sopros",
+    "AR": "MV presente bilateralmente sem ruídos adventícios",
+    "ABD": "Plano, flácido, indolor à palpação, sem visceromegalias",
+    "MMII": "Sem edema, pulsos periféricos presentes",
+    "Resultado anatomopatológico": "CDI grau II, RE+, RP+, HER2-",
+    "Exames complementares": "Mamografia e ultrassom de mamas anexados",
+    "Impressão diagnóstica": "Carcinoma de mama estágio clínico IIA",
+    "Conduta": "Encaminhada para planejamento de QT neoadjuvante",
+    "Investimento": "Pleno",
+    "Observações": "Paciente orientada sobre plano terapêutico.",
   },
   nutricao: {
     "peso": "68",
@@ -204,10 +221,23 @@ const MOCK_FORM_ANSWERS: Record<string, Record<string, string>> = {
     "Observações": "Paciente ansiosa em relação ao diagnóstico. Receptiva à intervenção psicológica.",
   },
   odontologia: {
-    "Condição bucal": "Regular",
-    "Lesões orais": "Ausentes",
-    "Necessidade de tratamento": "Sim – profilaxia antes da quimioterapia",
-    "Observações": "Encaminhada para profilaxia antes do início da quimioterapia.",
+    "Diagnóstico Oncológico e Localização do Tumor (CID)": "Câncer de Mama (C50.9)",
+    "Risco de Mucosite": "Baixo",
+    "Tem dentes naturais?": "Sim",
+    "Usa próteses?": "Não",
+    "Tem dor de dente?": "Não",
+    "Tabagista": "Não",
+    "Etilista": "Não",
+    "Qual a via de alimentação?": "Via oral",
+    "Tem traqueostomia?": "Não",
+    "Xerostomia": "Não",
+    "Medicamentos antirreabsortivos": "Não",
+    "Acesso odontológico UBS": "Sim, UBS de referência próxima à residência",
+    "Cáries cavitadas": "Não",
+    "Mobilidade dentária": "Não",
+    "Classificação do Risco Odontológico": "BAIXO",
+    "Encaminhar para 2857?": "NÃO",
+    "Observações": "Sem alterações bucais de urgência no momento. Paciente orientada sobre higiene oral.",
   },
   fonoaudiologia: {
     "Deglutição": "Preservada",
@@ -2756,6 +2786,10 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
   }
   if (patient.birth) applyInheritance("Data de Nascimento", patient.birth, "Cadastro", baseTime);
   if (patient.diagnosis && patient.cid) applyInheritance("topografiaCid", `${patient.diagnosis} - CID ${patient.cid}`, "Cadastro", baseTime);
+  if (patient.diagnosis) {
+    const diagStr = patient.cid ? `${patient.diagnosis} (CID: ${patient.cid})` : patient.diagnosis;
+    applyInheritance("Diagnóstico Oncológico e Localização do Tumor (CID)", diagStr, "Cadastro", baseTime);
+  }
 
   if (patient.weight) {
     const pLimpo = String(patient.weight).replace(" kg", "").trim();
@@ -2843,6 +2877,10 @@ function SpecialtyFormScreen({ patient, specId, mode, onBack, onSave }: {
           
           if ((key === "medicacoes" || key === "MUC") && val.trim() !== "") {
              applyInheritance("qs_tomando_medicamento", "Sim", originDesc, ts);
+          }
+          
+          if (key === "ecog" || key === "ECOG / Performance") {
+            applyInheritance("ECOG / Performance", val, originDesc, ts);
           }
 
           // Bloqueados de herança (conceitos semelhantes mas avaliações diferentes)

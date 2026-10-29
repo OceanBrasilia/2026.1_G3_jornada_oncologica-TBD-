@@ -1,7 +1,13 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, CornerUpLeft } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2 } from "lucide-react";
 import { PatientHeader } from "../PatientHeader";
 import { ReusedDataAccordion } from "../ReusedDataAccordion";
+import {
+  InheritableInput,
+  InheritableTextarea,
+  InheritableRadioPills,
+} from "./shared/InheritableFormComponents";
+import { ConditionalField } from "./shared/ConditionalField";
 
 export interface OdontologiaFormProps {
   data: Record<string, any>;
@@ -11,118 +17,160 @@ export interface OdontologiaFormProps {
   inheritedData?: Record<string, any>;
 }
 
-import { InheritableInput, InheritableSelect, InheritableTextarea, InheritableRadioPills, InheritableCheckboxGroup, InheritableRadioGroup } from "./shared/InheritableFormComponents";
-import { ConditionalField } from "./shared/ConditionalField";
+export const ODONTO_RISCO_MUCOSITE_OPCOES = [
+  "Baixo",
+  "Moderado",
+  "Alto",
+  "Depende do quimioterápico, paciente ainda não sabe o protocolo",
+  "Ainda não sabe se vai fazer quimioterapia",
+  "Outro",
+];
 
-const SectionCard = ({ title, children, defaultOpen = true }: any) => {
+export const ODONTO_DENTES_NATURAIS_OPCOES = ["Sim", "Não"];
+
+export const ODONTO_PROTESE_OPCOES = ["Sim", "Não", "Outro"];
+
+export const ODONTO_DOR_DENTE_OPCOES = ["Sim", "Não", "Outro"];
+
+export const ODONTO_TABAGISTA_OPCOES = [
+  "Sim",
+  "Não",
+  "Ex-tabagista",
+  "Outro",
+];
+
+export const ODONTO_ETILISTA_OPCOES = [
+  "Sim",
+  "Não",
+  "Ex-etilista",
+  "Socialmente",
+  "Outro",
+];
+
+export const ODONTO_VIA_ALIMENTACAO_OPCOES = [
+  "Via oral",
+  "Via sonda",
+  "Ambos",
+];
+
+export const ODONTO_TRAQUEOSTOMIA_OPCOES = ["Sim", "Não"];
+
+export const ODONTO_XEROSTOMIA_OPCOES = ["Sim", "Não"];
+
+export const ODONTO_ANTIRREABSORTIVOS_OPCOES = [
+  "Sim",
+  "Não",
+  "Sem previsão",
+  "Outro",
+];
+
+export const ODONTO_CARIES_OPCOES = [
+  "Sim",
+  "Não",
+  "Não foi possível avaliar",
+  "Outro",
+];
+
+export const ODONTO_MOBILIDADE_OPCOES = [
+  "Sim",
+  "Não",
+  "Não foi possível avaliar",
+  "Outro",
+];
+
+export interface RiscoOdontologicoDef {
+  valor: "BAIXO" | "MODERADO" | "ALTO";
+  titulo: string;
+  descricao: string;
+}
+
+export const ODONTO_RISCO_ODONTOLOGICO_OPCOES: RiscoOdontologicoDef[] = [
+  {
+    valor: "BAIXO",
+    titulo: "BAIXO",
+    descricao: "Sem focos infecciosos aparentes.",
+  },
+  {
+    valor: "MODERADO",
+    titulo: "MODERADO",
+    descricao: "Necessita de tratamento odontológico eletivo antes ou durante o tratamento oncológico.",
+  },
+  {
+    valor: "ALTO",
+    titulo: "ALTO",
+    descricao: "Presença de foco infeccioso, dor, abscesso, raiz residual, lesão suspeita ou necessidade de atendimento prioritário.",
+  },
+];
+
+export const ODONTO_ENCAMINHAR_2857_OPCOES = ["SIM", "NÃO"];
+
+const SectionCard = ({
+  title,
+  children,
+  defaultOpen = true,
+  className = "",
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+  className?: string;
+}) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white rounded-2xl border border-[#D5E6F3] shadow-sm mb-4">
-      <div 
-        className="p-5 flex justify-between items-center cursor-pointer select-none"
+    <div className={`bg-white rounded-2xl border border-[#D5E6F3] shadow-sm ${className}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isOpen}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        className="p-5 flex justify-between items-center cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-[#1B6CA8]/30 rounded-2xl"
         onClick={() => setIsOpen(!isOpen)}
       >
         <h3 className="font-bold text-[#1A2332] text-sm" style={{ fontFamily: "'Nunito', sans-serif" }}>
           {title}
         </h3>
-        {isOpen ? <ChevronUp size={20} className="text-[#8A9EB9]" /> : <ChevronDown size={20} className="text-[#8A9EB9]" />}
+        {isOpen ? (
+          <ChevronUp size={20} className="text-[#8A9EB9]" />
+        ) : (
+          <ChevronDown size={20} className="text-[#8A9EB9]" />
+        )}
       </div>
-      {isOpen && (
-        <div className="px-5 pb-5 pt-0 space-y-5">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className="px-5 pb-5 pt-0 space-y-5">{children}</div>}
     </div>
   );
 };
 
-const RadioGroup = ({ label, name, options, data, onChange }: any) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.name, e.target.value);
-  };
-  return (
-    <div>
-      <label className="block text-xs font-bold text-[#1A2332] mb-2">{label}</label>
-      <div className="flex gap-4">
-        {options.map((opt: any) => (
-          <label key={opt.value} className="flex items-center gap-2 text-sm text-[#1A2332] cursor-pointer">
-            <input
-              type="radio"
-              name={name}
-             
-              checked={(data?.[name] || "") === opt.value}
-              onChange={handleChange}
-              className="accent-[#1B6CA8] w-4 h-4"
-            />
-            {opt.label}
-          </label>
-        ))}
-      </div>
-    </div>
-  );
-};
+export function OdontologiaForm({
+  data,
+  onChange,
+  patient,
+  inheritedData,
+  origins,
+}: OdontologiaFormProps) {
+  const dataAtendimento =
+    data?.["Data do atendimento"] ||
+    patient?.date ||
+    new Date().toLocaleDateString("pt-BR");
 
-// Removed local Input, TextArea, RadioPills. Leaving RadioGroup local
+  const dataNascimento =
+    patient?.birth ||
+    patient?.birthDate ||
+    patient?.data_nascimento ||
+    inheritedData?.["Data de Nascimento"] ||
+    (patient?.age ? `${patient.age} anos` : "—");
 
-
-const YesNoPillGroup = ({ label, name, data, onChange, children, campos = [] }: any) => {
-  const options = ["Sim", "Não"];
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
-      <label className="text-sm text-[#1A2332] flex-1">{label}</label>
-      <div className="flex gap-2 shrink-0">
-        {options.map((opt: string) => {
-          const isSelected = data?.[name] === opt;
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onChange(name, opt)}
-              className={`px-4 py-1 rounded-full text-sm font-medium transition-colors ${
-                isSelected
-                  ? "bg-[#1B6CA8] text-white border border-[#1B6CA8]"
-                  : "bg-white text-[#3A4354] border border-[#D5E6F3] hover:border-[#1B6CA8] hover:text-[#1B6CA8]"
-              }`}
-            >
-              {opt}
-            </button>
-          );
-        })}
-      </div>
-      {children && (
-        <ConditionalField
-          data={data}
-          onChange={onChange}
-          showIf={{ campo: name, igual: "Sim" }}
-          campos={campos}
-          className="w-full sm:w-auto mt-2 sm:mt-0 pl-4 border-l-2 border-[#1B6CA8]/20"
-        >
-          {children}
-        </ConditionalField>
-      )}
-    </div>
-  );
-};
-
-const ReadOnlyField = ({ label, value, source }: any) => (
-  <div className="flex justify-between items-start mb-4 border-b border-[#E8F4FD] pb-4">
-    <div>
-      <label className="block text-xs font-bold text-[#8A9EB9] uppercase mb-1">{label}</label>
-      <div className="text-sm font-bold text-[#1A2332]">{value || "-"}</div>
-    </div>
-    {source && (
-      <div className="flex items-center gap-1 px-2 py-1 rounded-full border border-[#B3E5D1] text-[#008A5E] bg-[#F2FBF7] text-xs font-medium">
-        <CornerUpLeft size={14} /> {source}
-      </div>
-    )}
-  </div>
-);
-
-export function OdontologiaForm({ data, onChange, patient, inheritedData, origins }: OdontologiaFormProps) {
   const commonProps = { data, onChange, inheritedData, origins };
+
+  const riscoSelecionado = data?.["Classificação do Risco Odontológico"];
+
   return (
     <div className="space-y-6">
-      <PatientHeader 
+      <PatientHeader
         id={patient?.id}
         name={patient?.name || ""}
         age={patient?.age}
@@ -133,154 +181,403 @@ export function OdontologiaForm({ data, onChange, patient, inheritedData, origin
         alerts={patient?.alerts}
       />
 
+      {/* 1. Identificação do Paciente (Reaproveitada) */}
       <ReusedDataAccordion
-        title="Identificação (reaproveitada)"
+        title="1. Identificação do paciente (dados compartilhados)"
         fields={[
-          { label: "NOME", value: patient?.name || "", origin: "Cadastro" },
-          { label: "DIAGNÓSTICO", value: patient?.diagnosis || "", origin: "Recepção" },
-          { label: "CID", value: patient?.cid || "", origin: "Recepção" },
-          { label: "TELEFONE", value: patient?.phone || "", origin: "Cadastro" },
+          { label: "DATA DO ATENDIMENTO", value: dataAtendimento, origin: "Acolhimento" },
+          { label: "NOME DO PACIENTE", value: patient?.name || "—", origin: "Cadastro" },
+          { label: "ID DO PRONTUÁRIO", value: patient?.id || "—", origin: "Cadastro" },
+          { label: "DATA DE NASCIMENTO", value: dataNascimento, origin: "Cadastro" },
         ]}
         data={data}
         onChange={onChange}
       >
         <p className="text-xs text-[#6B7A8D] mt-2">
-          Departamento de Odontologia / Unidade de Saúde Bucal — Ficha Clínica
+          Unidade de Saúde Bucal / Odontologia Oncológica — HUB / UnB
         </p>
       </ReusedDataAccordion>
 
-      {/* 1. Identificação do Paciente */}
-      <SectionCard title="Dados Cadastrais Complementares" defaultOpen={false}>
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Data de Nascimento" name="Data de Nascimento" type="date" data={data} onChange={onChange} />
-        <RadioGroup label="Gênero" name="Gênero" options={[{ label: "Masculino", value: "M" }, { label: "Feminino", value: "F" }]} data={data} onChange={onChange} />
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="RG e Expedição" name="RG e Expedição" data={data} onChange={onChange} />
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Nacionalidade" name="Nacionalidade" data={data} onChange={onChange} />
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Naturalidade" name="Naturalidade" data={data} onChange={onChange} />
-        <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Filiação (Pai)" name="Filiação Pai" data={data} onChange={onChange} />
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Filiação (Mãe)" name="Filiação Mãe" data={data} onChange={onChange} />
-        </div>
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Responsável Legal" name="Responsável Legal" data={data} onChange={onChange} />
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Telefones de contato" name="Telefones de contato" data={data} onChange={onChange} />
-        <div className="sm:col-span-2 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-[#F4F7FB] p-4 rounded-xl border border-[#E8F4FD]">
-          <div className="sm:col-span-2">
-            <InheritableInput inheritedData={inheritedData} origins={origins} label="Endereço (Rua)" name="Endereço Rua" data={data} onChange={onChange} />
+      {/* 2. Contexto Oncológico */}
+      <SectionCard title="2. Contexto oncológico" defaultOpen={true}>
+        <div className="space-y-5">
+          <div>
+            <InheritableTextarea
+              {...commonProps}
+              label="Diagnóstico Oncológico e Localização do Tumor (CID)"
+              name="Diagnóstico Oncológico e Localização do Tumor (CID)"
+              placeholder="Descreva o diagnóstico oncológico e a localização anatômica do tumor..."
+              rows={3}
+            />
           </div>
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Bairro" name="Bairro" data={data} onChange={onChange} />
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Cidade - UF" name="Cidade - UF" data={data} onChange={onChange} />
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="CEP" name="CEP" data={data} onChange={onChange} />
-        </div>
-        <InheritableInput inheritedData={inheritedData} origins={origins} label="Ocupação" name="Profissão" data={data} onChange={onChange} />
-      </SectionCard>
 
-      {/* 2. Anamnese */}
-      <SectionCard title="Anamnese">
-        <div className="space-y-4">
-          <InheritableTextarea inheritedData={inheritedData} origins={origins} label="1. Queixa principal" name="Queixa Principal" data={data} onChange={onChange} />
-          <InheritableTextarea inheritedData={inheritedData} origins={origins} label="2. História da doença atual" name="História da Doença Atual" data={data} onChange={onChange} />
-          <InheritableTextarea inheritedData={inheritedData} origins={origins} label="3. Antecedentes familiares" name="Antecedentes Familiares" data={data} onChange={onChange} />
-        </div>
-      </SectionCard>
-
-      {/* 3. Questionário de Saúde */}
-      <SectionCard title="Questionário de saúde" defaultOpen={false}>
-        <div className="text-sm text-[#8A9EB9] mb-4">Responda Sim ou Não para cada item:</div>
-        
-        <div className="space-y-1">
-          <YesNoPillGroup label="Está sob tratamento médico?" name="qs_tratamento_medico" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Está tomando algum medicamento?" name="qs_tomando_medicamento" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Já apresentou alguma reação à penicilina?" name="qs_reacao_penicilina" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem história de alergia?" name="qs_alergia" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem ou teve problemas respiratórios?" name="qs_problemas_respiratorios" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem ou teve doença articular / artrite / febre reumática?" name="qs_doenca_articular" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem ou teve distúrbio sanguíneo / anemia / hemorragia / leucemia?" name="qs_disturbio_sanguineo" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem diabetes?" name="qs_diabetes" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem dores de cabeça frequentemente?" name="qs_dores_cabeca" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem ou teve doença cardiovascular / hipertensão / infarto?" name="qs_doenca_cardiovascular" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tem ou teve hepatite A, B ou C?" name="qs_hepatite" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Tomou vacina contra hepatite B?" name="qs_vacina_hepatite_b" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Algum problema renal?" name="qs_problema_renal" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Algum problema hepático?" name="qs_problema_hepatico" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Já recebeu transfusão de sangue?" name="qs_transfusao_sangue" data={data} onChange={onChange} />
-          <YesNoPillGroup label="Está grávida?" name="qs_gravida" data={data} onChange={onChange} campos={["qs_gravida_periodo"]}>
-             <InheritableInput inheritedData={inheritedData} origins={origins} label="Em qual período?" name="qs_gravida_periodo" placeholder="Ex: 3º Mês, 12 semanas..." data={data} onChange={onChange} />
-          </YesNoPillGroup>
-        </div>
-      </SectionCard>
-
-      {/* 4. Pressão arterial, hábitos e observações */}
-      <SectionCard title="Pressão arterial, hábitos e observações" defaultOpen={false}>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="PA sistólica (mmHg)" name="pa_sistolica" placeholder="Ex.: 120" data={data} onChange={onChange} />
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="PA diastólica (mmHg)" name="pa_diastolica" placeholder="Ex.: 80" data={data} onChange={onChange} />
-        </div>
-
-        <ReadOnlyField 
-          label="ALERGIAS (REGISTRADAS POR ENFERMAGEM)" 
-          value={data?.Alergia === "Sim" ? `Sim - ${data?.['Reação alergica'] || ''}` : data?.Alergia || "—"}
-          source="Enfermagem" 
-        />
-        
-        <ReadOnlyField
-          label="MEDICAMENTOS"
-          value={data?.medicacoes}
-          source="Enfermagem"
-        />
-
-        <div className="space-y-4 mt-6">
-          <div className="mb-4">
-            <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Tabagismo" name="tabagismo" options={["Não", "Sim", "Ex-tabagista"]} data={data} onChange={onChange} />
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Risco de Mucosite"
+              name="Risco de Mucosite"
+              options={ODONTO_RISCO_MUCOSITE_OPCOES}
+              stacked={true}
+              subLabel="Selecione o nível de risco de mucosite previsto para o tratamento oncológico"
+            />
             <ConditionalField
               data={data}
               onChange={onChange}
-              showIf={{ OU: [
-                { campo: "tabagismo", igual: "Sim" },
-                { campo: "tabagismo", igual: "Ex-tabagista" },
-              ]}}
-              campos={["tabagismo_cigarros", "tabagismo_duracao", "tabagismo_parou"]}
-              className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+              showIf={{ campo: "Risco de Mucosite", igual: "Outro" }}
+              campos={["Risco de Mucosite (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
             >
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Cigarros/dia" name="tabagismo_cigarros" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="tabagismo_duracao" data={data} onChange={onChange} />
-              </div>
-              <ConditionalField data={data} onChange={onChange} showIf={{ campo: "tabagismo", igual: "Ex-tabagista" }} campos={["tabagismo_parou"]} className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="tabagismo_parou" data={data} onChange={onChange} />
-              </ConditionalField>
+              <InheritableInput
+                {...commonProps}
+                label="Especifique o risco de mucosite"
+                name="Risco de Mucosite (outro)"
+                placeholder="Descreva a situação do risco de mucosite..."
+              />
             </ConditionalField>
           </div>
+        </div>
+      </SectionCard>
 
-          <div className="mb-4">
-            <InheritableRadioPills inheritedData={inheritedData} origins={origins} label="Etilismo" name="etilismo" options={["Não", "Sim", "Ex-etilista"]} data={data} onChange={onChange} />
+      {/* 3. Condição Odontológica e Fatores Associados */}
+      <SectionCard title="3. Condição odontológica e fatores associados" defaultOpen={true}>
+        <div className="space-y-5">
+          {/* Dentes naturais */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Tem dentes naturais?"
+              name="Tem dentes naturais?"
+              options={ODONTO_DENTES_NATURAIS_OPCOES}
+            />
+          </div>
+
+          {/* Próteses */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Usa próteses?"
+              name="Usa próteses?"
+              options={ODONTO_PROTESE_OPCOES}
+            />
             <ConditionalField
               data={data}
               onChange={onChange}
-              showIf={{ OU: [
-                { campo: "etilismo", igual: "Sim" },
-                { campo: "etilismo", igual: "Ex-etilista" },
-              ]}}
-              campos={["etilismo_quantidade", "etilismo_frequencia", "etilismo_duracao", "etilismo_parou"]}
-              className="pl-4 border-l-2 border-[#FCD34D] mt-3 flex flex-col md:flex-row gap-4"
+              showIf={{ campo: "Usa próteses?", igual: "Outro" }}
+              campos={["Usa próteses? (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
             >
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Quantidade" name="etilismo_quantidade" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Frequência" name="etilismo_frequencia" data={data} onChange={onChange} />
-              </div>
-              <div className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Duração" name="etilismo_duracao" data={data} onChange={onChange} />
-              </div>
-              <ConditionalField data={data} onChange={onChange} showIf={{ campo: "etilismo", igual: "Ex-etilista" }} campos={["etilismo_parou"]} className="flex-1">
-                <InheritableInput inheritedData={inheritedData} origins={origins} label="Parou há" name="etilismo_parou" data={data} onChange={onChange} />
-              </ConditionalField>
+              <InheritableInput
+                {...commonProps}
+                label="Especifique o uso de prótese"
+                name="Usa próteses? (outro)"
+                placeholder="Ex.: Prótese parcial removível, prótese total superior..."
+              />
             </ConditionalField>
           </div>
 
-          <InheritableInput inheritedData={inheritedData} origins={origins} label="Outros hábitos" name="habitos_outros" data={data} onChange={onChange} />
+          {/* Dor de dente */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Tem dor de dente?"
+              name="Tem dor de dente?"
+              options={ODONTO_DOR_DENTE_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Tem dor de dente?", igual: "Outro" }}
+              campos={["Tem dor de dente? (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique a dor de dente"
+                name="Tem dor de dente? (outro)"
+                placeholder="Descreva a intensidade, localização e características da dor..."
+              />
+            </ConditionalField>
+          </div>
+
+          {/* Tabagismo */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Tabagista"
+              name="Tabagista"
+              options={ODONTO_TABAGISTA_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Tabagista", igual: "Outro" }}
+              campos={["Tabagista (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique o tabagismo"
+                name="Tabagista (outro)"
+                placeholder="Descreva o histórico ou especificidade do tabagismo..."
+              />
+            </ConditionalField>
+          </div>
+
+          {/* Etilismo */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Etilista"
+              name="Etilista"
+              options={ODONTO_ETILISTA_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Etilista", igual: "Outro" }}
+              campos={["Etilista (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique o etilismo"
+                name="Etilista (outro)"
+                placeholder="Descreva o padrão de consumo de bebidas alcoólicas..."
+              />
+            </ConditionalField>
+          </div>
+
+          {/* Via de alimentação */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Qual a via de alimentação?"
+              name="Qual a via de alimentação?"
+              options={ODONTO_VIA_ALIMENTACAO_OPCOES}
+            />
+          </div>
+
+          {/* Traqueostomia */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Tem traqueostomia?"
+              name="Tem traqueostomia?"
+              options={ODONTO_TRAQUEOSTOMIA_OPCOES}
+            />
+          </div>
+
+          {/* Xerostomia */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Xerostomia"
+              name="Xerostomia"
+              options={ODONTO_XEROSTOMIA_OPCOES}
+            />
+          </div>
+
+          {/* Medicamentos antirreabsortivos */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Paciente faz uso ou há previsão de uso de medicamentos antirreabsortivos? Se sim, qual?"
+              name="Medicamentos antirreabsortivos"
+              options={ODONTO_ANTIRREABSORTIVOS_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Medicamentos antirreabsortivos", igual: "Sim" }}
+              campos={["Medicamento antirreabsortivo (qual)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Qual medicamento antirreabsortivo em uso ou previsto?"
+                name="Medicamento antirreabsortivo (qual)"
+                placeholder="Ex.: Ácido zoledrônico, Pamidronato, Denosumabe..."
+              />
+            </ConditionalField>
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Medicamentos antirreabsortivos", igual: "Outro" }}
+              campos={["Medicamentos antirreabsortivos (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique o uso ou previsão de antirreabsortivos"
+                name="Medicamentos antirreabsortivos (outro)"
+                placeholder="Descreva a medicação ou condição informada..."
+              />
+            </ConditionalField>
+          </div>
+
+          {/* Acesso à UBS */}
+          <div>
+            <InheritableTextarea
+              {...commonProps}
+              label="Tem acesso facilitado a atendimento odontológico na UBS?"
+              name="Acesso odontológico UBS"
+              placeholder="Descreva se o paciente possui UBS de referência, facilidade ou barreiras de acesso ao serviço odontológico básico..."
+              rows={2}
+            />
+          </div>
+
+          {/* Cáries cavitadas */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Cáries cavitadas? Em quais dentes?"
+              name="Cáries cavitadas"
+              options={ODONTO_CARIES_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Cáries cavitadas", igual: "Sim" }}
+              campos={["Dentes com cáries cavitadas"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Em quais dentes apresentam cáries cavitadas?"
+                name="Dentes com cáries cavitadas"
+                placeholder="Ex.: 16, 26, 36, 46..."
+              />
+            </ConditionalField>
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Cáries cavitadas", igual: "Outro" }}
+              campos={["Cáries cavitadas (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique a avaliação de cáries"
+                name="Cáries cavitadas (outro)"
+                placeholder="Descreva as observações sobre as cáries..."
+              />
+            </ConditionalField>
+          </div>
+
+          {/* Mobilidade dentária */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Mobilidade dentária? Em quais dentes?"
+              name="Mobilidade dentária"
+              options={ODONTO_MOBILIDADE_OPCOES}
+            />
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Mobilidade dentária", igual: "Sim" }}
+              campos={["Dentes com mobilidade"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Em quais dentes apresentam mobilidade?"
+                name="Dentes com mobilidade"
+                placeholder="Ex.: 31, 41..."
+              />
+            </ConditionalField>
+            <ConditionalField
+              data={data}
+              onChange={onChange}
+              showIf={{ campo: "Mobilidade dentária", igual: "Outro" }}
+              campos={["Mobilidade dentária (outro)"]}
+              className="pl-4 border-l-2 border-[#1B6CA8]/30 mt-3"
+            >
+              <InheritableInput
+                {...commonProps}
+                label="Especifique a avaliação de mobilidade dentária"
+                name="Mobilidade dentária (outro)"
+                placeholder="Descreva as observações sobre a mobilidade..."
+              />
+            </ConditionalField>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* 4. Avaliação e Encaminhamento */}
+      <SectionCard title="4. Avaliação e encaminhamento" defaultOpen={true}>
+        <div className="space-y-6">
+          {/* Classificação do Risco Odontológico */}
+          <div role="radiogroup" aria-labelledby="label-classificacao-risco-odonto">
+            <span
+              id="label-classificacao-risco-odonto"
+              className="block text-xs font-bold text-[#1A2332] mb-1"
+            >
+              Classificação do Risco Odontológico
+            </span>
+            <p className="text-xs text-[#6B7A8D] mb-3">
+              Selecione o nível de risco odontológico com base na avaliação clínica:
+            </p>
+
+            <div className="grid grid-cols-1 gap-3">
+              {ODONTO_RISCO_ODONTOLOGICO_OPCOES.map((opt) => {
+                const isSelected = riscoSelecionado === opt.valor;
+                return (
+                  <label
+                    key={opt.valor}
+                    className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? "border-[#1B6CA8] bg-[#F0F7FD] shadow-sm"
+                        : "border-[#D5E6F3] bg-white hover:border-[#1B6CA8]/50 hover:bg-[#F9FBFE]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="Classificação do Risco Odontológico"
+                      value={opt.valor}
+                      checked={isSelected}
+                      onChange={() => onChange("Classificação do Risco Odontológico", opt.valor)}
+                      className="mt-1 w-4 h-4 accent-[#1B6CA8] focus:ring-[#1B6CA8]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded ${
+                            opt.valor === "ALTO"
+                              ? "bg-rose-100 text-rose-800"
+                              : opt.valor === "MODERADO"
+                              ? "bg-amber-100 text-amber-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {opt.titulo}
+                        </span>
+                        {isSelected && (
+                          <span className="flex items-center gap-1 text-[11px] font-semibold text-[#1B6CA8]">
+                            <CheckCircle2 size={14} /> Selecionado
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#3A4354] mt-1.5 leading-relaxed">
+                        {opt.descricao}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Encaminhamento para 2857 */}
+          <div>
+            <InheritableRadioPills
+              {...commonProps}
+              label="Encaminhar para 2857?"
+              name="Encaminhar para 2857?"
+              options={ODONTO_ENCAMINHAR_2857_OPCOES}
+              subLabel="Código institucional de encaminhamento odontológico HUB"
+            />
+          </div>
         </div>
       </SectionCard>
     </div>
