@@ -1,27 +1,27 @@
-# Modelo de projeto
+# Jornada Oncológica (Jornada Conectada — HUB)
 
-Ocean Brasil · UnB · Saúde Digital · 2026.1 · GXX
+Ocean Brasil · UnB · Saúde Digital · 2026.1 · G03
 
-**Status:** ativo, em preparação · **Grupo:** GXX · **Mentor:** TBD
+**Status:** ativo · **Grupo:** G03 · **Mentor:** TBD
 
 **Demo:** ainda não publicada · **Documentação:** [comece aqui](docs/README.md)
 
 ## O projeto em 30 segundos
 
-O grupo ainda precisa definir o nome oficial, o problema e o objetivo do projeto. Comece por docs/01-problema.md.
+Aplicação web multiprofissional para o acolhimento oncológico da UNACON no Hospital Universitário de Brasília (HUB/UnB). Reúne formulários estruturados de 9 especialidades com reaproveitamento automático de dados compartilhados, arquitetura de alertas clínicos em 4 níveis, cálculos assistenciais auditáveis (IMC, ASG-PPP e IRPO), geração de Ficha Consolidada em PDF e consulta pública humanizada da jornada do paciente sem exposição de dados sensíveis.
 
 ## Onde está cada coisa?
 
 | Pasta | Conteúdo |
 |---|---|
-| [docs/](docs/README.md) | Problema, usuários, requisitos, pesquisa e validação |
-| [software/](software/README.md) | Código do MVP, a primeira versão utilizável do projeto |
-| [deploy/](deploy/README.md) | Instruções de execução e publicação |
+| [docs/](docs/README.md) | Problema, usuários, requisitos (SRS), modelagem de dados, formulários de referência, roteiro de testes e roadmap pós-MVP |
+| [software/](software/README.md) | Código da aplicação: `software/frontend/` (React + TypeScript + Vite + Tailwind v4) e `software/backend/` (Python + FastAPI + SQLAlchemy) |
+| [deploy/](deploy/README.md) | Instruções de execução com Docker (`compose.yaml`) e preparação para publicação em Kubernetes |
 | [data/](data/README.md) | Somente dados permitidos e exemplos sintéticos |
 
 ## Quero apenas conhecer o projeto
 
-Leia a [documentação](docs/README.md). Quando houver demo, seu endereço aparecerá no topo deste README.
+Leia a [documentação](docs/README.md), o [índice de documentos](docs/listaDocumentos.md) e o [roteiro prático de testes e usabilidade](docs/COMO_TESTAR.md). Quando houver demo publicada, seu endereço aparecerá no topo deste README.
 
 ## Quero colaborar sem terminal
 
@@ -29,7 +29,17 @@ Registre uma Issue (tarefa ou problema), edite pelo navegador, proponha um Pull 
 
 ## Quero executar no meu computador
 
-Ainda não há aplicação, Dockerfile ou comando de execução validado neste scaffold (estrutura inicial). Veja [software](software/README.md) e o [tutorial de Docker](https://github.com/OceanBrasilia/handbook/blob/main/docs/06-docker-local.md).
+Com **Docker** e **Docker Compose** instalados, execute na raiz do repositório:
+
+```bash
+docker compose up --build
+```
+
+- **Frontend (Web):** http://localhost:5173
+- **Backend (API):** http://localhost:8001
+- **Swagger (Docs da API):** http://localhost:8001/docs
+
+Para instruções completas (incluindo execução sem Docker e testes automatizados), consulte [software/README.md](software/README.md) e [deploy/docker/README.md](deploy/docker/README.md).
 
 ## Quero fazer deploy
 
@@ -55,6 +65,4 @@ TBD. Conta GitHub de manutenção: a confirmar; não inferir username pelo nome.
 
 ## Segurança
 
-Nunca incluir prontuários, CPF, informações identificáveis de pacientes, dados clínicos reais não autorizados, senhas, tokens, chaves privadas, kubeconfigs funcionais ou arquivos .env com segredos. Leia [SECURITY.md](SECURITY.md).
-
-Quando o nome oficial for definido, renomear o repositório para `2026.1_GXX-<slug-do-projeto>` com o grupo correto e atualizar PROJECT.yml e catálogo.
+Nunca incluir prontuários, CPF, informações identificáveis de pacientes, dados clínicos reais não autorizados, senhas, tokens, chaves privadas, kubeconfigs funcionais ou arquivos `.env` com segredos. Leia [SECURITY.md](SECURITY.md).

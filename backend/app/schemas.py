@@ -1,0 +1,599 @@
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Dict, List, Literal, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
+# Auth ─────────────────────────────────────────────────────────────────────
+
+class UsuarioLoginInfo(BaseModel):
+    id: str
+    nome: str
+    codigo: Optional[str] = None
+    perfil: str
+    especialidade_id: Optional[str] = None
+    especialidade_nome: Optional[str] = None
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    usuario: UsuarioLoginInfo
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+# Dashboard ────────────────────────────────────────────────────────────────
+
+class EtapaDashboardItem(BaseModel):
+    area_id: str
+    nome_area: str
+    status: str          # PENDENTE | EM_ATENDIMENTO | ATENDIDO | NAO_SE_APLICA
+    ordem: int
+    profissional_nome: Optional[str] = None
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+
+
+class DashboardJornadaItem(BaseModel):
+    jornada_id: str
+    jornada_codigo: str
+    jornada_status: str  # AGUARDANDO | EM_ATENDIMENTO | PENDENTE | FINALIZADA | CANCELADA
+    data_acolhimento: date
+    chegada_em: Optional[datetime] = None
+    paciente_id: str
+    paciente_nome: str
+    paciente_cpf: str
+    paciente_codigo_publico: str
+    paciente_data_nascimento: Optional[date] = None
+    diagnostico: Optional[str] = None
+    etapas: List[EtapaDashboardItem] = []
+
+
+class GargaloEspecialidade(BaseModel):
+    nome_area: str
+    pendentes: int
+    em_atendimento: int
+
+
+class TempoMedioEspecialidade(BaseModel):
+    nome_area: str
+    tempo_medio_minutos: float
+
+
+class DashboardCoordenacaoResponse(BaseModel):
+    total_dia: int
+    por_status: Dict[str, int]
+    tempo_medio_espera_minutos: Optional[float] = None
+    gargalos: List[GargaloEspecialidade] = []
+    tempo_medio_por_especialidade: List[TempoMedioEspecialidade] = []
+
+
+# Schema base para Perfil ──────────────────────────────────────────────────
+
+# Schema base para Perfil
+class PerfilBase(BaseModel):
+    codigo: str
+    ativo: Optional[bool] = True
+
+
+class PerfilCreate(PerfilBase):
+    pass
+
+
+class PerfilResponse(PerfilBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Área de Atendimento
+class AreaAtendimentoBase(BaseModel):
+    nome: str
+    tipo: str
+    ordem_padrao: int
+    meta_tempo_minutos: Optional[int] = None
+    ativa: Optional[bool] = True
+
+
+class AreaAtendimentoCreate(AreaAtendimentoBase):
+    pass
+
+
+class AreaAtendimentoResponse(AreaAtendimentoBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Usuário
+class UsuarioBase(BaseModel):
+    nome: str
+    perfil_id: UUID
+    area_atendimento_id: Optional[UUID] = None
+    email: Optional[str] = None
+
+
+class UsuarioCreate(UsuarioBase):
+    senha: Optional[str] = None
+
+
+class UsuarioResponse(UsuarioBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Paciente (mantendo suporte aos campos antigos)
+class PatientBase(BaseModel):
+    codigo_publico: str
+    nome_completo: str
+    data_nascimento: date
+    cpf: str
+
+    # Suporte legado
+    name: Optional[str] = None
+    email: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_stage: Optional[str] = "Diagnóstico"
+
+
+class PatientCreate(BaseModel):
+    codigo_publico: Optional[str] = None
+    nome_completo: str
+    data_nascimento: date
+    cpf: str
+    # Suporte legado
+    name: Optional[str] = None
+    email: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_stage: Optional[str] = "Diagnóstico"
+
+
+class PatientResponse(PatientBase):
+    id: UUID
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Contato do Paciente
+class ContatoPacienteBase(BaseModel):
+    paciente_id: UUID
+    nome: str
+    relacao: Optional[str] = None
+    telefone: Optional[str] = None
+    contato_emergencia: Optional[bool] = False
+    cuidador: Optional[bool] = False
+    ativo: Optional[bool] = True
+
+
+class ContatoPacienteCreate(ContatoPacienteBase):
+    pass
+
+
+class ContatoPacienteResponse(ContatoPacienteBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema para Acompanhante da Jornada
+class JornadaAcompanhanteBase(BaseModel):
+    jornada_id: UUID
+    contato_paciente_id: UUID
+    observacao: Optional[str] = None
+
+
+class JornadaAcompanhanteCreate(JornadaAcompanhanteBase):
+    pass
+
+
+class JornadaAcompanhanteResponse(JornadaAcompanhanteBase):
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Jornada
+class JornadaBase(BaseModel):
+    paciente_id: UUID
+    criado_por_id: UUID
+    codigo: Optional[str] = None
+    data_acolhimento: Optional[date] = None
+    diagnostico_principal: Optional[str] = None
+    fase_tratamento: Optional[str] = None
+    origem: Optional[str] = None
+    observacao_geral: Optional[str] = None
+
+
+class JornadaCreate(JornadaBase):
+    pass
+
+
+class JornadaResponse(JornadaBase):
+    id: UUID
+    status: str
+    chegada_em: Optional[datetime] = None
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+    saida_em: Optional[datetime] = None
+    criado_em: datetime
+    atualizado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Etapa da Jornada
+class EtapaJornadaBase(BaseModel):
+    jornada_id: UUID
+    area_atendimento_id: UUID
+    profissional_responsavel_id: Optional[UUID] = None
+    ordem: int
+    prioridade: int
+    motivo_nao_aplicavel: Optional[str] = None
+    observacao: Optional[str] = None
+
+
+class EtapaJornadaCreate(EtapaJornadaBase):
+    pass
+
+
+class EtapaJornadaResponse(EtapaJornadaBase):
+    id: UUID
+    status: str
+    iniciada_em: Optional[datetime] = None
+    finalizada_em: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Formulário
+class FormularioBase(BaseModel):
+    nome: str
+    ativo: Optional[bool] = True
+
+
+class FormularioCreate(FormularioBase):
+    pass
+
+
+class FormularioResponse(FormularioBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Versão de Formulário
+class FormularioVersaoBase(BaseModel):
+    formulario_id: UUID
+    criado_por_id: UUID
+    versao: int
+    ativo: Optional[bool] = True
+
+
+class FormularioVersaoCreate(FormularioVersaoBase):
+    pass
+
+
+class FormularioVersaoResponse(FormularioVersaoBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Campo do Formulário
+class CampoFormularioBase(BaseModel):
+    formulario_versao_id: UUID
+    nome: str
+    tipo: str
+    ordem_exibicao: int
+    ativo_versao: Optional[bool] = True
+
+
+class CampoFormularioCreate(CampoFormularioBase):
+    pass
+
+
+class CampoFormularioResponse(CampoFormularioBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Opção de Campo
+class CampoOpcaoBase(BaseModel):
+    campo_formulario_id: UUID
+    valor: str
+    pontuacao: Optional[int] = None
+
+
+class CampoOpcaoCreate(CampoOpcaoBase):
+    pass
+
+
+class CampoOpcaoResponse(CampoOpcaoBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Preenchimento de Formulário
+class PreenchimentoFormularioBase(BaseModel):
+    etapa_jornada_id: UUID
+    formulario_versao_id: UUID
+    profissional_id: UUID
+    status: Optional[str] = "RASCUNHO"
+
+
+class PreenchimentoFormularioCreate(PreenchimentoFormularioBase):
+    pass
+
+
+class PreenchimentoFormularioResponse(PreenchimentoFormularioBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Resposta
+class RespostaBase(BaseModel):
+    preenchimento_id: UUID
+    campo_formulario_id: UUID
+    valor_texto: Optional[str] = None
+    valor_numero: Optional[Decimal] = None
+    valor_booleano: Optional[bool] = None
+    valor_data: Optional[date] = None
+
+
+class RespostaCreate(RespostaBase):
+    pass
+
+
+class RespostaResponse(RespostaBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Definição de Dado Compartilhado
+class DadoCompartilhadoDefBase(BaseModel):
+    nome: str
+    tipo: str
+    ativo: Optional[bool] = True
+
+
+class DadoCompartilhadoDefCreate(DadoCompartilhadoDefBase):
+    pass
+
+
+class DadoCompartilhadoDefResponse(DadoCompartilhadoDefBase):
+    id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Dado Compartilhado
+class DadoCompartilhadoBase(BaseModel):
+    definicao_id: UUID
+    paciente_id: UUID
+    jornada_id: Optional[UUID] = None
+    registrado_por_id: UUID
+    resposta_origem_id: Optional[UUID] = None
+    valor_texto: Optional[str] = None
+    valor_numero: Optional[Decimal] = None
+    valor_booleano: Optional[bool] = None
+    valor_data: Optional[date] = None
+    encerrado_em: Optional[datetime] = None
+    atual: Optional[bool] = True
+
+
+class DadoCompartilhadoCreate(DadoCompartilhadoBase):
+    pass
+
+
+class DadoCompartilhadoResponse(DadoCompartilhadoBase):
+    id: UUID
+    registrado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Pendência
+class PendenciaBase(BaseModel):
+    jornada_id: UUID
+    etapa_origem_id: Optional[UUID] = None
+    area_destino_id: Optional[UUID] = None
+    usuario_responsavel_id: Optional[UUID] = None
+    descricao: str
+    prioridade: Optional[str] = None
+    status: Optional[str] = "PENDENTE"
+    prazo: Optional[datetime] = None
+    resolvida_em: Optional[datetime] = None
+
+
+class PendenciaCreate(PendenciaBase):
+    pass
+
+
+class PendenciaResponse(PendenciaBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Encaminhamento
+class EncaminhamentoBase(BaseModel):
+    jornada_id: UUID
+    etapa_origem_id: UUID
+    criado_por_id: UUID
+    area_destino_id: Optional[UUID] = None
+    destino_externo: Optional[str] = None
+    status: Optional[str] = "PENDENTE"
+    concluido_em: Optional[datetime] = None
+
+
+class EncaminhamentoCreate(EncaminhamentoBase):
+    pass
+
+
+class EncaminhamentoResponse(EncaminhamentoBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Registro Profissional
+class RegistroProfissionalBase(BaseModel):
+    etapa_jornada_id: UUID
+    autor_id: UUID
+    tipo: str
+    texto: str
+
+
+class RegistroProfissionalCreate(RegistroProfissionalBase):
+    pass
+
+
+class RegistroProfissionalResponse(RegistroProfissionalBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Anexo
+class AnexoBase(BaseModel):
+    paciente_id: UUID
+    jornada_id: Optional[UUID] = None
+    etapa_jornada_id: Optional[UUID] = None
+    nome: str
+    caminho: str
+    hash: Optional[str] = None
+
+
+class AnexoCreate(AnexoBase):
+    pass
+
+
+class AnexoResponse(AnexoBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Ficha Consolidada
+class FichaConsolidadaBase(BaseModel):
+    jornada_id: UUID
+    gerada_por_id: UUID
+    versao: int
+    caminho_arquivo: str
+    hash_arquivo: Optional[str] = None
+
+
+class FichaConsolidadaCreate(FichaConsolidadaBase):
+    pass
+
+
+class FichaConsolidadaResponse(FichaConsolidadaBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Schema base para Registro de Auditoria
+class RegistroAuditoriaBase(BaseModel):
+    usuario_id: UUID
+    acao: str
+    detalhe: Optional[str] = None
+
+
+class RegistroAuditoriaCreate(RegistroAuditoriaBase):
+    pass
+
+
+class RegistroAuditoriaResponse(RegistroAuditoriaBase):
+    id: UUID
+    criado_em: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Novas Request Schemas
+
+
+class JourneyCreateRequest(BaseModel):
+    paciente_id: UUID
+    criado_por_id: UUID
+
+
+class JourneyStepUpdate(BaseModel):
+    status: Optional[Literal["PENDENTE", "EM_ATENDIMENTO", "ATENDIDO", "NAO_SE_APLICA"]] = None
+    profissional_responsavel_id: Optional[UUID] = None
+    observacao: Optional[str] = None
+    prioridade: Optional[int] = None
+    motivo_nao_aplicavel: Optional[str] = None
+    ordem: Optional[int] = None
+    area_atendimento_id: Optional[UUID] = None
+
+
+# Schemas para Cálculos Clínicos (Issue 8)
+
+
+class IMCRequest(BaseModel):
+    peso_kg: float
+    altura_m: float
+
+
+class IRPORequest(BaseModel):
+    respostas: dict[int, int]
+
+
+class ASGPPPRequest(BaseModel):
+    bloco1_peso: int = 0
+    bloco2_ingestao: int = 0
+    bloco3_sintomas: int = 0
+    bloco4_capacidade: int = 0
+    adicionais_estresse: int = 0
+
+
+# Schemas para Formulários e Resumo Consolidado (Issue 7)
+
+class RespostaCriacaoAuxiliar(BaseModel):
+    campo_formulario_id: UUID
+    valor_texto: Optional[str] = None
+    valor_numero: Optional[float] = None
+    valor_booleano: Optional[bool] = None
+    valor_data: Optional[date] = None
+
+
+class PreenchimentoCreate(BaseModel):
+    formulario_versao_id: UUID
+    profissional_id: UUID
+    respostas: List[RespostaCriacaoAuxiliar]
+
+
+class ResumoCampoResponse(BaseModel):
+    campo: str
+    valor: str
+    pontuacao: Optional[int] = None
+
+
+class ResumoEspecialidadeResponse(BaseModel):
+    area_atendimento_nome: str
+    profissional_nome: Optional[str] = None
+    pontuacao_total: int
+    imc_calculado: Optional[float] = None
+    respostas: List[ResumoCampoResponse]
+
+
+class ResumoConsolidadoResponse(BaseModel):
+    jornada_id: UUID
+    paciente_nome: str
+    idade_exata: str
+    especialidades: List[ResumoEspecialidadeResponse]
+
