@@ -1,0 +1,17 @@
+kubeconfig*
+!kubeconfig.example.yaml
+*.kubeconfig
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.crt
+secrets/
+secret.*
+*.secret
+out/
+node_modules/
+.venv/
+__pycache__/
+.DS_Store

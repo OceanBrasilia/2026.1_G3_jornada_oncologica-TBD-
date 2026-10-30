@@ -1,0 +1,63 @@
+# TEMPLATE INATIVO. Não colocar em workflows antes de concluir a preparação.
+# Ajustar contexto Docker, imagem, manifests, kubectl e teste de rollout.
+name: Build e demo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: demo
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: demo
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir preparação
+        run: |
+          test -f software/Dockerfile
+          test -f deploy/k8s/kustomization.yaml
+      - name: Login GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_USER: ${{ github.actor }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GH_USER" --password-stdin
+      - name: Build e envio
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          IMAGE="ghcr.io/${REPO,,}:$GITHUB_SHA"
+          docker build -f software/Dockerfile -t "$IMAGE" software
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      # Instalar kubectl compatível com checksum verificado antes de publicar.
+      - name: Credencial temporária
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$KUBECONFIG_B64"
+          printf '%s' "$KUBECONFIG_B64" | base64 --decode > "$RUNNER_TEMP/ocean-kubeconfig"
+          echo "KUBECONFIG=$RUNNER_TEMP/ocean-kubeconfig" >> "$GITHUB_ENV"
+      - name: Publicar aplicação
+        env:
+          K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+        run: |
+          set -euo pipefail
+          test -n "$K8S_NAMESPACE"
+          test "$(kubectl config view --minify -o jsonpath='{.contexts[0].context.namespace}')" = "$K8S_NAMESPACE"
+          echo "TEMPLATE: configurar substituição da imagem nos manifests e teste de rollout antes de ativar."
+          exit 1
+          # Depois de implementar e testar:
+          # kubectl apply -k deploy/k8s --namespace "$K8S_NAMESPACE"
+          # kubectl rollout status deployment/NOME_REAL --namespace "$K8S_NAMESPACE" --timeout=180s
+      - name: Remover credencial local
+        if: always()
+        run: rm -f "$RUNNER_TEMP/ocean-kubeconfig"

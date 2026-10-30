@@ -1,0 +1,19 @@
+project_id: TBD
+project_name: TBD
+project_slug: TBD
+institution: unb
+year: 2026
+term: t1
+group: gXX
+kind: hybrid
+status: active
+visibility: private
+sensitivity: internal
+mentor: "TBD"
+technology: []
+local_run: docker
+deploy:
+  target: kubernetes
+  namespace: TBD
+  demo_url: ""
+maintainers: []
