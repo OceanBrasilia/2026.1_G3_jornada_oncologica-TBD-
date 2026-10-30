@@ -17,7 +17,7 @@ Este documento orienta qualquer membro da equipe ou avaliador a **executar o sis
 Abra um terminal (PowerShell ou Bash) na pasta do projeto:
 
 ```powershell
-cd backend
+cd software/backend
 # Criar/ativar o ambiente virtual (caso use)
 python -m venv venv
 .\venv\Scripts\activate
@@ -36,7 +36,7 @@ uvicorn app.main:app --reload --port 8000
 Abra um **segundo terminal** na pasta do projeto:
 
 ```powershell
-cd frontend
+cd software/frontend
 
 # Instalar dependências
 npm install
@@ -53,12 +53,12 @@ Se desejar verificar a integridade antes de navegar:
 
 - **Testes do Front-end (121 testes)**:
   ```powershell
-  cd frontend
+  cd software/frontend
   npm run test
   ```
 - **Testes do Back-end (74 testes)**:
   ```powershell
-  cd backend
+  cd software/backend
   pytest
   ```
 

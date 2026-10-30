@@ -1,9 +1,26 @@
 # Docker local
 
-Aqui ficam configurações de containers quando a aplicação existir. Não crie Dockerfile fictício nem armazene segredos.
+A aplicação possui `Dockerfile` em `software/backend/Dockerfile` e `software/frontend/Dockerfile`, orquestrados pelo arquivo `compose.yaml` na raiz do repositório.
 
-Comece pela tecnologia escolhida em software/. Crie e teste um Dockerfile real e, se necessário, compose.yaml na raiz.
+## Como executar
 
-Somente após esses arquivos existirem e serem testados: clone o repositório, abra no VS Code e execute `docker compose up --build`. Encerre com `docker compose down`. Se não usar Compose, documente o comando real.
+1. (Opcional) Caso precise customizar variáveis de banco de dados (ex.: conexão com banco de homologação na rede HUB), copie `software/env.example` para `.env` na raiz:
+   ```bash
+   cp software/env.example .env
+   ```
+   > Atenção: Nunca versione arquivos `.env` ou credenciais reais.
 
-Neste momento esses comandos não estão habilitados neste projeto.
+2. Na raiz do repositório, suba os containers:
+   ```bash
+   docker compose up --build
+   ```
+
+3. Acesse no navegador:
+   - **Frontend:** http://localhost:5173
+   - **Backend (API):** http://localhost:8001
+   - **Swagger (Docs):** http://localhost:8001/docs
+
+4. Para encerrar:
+   ```bash
+   docker compose down
+   ```

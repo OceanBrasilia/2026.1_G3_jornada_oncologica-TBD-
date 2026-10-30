@@ -14,7 +14,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./software/backend
       dockerfile: Dockerfile
     container_name: jornada_backend_api
     restart: always
@@ -24,20 +24,20 @@ services:
       - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-jornada_db}
       - PROJECT_NAME=Jornada Oncológica
     volumes:
-      - ./backend:/app
+      - ./software/backend:/app
     depends_on:
       - db
 
   frontend:
     build:
-      context: ./frontend
+      context: ./software/frontend
       dockerfile: Dockerfile
     container_name: jornada_frontend_web
     restart: always
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./software/frontend:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8001

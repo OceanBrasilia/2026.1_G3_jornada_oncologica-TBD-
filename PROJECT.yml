@@ -1,19 +1,28 @@
-project_id: TBD
-project_name: TBD
-project_slug: TBD
+project_id: unb-2026-t1-g03
+project_name: "Jornada Oncológica"
+project_slug: jornada-oncologica
 institution: unb
 year: 2026
 term: t1
-group: gXX
+group: g03
 kind: hybrid
 status: active
 visibility: private
 sensitivity: internal
 mentor: "TBD"
-technology: []
-local_run: docker
+technology:
+  - React
+  - TypeScript
+  - Vite
+  - Tailwind CSS
+  - Python
+  - FastAPI
+  - SQLAlchemy
+  - PostgreSQL
+  - Docker
+local_run: "docker compose up --build"
 deploy:
   target: kubernetes
-  namespace: TBD
+  namespace: ocean-unb-2026-t1-g03
   demo_url: ""
 maintainers: []
